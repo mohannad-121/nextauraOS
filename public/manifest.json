@@ -1,0 +1,16 @@
+{
+  "name": "NextAura",
+  "short_name": "NextAura",
+  "description": "NextAura — a unified business operating system for finance, people, marketing, operations, and intelligence.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#020617",
+  "theme_color": "#020617",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}
