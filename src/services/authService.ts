@@ -13,10 +13,11 @@ export const authService = {
     if (!isSupabaseConfigured()) {
       return { user: null, session: null };
     }
+    const redirectUrl = window.location.origin;
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: window.location.origin,
+        redirectTo: redirectUrl,
       },
     });
     if (error) throw error;

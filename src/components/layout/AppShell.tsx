@@ -48,6 +48,11 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
     document.title = `${pageTitle} | NextAura`;
   }, [activeApp]);
 
+  // Render Auth page completely alone without Sidebar, Topbar, or AppShell wrapper
+  if (activeApp === 'auth') {
+    return <>{children}</>;
+  }
+
   return (
     <div className={`min-h-screen bg-slate-950 text-slate-100 flex flex-col antialiased ${isRtl ? 'rtl' : 'ltr'}`}>
       <div className="flex-1 flex w-full overflow-x-hidden">
