@@ -1,8 +1,4 @@
--- ====================================================================
--- NEXTAURA SEED DATA FOR DEMO & PRODUCTION INITIALIZATION
--- ====================================================================
-
--- Master Organization
+-- Seed Master Organization
 INSERT INTO public.organizations (id, name, slug, legal_name, tax_id, base_currency, country, timezone)
 VALUES (
     'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
@@ -15,11 +11,11 @@ VALUES (
     'America/Los_Angeles'
 ) ON CONFLICT (id) DO NOTHING;
 
--- Demo HR Employees
+-- Seed Employees
 INSERT INTO public.employees (id, organization_id, employee_number, name, email, phone, avatar, job_title, department, start_date, base_salary, status)
 VALUES
 (
-    'e1111111-1111-1111-1111-111111111111',
+    '11111111-1111-1111-1111-111111111111',
     'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
     'EMP-001',
     'Mohannad Abuayyash',
@@ -33,7 +29,7 @@ VALUES
     'Active'
 ),
 (
-    'e2222222-2222-2222-2222-222222222222',
+    '22222222-2222-2222-2222-222222222222',
     'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
     'EMP-002',
     'Elena Rostova',
@@ -47,11 +43,11 @@ VALUES
     'Active'
 ) ON CONFLICT (id) DO NOTHING;
 
--- Demo Vehicles
+-- Seed Vehicles
 INSERT INTO public.vehicles (id, organization_id, name, make, model, year, license_plate, assigned_employee_name, odometer_km, monthly_cost, status)
 VALUES
 (
-    'v1111111-1111-1111-1111-111111111111',
+    'f1111111-1111-1111-1111-111111111111',
     'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11',
     'Executive Fleet Tesla Model Y',
     'Tesla',
