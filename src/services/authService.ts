@@ -47,6 +47,17 @@ export const authService = {
     return data;
   },
 
+  async verifyEmailOtp(email: string, token: string) {
+    if (!isSupabaseConfigured()) return { user: null, session: null };
+    const { data, error } = await supabase.auth.verifyOtp({
+      email,
+      token,
+      type: 'signup',
+    });
+    if (error) throw error;
+    return data;
+  },
+
   async signOut() {
     if (!isSupabaseConfigured()) return;
     const { error } = await supabase.auth.signOut();

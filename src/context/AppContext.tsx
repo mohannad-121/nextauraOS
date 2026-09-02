@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type {
   Organization,
   User,
@@ -103,6 +103,8 @@ import { payrollService } from '../services/payrollService';
 import { marketingService } from '../services/marketingService';
 import { calendarService } from '../services/calendarService';
 import { auditService } from '../services/auditService';
+import { entitlementService } from '../services/entitlementService';
+import { NEXTAURA_SERVICES } from '../data/appRegistry';
 import { isSupabaseConfigured } from '../services/supabaseClient';
 
 export type AppView =
@@ -255,6 +257,12 @@ interface AppContextType {
   markAllNotificationsRead: () => void;
   auditLogs: AuditLogItem[];
   addAuditLog: (action: string, module: string, details: string) => void;
+
+  // Entitlements & Onboarding State
+  activeServices: string[];
+  refreshServices: () => void;
+  isOnboardingActive: boolean;
+  setOnboardingActive: (active: boolean) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -324,6 +332,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [globalApprovals] = useState<GlobalApprovalItem[]>(initialGlobalApprovals);
   const [notifications, setNotifications] = useState<NotificationItem[]>(initialNotifications);
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>(initialAuditLogs);
+
+  // Entitlements & Onboarding State
+  const [activeServices, setActiveServices] = useState<string[]>(NEXTAURA_SERVICES.map((s) => s.key));
+  const [isOnboardingActive, setOnboardingActive] = useState<boolean>(false);
+
+  const refreshServices = useCallback(() => {
+    entitlementService.getActiveOrgServices(currentOrg.id).then((services) => {
+      setActiveServices(services);
+    });
+  }, [currentOrg.id]);
+
+  useEffect(() => {
+    refreshServices();
+  }, [currentOrg.id, refreshServices]);
 
   const isRtl = language === 'ar';
 
@@ -884,6 +906,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         addAuditLog,
         switchOrg,
         toggleLanguage,
+        activeServices,
+        refreshServices,
+        isOnboardingActive,
+        setOnboardingActive,
       }}
     >
       {children}

@@ -1,6 +1,7 @@
 import React from 'react';
 import { AppProvider, useApp } from './context/AppContext';
 import { AppShell } from './components/layout/AppShell';
+import { ProtectedRoute } from './components/common/ProtectedRoute';
 
 // Finance Pages
 import { FinanceLaunchpad } from './pages/FinanceLaunchpad';
@@ -43,13 +44,15 @@ import { SMSMarketingApp } from './pages/marketing/SMSMarketingApp';
 import { SurveysApp } from './pages/marketing/SurveysApp';
 import { SocialMarketingApp } from './pages/marketing/SocialMarketingApp';
 
-// Global Platform Pages
+// Global Platform Pages & Entitlements
 import { GlobalCalendar } from './pages/GlobalCalendar';
 import { GlobalApprovals } from './pages/GlobalApprovals';
 import { ContactsDirectory } from './pages/ContactsDirectory';
 import { DocumentCenter } from './pages/DocumentCenter';
 import { AnalyticsCenter } from './pages/AnalyticsCenter';
 import { SettingsPage } from './pages/settings/SettingsPage';
+import { CustomerServicesPage } from './pages/settings/CustomerServicesPage';
+import { AdminServiceRequests } from './pages/admin/AdminServiceRequests';
 import { AuthScreens } from './pages/auth/AuthScreens';
 
 const AppContent: React.FC = () => {
@@ -142,7 +145,7 @@ const AppContent: React.FC = () => {
       case 'social':
         return <SocialMarketingApp />;
 
-      // GLOBAL PLATFORM
+      // GLOBAL PLATFORM & SERVICES
       case 'calendar':
         return <GlobalCalendar />;
 
@@ -159,6 +162,8 @@ const AppContent: React.FC = () => {
         return <AnalyticsCenter />;
 
       case 'settings':
+        if (activeSubView === 'services') return <CustomerServicesPage />;
+        if (activeSubView === 'admin-requests') return <AdminServiceRequests />;
         return <SettingsPage />;
 
       case 'auth':
@@ -169,7 +174,11 @@ const AppContent: React.FC = () => {
     }
   };
 
-  return <AppShell>{renderCurrentView()}</AppShell>;
+  return (
+    <AppShell>
+      <ProtectedRoute>{renderCurrentView()}</ProtectedRoute>
+    </AppShell>
+  );
 };
 
 export function App() {

@@ -37,6 +37,7 @@ export const Sidebar: React.FC = () => {
     currentOrg,
     switchOrg,
     isSidebarCollapsed,
+    activeServices,
   } = useApp();
 
   const [isOrgDropdownOpen, setIsOrgDropdownOpen] = useState(false);
@@ -52,31 +53,35 @@ export const Sidebar: React.FC = () => {
 
   const [expandedApp, setExpandedApp] = useState<string | null>(activeApp);
 
-  const financeModules = [
-    { id: 'invoicing', title: 'Invoicing', icon: CreditCard, color: 'text-azure-400', subViews: [{ id: 'overview', label: 'Invoices Dashboard' }, { id: 'new-invoice', label: 'Create Invoice' }, { id: 'customers', label: 'Customers Directory' }] },
-    { id: 'accounting', title: 'Accounting', icon: CreditCard, color: 'text-indigo-400', subViews: [{ id: 'overview', label: 'Accounting Hub' }, { id: 'ledger', label: 'General Ledger' }, { id: 'journal-new', label: 'Journal Entry' }, { id: 'reconciliation', label: 'Bank Reconciliation' }, { id: 'reports', label: 'Financial Reports' }] },
-    { id: 'expenses', title: 'Expenses & Cards', icon: CreditCard, color: 'text-rose-400', subViews: [{ id: 'overview', label: 'Expenses Dashboard' }, { id: 'approvals', label: 'Approval Queue' }, { id: 'cards', label: 'Corporate Cards' }] },
-    { id: 'sign', title: 'Sign (E-Signature)', icon: FileSignature, color: 'text-teal-400', subViews: [{ id: 'overview', label: 'Sign Documents' }, { id: 'builder', label: 'Prepare Agreement' }] },
-    { id: 'equity', title: 'Equity & Cap Table', icon: PieChart, color: 'text-amber-400', subViews: [{ id: 'overview', label: 'Cap Table Summary' }, { id: 'cap-table', label: 'Shareholders' }, { id: 'dilution', label: 'Dilution Simulator' }] },
-    { id: 'esg', title: 'ESG & Carbon', icon: Leaf, color: 'text-emerald-400', subViews: [{ id: 'overview', label: 'ESG Hub Scorecard' }, { id: 'carbon', label: 'Carbon Calculator' }] },
+  const rawFinanceModules = [
+    { key: 'invoicing', id: 'invoicing', title: 'Invoicing', icon: CreditCard, color: 'text-azure-400', subViews: [{ id: 'overview', label: 'Invoices Dashboard' }, { id: 'new-invoice', label: 'Create Invoice' }, { id: 'customers', label: 'Customers Directory' }] },
+    { key: 'accounting', id: 'accounting', title: 'Accounting', icon: CreditCard, color: 'text-indigo-400', subViews: [{ id: 'overview', label: 'Accounting Hub' }, { id: 'ledger', label: 'General Ledger' }, { id: 'journal-new', label: 'Journal Entry' }, { id: 'reconciliation', label: 'Bank Reconciliation' }, { id: 'reports', label: 'Financial Reports' }] },
+    { key: 'expenses', id: 'expenses', title: 'Expenses & Cards', icon: CreditCard, color: 'text-rose-400', subViews: [{ id: 'overview', label: 'Expenses Dashboard' }, { id: 'approvals', label: 'Approval Queue' }, { id: 'cards', label: 'Corporate Cards' }] },
+    { key: 'sign', id: 'sign', title: 'Sign (E-Signature)', icon: FileSignature, color: 'text-teal-400', subViews: [{ id: 'overview', label: 'Sign Documents' }, { id: 'builder', label: 'Prepare Agreement' }] },
+    { key: 'equity', id: 'equity', title: 'Equity & Cap Table', icon: PieChart, color: 'text-amber-400', subViews: [{ id: 'overview', label: 'Cap Table Summary' }, { id: 'cap-table', label: 'Shareholders' }, { id: 'dilution', label: 'Dilution Simulator' }] },
+    { key: 'esg', id: 'esg', title: 'ESG & Carbon', icon: Leaf, color: 'text-emerald-400', subViews: [{ id: 'overview', label: 'ESG Hub Scorecard' }, { id: 'carbon', label: 'Carbon Calculator' }] },
   ];
 
-  const hrModules = [
-    { id: 'employees', title: 'Employees', icon: Users, color: 'text-orange-400', subViews: [{ id: 'overview', label: 'Employee Directory' }, { id: 'org-chart', label: 'Organization Chart' }] },
-    { id: 'attendance', title: 'Attendances', icon: Clock, color: 'text-cyan-400', subViews: [{ id: 'overview', label: 'Who\'s Working Board' }, { id: 'log', label: 'Attendance Log' }, { id: 'kiosk', label: 'Kiosk Mode' }] },
-    { id: 'recruitment', title: 'Recruitment (ATS)', icon: UserPlus, color: 'text-pink-400', subViews: [{ id: 'overview', label: 'Recruitment Hub' }, { id: 'kanban', label: 'Candidate Pipeline' }, { id: 'jobs', label: 'Job Openings' }] },
-    { id: 'time-off', title: 'Time Off & Leave', icon: CalendarIcon, color: 'text-purple-400', subViews: [{ id: 'overview', label: 'Leave Dashboard' }, { id: 'requests', label: 'Pending Approvals' }, { id: 'calendar', label: 'Team Leave Calendar' }] },
-    { id: 'appraisals', title: 'Appraisals & OKRs', icon: Award, color: 'text-yellow-400', subViews: [{ id: 'overview', label: 'Appraisals Hub' }, { id: 'goals', label: 'Goals & OKRs' }] },
-    { id: 'fleet', title: 'Fleet Management', icon: Car, color: 'text-blue-400', subViews: [{ id: 'overview', label: 'Vehicles Directory' }, { id: 'maintenance', label: 'Maintenance Schedule' }] },
-    { id: 'payroll', title: 'Payroll Processing', icon: Wallet, color: 'text-emerald-400', subViews: [{ id: 'overview', label: 'Payroll Control Center' }, { id: 'runs', label: 'Monthly Runs' }, { id: 'payslips', label: 'Payslip Generator' }] },
+  const rawHrModules = [
+    { key: 'employees', id: 'employees', title: 'Employees', icon: Users, color: 'text-orange-400', subViews: [{ id: 'overview', label: 'Employee Directory' }, { id: 'org-chart', label: 'Organization Chart' }] },
+    { key: 'attendance', id: 'attendance', title: 'Attendances', icon: Clock, color: 'text-cyan-400', subViews: [{ id: 'overview', label: 'Who\'s Working Board' }, { id: 'log', label: 'Attendance Log' }, { id: 'kiosk', label: 'Kiosk Mode' }] },
+    { key: 'recruitment', id: 'recruitment', title: 'Recruitment (ATS)', icon: UserPlus, color: 'text-pink-400', subViews: [{ id: 'overview', label: 'Recruitment Hub' }, { id: 'kanban', label: 'Candidate Pipeline' }, { id: 'jobs', label: 'Job Openings' }] },
+    { key: 'time_off', id: 'time-off', title: 'Time Off & Leave', icon: CalendarIcon, color: 'text-purple-400', subViews: [{ id: 'overview', label: 'Leave Dashboard' }, { id: 'requests', label: 'Pending Approvals' }, { id: 'calendar', label: 'Team Leave Calendar' }] },
+    { key: 'appraisals', id: 'appraisals', title: 'Appraisals & OKRs', icon: Award, color: 'text-yellow-400', subViews: [{ id: 'overview', label: 'Appraisals Hub' }, { id: 'goals', label: 'Goals & OKRs' }] },
+    { key: 'fleet', id: 'fleet', title: 'Fleet Management', icon: Car, color: 'text-blue-400', subViews: [{ id: 'overview', label: 'Vehicles Directory' }, { id: 'maintenance', label: 'Maintenance Schedule' }] },
+    { key: 'payroll', id: 'payroll', title: 'Payroll Processing', icon: Wallet, color: 'text-emerald-400', subViews: [{ id: 'overview', label: 'Payroll Control Center' }, { id: 'runs', label: 'Monthly Runs' }, { id: 'payslips', label: 'Payslip Generator' }] },
   ];
 
-  const marketingModules = [
-    { id: 'email', title: 'Email Marketing', icon: Mail, color: 'text-rose-400', subViews: [{ id: 'overview', label: 'Email Campaigns' }, { id: 'new', label: 'Campaign Wizard' }, { id: 'templates', label: 'Email Templates' }] },
-    { id: 'sms', title: 'SMS Marketing', icon: MessageSquare, color: 'text-indigo-400', subViews: [{ id: 'overview', label: 'SMS Campaigns' }, { id: 'new', label: 'Create SMS' }] },
-    { id: 'surveys', title: 'Surveys & Forms', icon: ClipboardList, color: 'text-amber-400', subViews: [{ id: 'overview', label: 'Active Surveys' }, { id: 'new', label: 'Form Builder' }] },
-    { id: 'social', title: 'Social Marketing', icon: Share2, color: 'text-cyan-400', subViews: [{ id: 'overview', label: 'Social Content Calendar' }, { id: 'new', label: 'Compose Post' }, { id: 'accounts', label: 'Connected Accounts' }] },
+  const rawMarketingModules = [
+    { key: 'email_marketing', id: 'email', title: 'Email Marketing', icon: Mail, color: 'text-rose-400', subViews: [{ id: 'overview', label: 'Email Campaigns' }, { id: 'new', label: 'Campaign Wizard' }, { id: 'templates', label: 'Email Templates' }] },
+    { key: 'sms_marketing', id: 'sms', title: 'SMS Marketing', icon: MessageSquare, color: 'text-indigo-400', subViews: [{ id: 'overview', label: 'SMS Campaigns' }, { id: 'new', label: 'Create SMS' }] },
+    { key: 'surveys', id: 'surveys', title: 'Surveys & Forms', icon: ClipboardList, color: 'text-amber-400', subViews: [{ id: 'overview', label: 'Active Surveys' }, { id: 'new', label: 'Form Builder' }] },
+    { key: 'social_marketing', id: 'social', title: 'Social Marketing', icon: Share2, color: 'text-cyan-400', subViews: [{ id: 'overview', label: 'Social Content Calendar' }, { id: 'new', label: 'Compose Post' }, { id: 'accounts', label: 'Connected Accounts' }] },
   ];
+
+  const financeModules = rawFinanceModules.filter((m) => activeServices.includes(m.key));
+  const hrModules = rawHrModules.filter((m) => activeServices.includes(m.key));
+  const marketingModules = rawMarketingModules.filter((m) => activeServices.includes(m.key));
 
   const renderModuleGroup = (title: string, categoryKey: 'finance' | 'hr' | 'marketing', modules: any[], badgeColor: string) => {
     const isOpen = expandedCategory === categoryKey;
@@ -357,13 +362,39 @@ export const Sidebar: React.FC = () => {
           </button>
 
           <button
+            onClick={() => navigate('settings', 'services')}
+            className={`w-full p-2.5 rounded-xl flex items-center gap-3 text-xs font-bold transition-all ${
+              activeApp === 'settings' && activeSubView === 'services'
+                ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Settings className="w-4 h-4 text-cyan-400" />
+            {!isSidebarCollapsed && <span>My NextAura Services</span>}
+          </button>
+
+          <button
+            onClick={() => navigate('settings', 'admin-requests')}
+            className={`w-full p-2.5 rounded-xl flex items-center gap-3 text-xs font-bold transition-all ${
+              activeApp === 'settings' && activeSubView === 'admin-requests'
+                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                : 'text-slate-400 hover:text-slate-200'
+            }`}
+          >
+            <Settings className="w-4 h-4 text-amber-400" />
+            {!isSidebarCollapsed && <span>Admin Service Requests</span>}
+          </button>
+
+          <button
             onClick={() => navigate('settings')}
             className={`w-full p-2.5 rounded-xl flex items-center gap-3 text-xs font-bold transition-all ${
-              activeApp === 'settings' ? 'bg-slate-900 text-slate-100 border border-slate-800' : 'text-slate-400 hover:text-slate-200'
+              activeApp === 'settings' && activeSubView !== 'services' && activeSubView !== 'admin-requests'
+                ? 'bg-slate-900 text-slate-100 border border-slate-800'
+                : 'text-slate-400 hover:text-slate-200'
             }`}
           >
             <Settings className="w-4 h-4 text-slate-400" />
-            {!isSidebarCollapsed && <span>Settings & RBAC</span>}
+            {!isSidebarCollapsed && <span>Settings</span>}
           </button>
         </div>
       </div>
