@@ -9,6 +9,20 @@ export const authService = {
     return data.session;
   },
 
+  async signInWithGoogle() {
+    if (!isSupabaseConfigured()) {
+      return { user: null, session: null };
+    }
+    const { data, error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin,
+      },
+    });
+    if (error) throw error;
+    return data;
+  },
+
   async signIn(email: string, pass: string) {
     if (!isSupabaseConfigured()) {
       return { user: null, session: null };
