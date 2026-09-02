@@ -8,8 +8,10 @@ import {
   Globe,
   PanelLeftClose,
   PanelLeftOpen,
+  LogOut,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import { authService } from '../../services/authService';
 
 export const Topbar: React.FC = () => {
   const {
@@ -157,6 +159,19 @@ export const Topbar: React.FC = () => {
             <div className="text-[10px] text-slate-400">{user.role}</div>
           </div>
         </div>
+
+        {/* Sign Out Button */}
+        <button
+          onClick={async () => {
+            await authService.signOut();
+            navigate('auth');
+          }}
+          className="p-2 rounded-xl text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 border border-rose-500/20 transition-colors flex items-center gap-1.5 text-xs font-bold"
+          title="Sign Out of NextAura"
+        >
+          <LogOut className="w-4 h-4" />
+          <span className="hidden sm:inline">Log Out</span>
+        </button>
       </div>
     </header>
   );
