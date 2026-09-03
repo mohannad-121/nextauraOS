@@ -99,7 +99,7 @@ export const HRDashboard: React.FC = () => {
         />
         <StatCard
           title="Monthly Payroll Run"
-          value={currentPayroll ? currentPayroll.netPayTotal : 148420}
+          value={currentPayroll ? currentPayroll.netPayTotal : 0}
           isCurrency
           comparisonText="Next disbursement Sep 28"
           icon={Wallet}

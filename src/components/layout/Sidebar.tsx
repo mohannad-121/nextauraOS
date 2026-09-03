@@ -23,6 +23,7 @@ import {
   BarChart3,
   Settings,
   CheckCircle2,
+  Plus,
   Sparkles,
 } from 'lucide-react';
 import type { AppView } from '../../context/AppContext';
@@ -366,23 +367,11 @@ export const Sidebar: React.FC = () => {
             className={`w-full p-2.5 rounded-xl flex items-center gap-3 text-xs font-bold transition-all ${
               activeApp === 'settings' && activeSubView === 'services'
                 ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
-                : 'text-slate-400 hover:text-slate-200'
+                : 'bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 border border-cyan-500/20'
             }`}
           >
-            <Settings className="w-4 h-4 text-cyan-400" />
-            {!isSidebarCollapsed && <span>My NextAura Services</span>}
-          </button>
-
-          <button
-            onClick={() => navigate('settings', 'admin-requests')}
-            className={`w-full p-2.5 rounded-xl flex items-center gap-3 text-xs font-bold transition-all ${
-              activeApp === 'settings' && activeSubView === 'admin-requests'
-                ? 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Settings className="w-4 h-4 text-amber-400" />
-            {!isSidebarCollapsed && <span>Admin Service Requests</span>}
+            <Plus className="w-4 h-4 text-cyan-400" />
+            {!isSidebarCollapsed && <span>+ Add Services</span>}
           </button>
 
           <button

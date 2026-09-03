@@ -77,6 +77,28 @@ export const entitlementService = {
   },
 
   /**
+   * Instantly activate organization services in database (No Admin Review Required)
+   */
+  async activateOrganizationServices(orgId: string, serviceKeys: string[]): Promise<void> {
+    if (isSupabaseConfigured()) {
+      try {
+        const rows = serviceKeys.map((key) => ({
+          organization_id: orgId,
+          service_key: key,
+          status: 'active',
+          activated_at: new Date().toISOString(),
+        }));
+
+        await supabase
+          .from('organization_services')
+          .upsert(rows, { onConflict: 'organization_id,service_key' });
+      } catch (err) {
+        console.error('Error activating organization services:', err);
+      }
+    }
+  },
+
+  /**
    * Submit a new service access request
    */
   async submitServiceRequest(
@@ -273,13 +295,17 @@ export const entitlementService = {
   },
 
   /**
-   * Complete User Onboarding
+   * Complete User Onboarding & Service Selection
    */
   async completeUserOnboarding(userId: string): Promise<void> {
     if (isSupabaseConfigured()) {
       await supabase
         .from('profiles')
-        .update({ onboarding_completed: true, email_verified: true })
+        .update({
+          initial_service_selection_completed: true,
+          onboarding_completed: true,
+          email_verified: true,
+        })
         .eq('id', userId);
     }
   },

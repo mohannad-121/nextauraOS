@@ -12,10 +12,9 @@ import { useApp } from '../../context/AppContext';
 import { NEXTAURA_SERVICES } from '../../data/appRegistry';
 import { entitlementService } from '../../services/entitlementService';
 import type { ServiceRequest } from '../../services/entitlementService';
-import { emailService } from '../../services/emailService';
 
 export const CustomerServicesPage: React.FC = () => {
-  const { currentOrg, user, activeServices, refreshServices } = useApp();
+  const { currentOrg, activeServices, refreshServices } = useApp();
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [isCatalogModalOpen, setCatalogModalOpen] = useState(false);
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
@@ -63,34 +62,16 @@ export const CustomerServicesPage: React.FC = () => {
     if (selectedKeys.length === 0) return;
     setSubmitting(true);
     try {
-      await entitlementService.submitServiceRequest(
-        currentOrg.id,
-        user.id,
-        selectedKeys,
-        'Additional service request from Customer Services Center'
-      );
+      // Instantly activate selected services in PostgreSQL (No Admin Approval Required)
+      await entitlementService.activateOrganizationServices(currentOrg.id, selectedKeys);
 
-      const selectedNames = selectedKeys.map(
-        (k) => NEXTAURA_SERVICES.find((s) => s.key === k)?.name || k
-      );
-
-      await emailService.notifyAdminNewServiceRequest({
-        userName: user.name,
-        userEmail: user.email,
-        companyName: currentOrg.name,
-        requestedServices: selectedNames,
-        requestDate: new Date().toLocaleDateString('en-US', {
-          month: 'long',
-          day: 'numeric',
-          year: 'numeric',
-        }),
-      });
+      if (refreshServices) refreshServices();
 
       setSelectedKeys([]);
       setCatalogModalOpen(false);
       await loadRequests();
     } catch (err) {
-      console.error('Failed to submit additional service request:', err);
+      console.error('Failed to activate additional service:', err);
     } finally {
       setSubmitting(false);
     }

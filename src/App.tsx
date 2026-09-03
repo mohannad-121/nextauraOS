@@ -1,6 +1,6 @@
 import React from 'react';
 import { AppProvider, useApp } from './context/AppContext';
-import { AppShell } from './components/layout/AppShell';
+import { AppBootGate } from './components/auth/AppBootGate';
 import { ProtectedRoute } from './components/common/ProtectedRoute';
 
 // Finance Pages
@@ -175,9 +175,9 @@ const AppContent: React.FC = () => {
   };
 
   return (
-    <AppShell>
+    <AppBootGate>
       <ProtectedRoute>{renderCurrentView()}</ProtectedRoute>
-    </AppShell>
+    </AppBootGate>
   );
 };
 

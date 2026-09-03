@@ -35,18 +35,23 @@ const cashFlowChartData = [
 ];
 
 export const HomeDashboard: React.FC = () => {
-  const { navigate, user, expenses, signDocuments, shareholders } = useApp();
+  const { navigate, user, invoices, expenses, signDocuments, shareholders } = useApp();
   const [timeRange, setTimeRange] = useState('30d');
+
+  const totalRevenue = invoices.filter((i) => i.status === 'Paid').reduce((acc, i) => acc + i.total, 0);
+  const totalExpenses = expenses.reduce((acc, e) => acc + e.amount, 0);
+  const netProfit = totalRevenue - totalExpenses;
+  const cashBalance = totalRevenue;
 
   const pendingApprovals = expenses.filter((e) => e.status === 'Manager Review');
   const openDocs = signDocuments.filter((d) => d.status === 'Sent' || d.status === 'Partially Signed');
 
   return (
     <div className="space-y-8">
-      {/* Top Header & Date Selector */}
+      {/* Top Welcome Header */}
       <PageHeader
-        title={`Good morning, ${user.name.split(' ')[0]}`}
-        subtitle="Here's how your company is performing today."
+        title={`Good ${new Date().getHours() < 12 ? 'morning' : 'afternoon'}, ${user.name}`}
+        subtitle={`Here is your real-time financial position and executive workspace overview.`}
         actions={
           <div className="flex items-center gap-1.5 p-1 bg-slate-900 border border-slate-800 rounded-xl">
             {['today', '7d', '30d', 'quarter', 'year'].map((range) => (
@@ -70,27 +75,27 @@ export const HomeDashboard: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <StatCard
           title="Cash Balance"
-          value={184620}
+          value={cashBalance}
           isCurrency
-          change={8.4}
+          change={cashBalance > 0 ? 8.4 : 0}
           icon={DollarSign}
           accentColor="cyan"
           onClick={() => navigate('accounting', 'reconciliation')}
         />
         <StatCard
           title="Monthly Revenue"
-          value={92840}
+          value={totalRevenue}
           isCurrency
-          change={12.4}
+          change={totalRevenue > 0 ? 12.4 : 0}
           icon={TrendingUp}
           accentColor="azure"
           onClick={() => navigate('invoicing', 'overview')}
         />
         <StatCard
           title="Monthly Expenses"
-          value={47310}
+          value={totalExpenses}
           isCurrency
-          change={-3.2}
+          change={totalExpenses > 0 ? 3.2 : 0}
           comparisonText="vs budget limit"
           icon={CreditCard}
           accentColor="indigo"
@@ -98,9 +103,9 @@ export const HomeDashboard: React.FC = () => {
         />
         <StatCard
           title="Net Operating Profit"
-          value={45530}
+          value={netProfit}
           isCurrency
-          change={18.2}
+          change={netProfit > 0 ? 18.2 : 0}
           icon={Sparkles}
           accentColor="emerald"
           onClick={() => navigate('accounting', 'reports')}
