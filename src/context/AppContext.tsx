@@ -105,7 +105,7 @@ import { calendarService } from '../services/calendarService';
 import { auditService } from '../services/auditService';
 import { entitlementService } from '../services/entitlementService';
 import { NEXTAURA_SERVICES } from '../data/appRegistry';
-import { isSupabaseConfigured } from '../services/supabaseClient';
+import { isSupabaseConfigured, supabase } from '../services/supabaseClient';
 
 export type AppView =
   | 'launchpad'
@@ -274,9 +274,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [selectedResourceId, setSelectedResourceId] = useState<string | undefined>(undefined);
 
   // Shell State
-  const [organizations] = useState<Organization[]>(initialOrganizations);
+  const [organizations, setOrganizations] = useState<Organization[]>(initialOrganizations);
   const [currentOrg, setCurrentOrg] = useState<Organization>(initialOrganizations[0]);
-  const [user] = useState<User>(currentUser);
+  const [user, setUser] = useState<User>(currentUser);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [language, setLanguage] = useState<'en' | 'ar'>('en');
 
@@ -348,6 +348,76 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [currentOrg.id, refreshServices]);
 
   const isRtl = language === 'ar';
+
+  // Supabase Real-Time Auth Listener for dynamic user profile & workspace binding
+  useEffect(() => {
+    if (!isSupabaseConfigured()) return;
+
+    const handleSessionUser = (sessionUser: any) => {
+      if (!sessionUser) return;
+      const fullName =
+        sessionUser.user_metadata?.full_name ||
+        sessionUser.email?.split('@')[0] ||
+        'Enterprise User';
+      const avatarUrl =
+        sessionUser.user_metadata?.avatar_url ||
+        `https://ui-avatars.com/api/?name=${encodeURIComponent(fullName)}&background=06b6d4&color=020617`;
+
+      setUser({
+        id: sessionUser.id,
+        name: fullName,
+        email: sessionUser.email || '',
+        role: 'Owner',
+        avatar: avatarUrl,
+        department: 'Executive Office',
+        status: 'Active',
+        lastActive: new Date().toISOString(),
+      });
+
+      // Create dedicated workspace for newly logged in user if not in org list
+      const userOrgId = `org_${sessionUser.id.substring(0, 8)}`;
+      const userOrg: Organization = {
+        id: userOrgId,
+        name: `${fullName.split(' ')[0]}'s Workspace`,
+        legalName: `${fullName} Global Inc.`,
+        logo: '⚡',
+        baseCurrency: 'USD',
+        taxId: 'US-999999',
+        registrationNumber: 'REG-888',
+        country: 'United States',
+        address: '100 Enterprise Way, Suite 400',
+        fiscalYearEnd: '12-31',
+      };
+
+      setOrganizations((prev) => {
+        if (!prev.some((o) => o.id === userOrg.id)) {
+          return [userOrg, ...prev];
+        }
+        return prev;
+      });
+
+      setCurrentOrg(userOrg);
+    };
+
+    // Initial session check
+    supabase.auth.getSession().then(({ data }) => {
+      if (data?.session?.user) {
+        handleSessionUser(data.session.user);
+      }
+    });
+
+    // Subscribe to auth state changes (login, logout, Google OAuth redirect)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string, session: any) => {
+      if (session?.user) {
+        handleSessionUser(session.user);
+      } else if (event === 'SIGNED_OUT') {
+        setUser(currentUser);
+        setActiveApp('auth');
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   // Load database records per organization
   useEffect(() => {
