@@ -13,11 +13,10 @@ import {
 import { useApp } from '../../context/AppContext';
 import { NEXTAURA_SERVICES } from '../../data/appRegistry';
 import { entitlementService } from '../../services/entitlementService';
-import { emailService } from '../../services/emailService';
 import { organizationService } from '../../services/organizationService';
 
 export const OnboardingWizard: React.FC = () => {
-  const { user, currentOrg, setOnboardingActive, navigate } = useApp();
+  const { user, currentOrg, refreshServices, setOnboardingActive, navigate } = useApp();
   const [step, setStep] = useState<1 | 2 | 3 | 4 | 5>(1);
 
   // Step 2: Company details
@@ -55,44 +54,22 @@ export const OnboardingWizard: React.FC = () => {
   const handleSubmitRequest = async () => {
     setSubmitting(true);
     try {
-      // 1. Create dedicated workspace organization for this user in PostgreSQL
+      // 1. Transactionally create workspace organization for this user in PostgreSQL
       const newOrg = await organizationService.createOrganizationForUser(
         user.id,
-        companyName || `${user.name.split(' ')[0]}'s Company`,
-        { industry, country }
+        companyName || `${user.name.split(' ')[0]}'s Workspace`
       );
 
-      // 2. Submit service request to database for the new organization
-      await entitlementService.submitServiceRequest(
-        newOrg.id,
-        user.id,
-        selectedKeys,
-        `Initial onboarding service request for ${companyName}`
-      );
+      // 2. Instantly activate selected services in database
+      await entitlementService.activateOrganizationServices(newOrg.id, selectedKeys);
 
-      // 2. Mark onboarding as completed
+      // 3. Mark onboarding as completed
       await entitlementService.completeUserOnboarding(user.id);
 
-      // 3. Send email notification to Admin (mabuayyash33@gmail.com) via Resend email service
-      const selectedNames = selectedKeys
-        .map((k) => NEXTAURA_SERVICES.find((s) => s.key === k)?.name || k);
-
-      await emailService.notifyAdminNewServiceRequest({
-        userName: user.name,
-        userEmail: user.email,
-        companyName,
-        requestedServices: selectedNames,
-        requestDate: new Date().toLocaleDateString('en-US', {
-          month: 'long',
-          day: 'numeric',
-          year: 'numeric',
-        }),
-      });
-
-      setStep(5);
-    } catch (err) {
-      console.error('Onboarding submission error:', err);
-      setStep(5);
+      if (refreshServices) refreshServices();
+      setStep(4);
+    } catch (err: any) {
+      console.error('Onboarding workspace creation error:', err);
     } finally {
       setSubmitting(false);
     }

@@ -1,140 +1,86 @@
 import { isSupabaseConfigured, supabase } from './supabaseClient';
 import type { Organization } from '../types';
 
-export interface UserOrganizationMembership {
-  organizationId: string;
-  organizationName: string;
-  organizationSlug: string;
-  userRole: string;
-  memberStatus: string;
-}
-
 export const organizationService = {
   /**
-   * Fetch all organizations that the authenticated user belongs to
+   * Fetch all organizations current user belongs to
    */
   async getUserOrganizations(userId: string): Promise<Organization[]> {
-    if (!isSupabaseConfigured()) return [];
+    if (!userId || !isSupabaseConfigured()) {
+      return [];
+    }
 
     try {
-      // Query organization_members JOIN organizations
       const { data, error } = await supabase
         .from('organization_members')
         .select(`
-          role,
-          status,
-          organization:organizations (
-            id,
-            name,
-            slug,
-            legal_name,
-            tax_id,
-            logo_url,
-            base_currency,
-            country,
-            created_at
-          )
+          organization_id,
+          organizations ( id, name, slug, created_by, created_at )
         `)
         .eq('user_id', userId)
         .eq('status', 'Active');
 
       if (error) {
-        console.error('Error fetching user organizations:', error);
-        return [];
+        console.error('[Organization Service] Fetch orgs error:', error);
+        throw new Error(`Failed to query user organizations: ${error.message}`);
       }
 
-      if (!data || data.length === 0) return [];
+      if (!data) return [];
 
-      return data.map((item: any) => {
-        const org = item.organization;
-        return {
+      return data
+        .map((row: any) => row.organizations)
+        .filter((org: any) => Boolean(org && org.id))
+        .map((org: any) => ({
           id: org.id,
           name: org.name,
-          legalName: org.legal_name || `${org.name} Inc.`,
-          logo: org.logo_url || '⚡',
-          taxId: org.tax_id || 'US-000000',
-          registrationNumber: 'REG-100',
-          baseCurrency: (org.base_currency as any) || 'USD',
-          country: org.country || 'United States',
-          address: '100 Business Center',
+          legalName: org.name,
+          logo: '',
+          taxId: '',
+          registrationNumber: '',
+          baseCurrency: 'USD',
+          country: 'United States',
+          address: '',
           fiscalYearEnd: '12-31',
-        };
-      });
-    } catch (err) {
-      console.error('Failed to get user organizations:', err);
-      return [];
+        }));
+    } catch (err: any) {
+      console.error('[Organization Service] Exception fetching orgs:', err);
+      throw err;
     }
   },
 
   /**
-   * Create a brand new organization workspace for a user
+   * Atomically create workspace organization + owner membership via PostgreSQL RPC
    */
-  async createOrganizationForUser(
-    userId: string,
-    orgName: string,
-    details?: { industry?: string; country?: string }
-  ): Promise<Organization> {
-    const slug = orgName.toLowerCase().replace(/[^a-z0-9]/g, '-') + '-' + Math.floor(Math.random() * 1000);
-
-    if (isSupabaseConfigured()) {
-      try {
-        // 1. Insert organizations row
-        const { data: orgData, error: orgError } = await supabase
-          .from('organizations')
-          .insert({
-            name: orgName,
-            slug: slug,
-            legal_name: `${orgName} Inc.`,
-            country: details?.country || 'United States',
-            base_currency: 'USD',
-          })
-          .select()
-          .single();
-
-        if (orgError) throw orgError;
-
-        // 2. Insert organization_members row with role = Owner
-        const { error: memberError } = await supabase
-          .from('organization_members')
-          .insert({
-            organization_id: orgData.id,
-            user_id: userId,
-            role: 'Owner',
-            status: 'Active',
-          });
-
-        if (memberError) console.error('Error creating org member:', memberError);
-
-        return {
-          id: orgData.id,
-          name: orgData.name,
-          legalName: orgData.legal_name || `${orgName} Inc.`,
-          logo: '⚡',
-          taxId: 'US-000000',
-          registrationNumber: 'REG-100',
-          baseCurrency: 'USD',
-          country: orgData.country || 'United States',
-          address: '100 Corporate Way',
-          fiscalYearEnd: '12-31',
-        };
-      } catch (err) {
-        console.error('Error creating database organization:', err);
-      }
+  async createOrganizationForUser(userId: string, orgName: string): Promise<Organization> {
+    if (!userId || !orgName) {
+      throw new Error('User ID and Organization Name are required to create a workspace.');
     }
 
-    // Client-side fallback if offline/no supabase
-    const localId = `org_${Math.random().toString(36).substring(2, 9)}`;
-    return {
-      id: localId,
-      name: orgName,
-      legalName: `${orgName} Inc.`,
-      logo: '⚡',
-      taxId: 'US-000000',
-      registrationNumber: 'REG-100',
-      baseCurrency: 'USD',
-      country: details?.country || 'United States',
-      address: '100 Corporate Way',
-      fiscalYearEnd: '12-31',
-    };
+    if (isSupabaseConfigured()) {
+      const { data, error } = await supabase.rpc('create_user_workspace', {
+        p_user_id: userId,
+        p_org_name: orgName,
+      });
+
+      if (error || !data) {
+        console.error('[Organization Service] Atomic workspace creation RPC failed:', error);
+        throw new Error(`Failed to create workspace: ${error?.message || 'Unknown database error'}`);
+      }
+
+      return {
+        id: data.id,
+        name: data.name,
+        legalName: data.name,
+        logo: '',
+        taxId: '',
+        registrationNumber: '',
+        baseCurrency: 'USD',
+        country: 'United States',
+        address: '',
+        fiscalYearEnd: '12-31',
+      };
+    }
+
+    throw new Error('Supabase client is not configured.');
   },
 };

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Layers, ArrowRight } from 'lucide-react';
+import { Layers, ArrowRight, AlertCircle, RefreshCw } from 'lucide-react';
 import { NEXTAURA_SERVICES } from '../../data/appRegistry';
 import { entitlementService } from '../../services/entitlementService';
 
@@ -7,20 +7,45 @@ interface ServiceSelectionScreenProps {
   organizationId: string;
   userId: string;
   onCompleted: (selectedServiceKeys: string[]) => void;
+  onRetryWorkspace?: () => void;
 }
 
 export const ServiceSelectionScreen: React.FC<ServiceSelectionScreenProps> = ({
   organizationId,
   userId,
   onCompleted,
+  onRetryWorkspace,
 }) => {
-  const [selectedKeys, setSelectedKeys] = useState<string[]>([
-    'invoicing',
-    'accounting',
-    'employees',
-    'attendance',
-  ]);
+  // CRITICAL 6: Must start empty [] (No pre-selected services)
+  const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string>('');
+
+  // CRITICAL 10: Invariant check for missing organization ID
+  if (!organizationId) {
+    return (
+      <div className="min-h-screen w-full bg-slate-950 text-slate-100 flex items-center justify-center p-6">
+        <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-8 text-center space-y-5">
+          <div className="w-12 h-12 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center mx-auto">
+            <AlertCircle className="w-6 h-6" />
+          </div>
+          <h2 className="text-xl font-bold text-slate-100">Workspace Setup Error</h2>
+          <p className="text-xs text-slate-400 leading-relaxed">
+            Your workspace organization could not be initialized or retrieved. Please try setting up your workspace again.
+          </p>
+          {onRetryWorkspace && (
+            <button
+              onClick={onRetryWorkspace}
+              className="w-full py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              <span>Retry Workspace Setup</span>
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   const toggleService = (key: string) => {
     setSelectedKeys((prev) =>
@@ -31,17 +56,21 @@ export const ServiceSelectionScreen: React.FC<ServiceSelectionScreenProps> = ({
   const handleActivateServices = async () => {
     if (selectedKeys.length === 0) return;
     setSubmitting(true);
+    setErrorMsg('');
+
     try {
-      // 1. Immediately activate selected organization services in PostgreSQL (No Admin Review!)
+      // 1. Activate selected services in database
       await entitlementService.activateOrganizationServices(organizationId, selectedKeys);
 
       // 2. Mark initial service selection completed in profile
       await entitlementService.completeUserOnboarding(userId);
 
+      // CRITICAL 7: Only transition to dashboard AFTER confirmed database persistence!
       onCompleted(selectedKeys);
-    } catch (err) {
-      console.error('Failed activating initial services:', err);
-      onCompleted(selectedKeys);
+    } catch (err: any) {
+      console.error('[ServiceSelection] Service activation failed:', err);
+      // CRITICAL 7: DO NOT call onCompleted inside catch! Show error and keep user on screen.
+      setErrorMsg(err.message || 'Failed to activate selected applications. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -75,7 +104,7 @@ export const ServiceSelectionScreen: React.FC<ServiceSelectionScreenProps> = ({
               <span className="font-extrabold text-slate-100 font-heading text-lg">
                 Welcome to Next<span className="text-cyan-400">Aura</span>
               </span>
-              <p className="text-xs text-slate-400">Choose the tools you need to run your business.</p>
+              <p className="text-xs text-slate-400">Select the NextAura applications you want to enable for your workspace.</p>
             </div>
           </div>
 
@@ -83,6 +112,14 @@ export const ServiceSelectionScreen: React.FC<ServiceSelectionScreenProps> = ({
             {selectedKeys.length} services selected
           </div>
         </div>
+
+        {/* Error Banner */}
+        {errorMsg && (
+          <div className="mx-8 mt-6 p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-3 animate-in fade-in">
+            <AlertCircle className="w-5 h-5 shrink-0" />
+            <span className="font-medium">{errorMsg}</span>
+          </div>
+        )}
 
         {/* Scrollable Applications Grid */}
         <div className="flex-1 p-8 sm:p-10 overflow-y-auto space-y-8">
@@ -152,7 +189,9 @@ export const ServiceSelectionScreen: React.FC<ServiceSelectionScreenProps> = ({
         {/* Footer CTA */}
         <div className="px-8 py-5 border-t border-slate-800/80 bg-slate-950/60 flex items-center justify-between">
           <span className="text-xs text-slate-400 font-mono">
-            Selected applications will be activated instantly for your workspace.
+            {selectedKeys.length === 0
+              ? 'Please select at least one application to continue.'
+              : `${selectedKeys.length} application(s) will be activated instantly.`}
           </span>
 
           <button
