@@ -13,11 +13,15 @@ export const authService = {
     if (!isSupabaseConfigured()) {
       return { user: null, session: null };
     }
-    const redirectUrl = window.location.origin;
+    const redirectUrl = `${window.location.origin}/auth/callback`;
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: redirectUrl,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        },
       },
     });
     if (error) throw error;

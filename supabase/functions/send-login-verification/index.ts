@@ -6,6 +6,20 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function parseJwtPayload(token: string): any {
+  try {
+    const parts = token.split('.');
+    if (parts.length === 3) {
+      const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      const jsonStr = atob(base64);
+      return JSON.parse(jsonStr);
+    }
+  } catch (err) {
+    console.error('Failed to parse JWT in Edge Function:', err);
+  }
+  return {};
+}
+
 async function hmacSha256(secret: string, message: string): Promise<string> {
   const encoder = new TextEncoder();
   const keyData = encoder.encode(secret);
@@ -41,9 +55,27 @@ serve(async (req) => {
     const token = authHeader.replace('Bearer ', '');
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
-    const resendApiKey = Deno.env.get('RESEND_API_KEY') ?? '';
+    const otpHmacSecret = Deno.env.get('OTP_HMAC_SECRET');
+    const resendApiKey = Deno.env.get('RESEND_API_KEY');
+    const resendFromEmail = Deno.env.get('RESEND_FROM_EMAIL');
 
-    // Verify user JWT
+    // ITEM 4: Strict secret checks
+    if (!otpHmacSecret) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'OTP_HMAC_SECRET server configuration is missing.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // ITEM 10: Strict Resend sender email check
+    if (!resendApiKey || !resendFromEmail) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'RESEND_API_KEY or RESEND_FROM_EMAIL server configuration is missing.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Authenticate user token server-side
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
     const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
 
@@ -54,36 +86,37 @@ serve(async (req) => {
       );
     }
 
-    const body = await req.json().catch(() => ({}));
-    const sessionId = body.sessionId || token.substring(0, 32);
+    // ITEM 1 & ITEM 3: Derive session_id directly from verified JWT (Never from client body!)
+    const payload = parseJwtPayload(token);
+    const sessionId = payload.session_id || payload.sid || payload.sub || user.id;
     const email = user.email;
 
     if (!email) {
       return new Response(
-        JSON.stringify({ success: false, error: 'User email not found' }),
+        JSON.stringify({ success: false, error: 'User email address not found' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Cryptographically secure 6-digit random code
+    // Generate cryptographically secure 6-digit random code
     const randomArray = new Uint32Array(1);
     crypto.getRandomValues(randomArray);
     const otpCode = (100000 + (randomArray[0] % 900000)).toString();
 
-    // Compute server HMAC-SHA256 code hash
-    const serverSecret = serviceRoleKey || 'nextaura-server-otp-secret';
-    const codeHash = await hmacSha256(serverSecret, otpCode);
+    // Compute HMAC-SHA256 hash using OTP_HMAC_SECRET
+    const codeHash = await hmacSha256(otpHmacSecret, otpCode);
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
-    // Invalidate existing active challenges for user + session
+    // Invalidate existing active challenges for this user + session
     await supabaseAdmin
       .from('login_verification_challenges')
       .delete()
       .eq('user_id', user.id)
+      .eq('session_id', sessionId)
       .is('verified_at', null);
 
-    // Insert new challenge via service role
-    const { error: insertError } = await supabaseAdmin
+    // Insert new challenge
+    const { data: insertedChallenge, error: insertError } = await supabaseAdmin
       .from('login_verification_challenges')
       .insert({
         user_id: user.id,
@@ -92,9 +125,11 @@ serve(async (req) => {
         expires_at: expiresAt,
         attempt_count: 0,
         max_attempts: 5,
-      });
+      })
+      .select('id')
+      .single();
 
-    if (insertError) {
+    if (insertError || !insertedChallenge) {
       console.error('Failed to store challenge:', insertError);
       return new Response(
         JSON.stringify({ success: false, error: 'Failed to record verification challenge' }),
@@ -102,45 +137,42 @@ serve(async (req) => {
       );
     }
 
-    // Send Email via Resend HTTP API
-    let emailSent = false;
-    if (resendApiKey) {
-      const resendRes = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${resendApiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          from: 'NextAura Security <security@nextaura.ai>',
-          to: [email],
-          subject: 'Your NextAura verification code',
-          html: `
-            <div style="font-family:sans-serif; background-color:#020617; color:#f8fafc; padding:32px; border-radius:16px; max-width:500px; margin:0 auto; text-align:center;">
-              <h2 style="font-size:22px; font-weight:800; color:#f8fafc;">Verify your login</h2>
-              <p style="font-size:14px; color:#94a3b8;">Use this 6-digit code to access your workspace:</p>
-              <div style="background-color:#0f172a; border:1px solid #38bdf8; padding:20px; border-radius:14px; display:inline-block; margin:20px 0;">
-                <span style="font-family:monospace; font-size:36px; font-weight:900; letter-spacing:8px; color:#38bdf8;">${otpCode}</span>
-              </div>
-              <p style="font-size:12px; color:#64748b;">Code expires in 10 minutes.</p>
+    // Dispatch email via Resend API using configured sender
+    const resendRes = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${resendApiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: resendFromEmail,
+        to: [email],
+        subject: 'Your NextAura verification code',
+        html: `
+          <div style="font-family:sans-serif; background-color:#020617; color:#f8fafc; padding:32px; border-radius:16px; max-width:500px; margin:0 auto; text-align:center;">
+            <h2 style="font-size:22px; font-weight:800; color:#f8fafc;">Verify your login</h2>
+            <p style="font-size:14px; color:#94a3b8;">Use this 6-digit code to access your workspace:</p>
+            <div style="background-color:#0f172a; border:1px solid #38bdf8; padding:20px; border-radius:14px; display:inline-block; margin:20px 0;">
+              <span style="font-family:monospace; font-size:36px; font-weight:900; letter-spacing:8px; color:#38bdf8;">${otpCode}</span>
             </div>
-          `,
-        }),
-      });
+            <p style="font-size:12px; color:#64748b;">Code expires in 10 minutes.</p>
+          </div>
+        `,
+      }),
+    });
 
-      if (resendRes.ok) {
-        emailSent = true;
-      } else {
-        const errText = await resendRes.text();
-        console.error('Resend delivery failure:', errText);
-      }
-    } else {
-      console.warn('RESEND_API_KEY not configured on server');
-    }
+    // ITEM 11: If Resend API fails, DELETE/INVALIDATE newly created challenge!
+    if (!resendRes.ok) {
+      const errText = await resendRes.text();
+      console.error('Resend delivery failure, cleaning up challenge:', errText);
 
-    if (!emailSent) {
+      await supabaseAdmin
+        .from('login_verification_challenges')
+        .delete()
+        .eq('id', insertedChallenge.id);
+
       return new Response(
-        JSON.stringify({ success: false, error: 'Unable to send verification code. Please try again.' }),
+        JSON.stringify({ success: false, error: 'Unable to send verification email. Please try again.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

@@ -6,6 +6,7 @@ import { VerificationScreen } from '../../pages/auth/VerificationScreen';
 import { ServiceSelectionScreen } from '../../pages/onboarding/ServiceSelectionScreen';
 import { AppShell } from '../layout/AppShell';
 import { organizationService } from '../../services/organizationService';
+import { getSupabaseSessionId } from '../../utils/sessionHelper';
 
 export type BootState =
   | 'loading'
@@ -70,11 +71,11 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
       setUserProfile({ name, email, avatar: session.user.user_metadata?.avatar_url });
     }
 
-    // CRITICAL 15: Session identity linked to current access token signature
-    const currentSessionToken = session.access_token ? session.access_token.substring(0, 32) : userId;
-    const storedVerifiedToken = getVerifiedTokenFromStorage();
+    // ITEM 1: Real JWT session_id claim extraction
+    const currentSessionId = getSupabaseSessionId(session) || userId;
+    const storedVerifiedId = getVerifiedTokenFromStorage();
 
-    if (storedVerifiedToken !== currentSessionToken) {
+    if (storedVerifiedId !== currentSessionId) {
       setBootState('emailVerificationRequired');
       return;
     }
@@ -84,9 +85,8 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
       try {
         let userOrgs = await organizationService.getUserOrganizations(userId);
         if (userOrgs.length === 0) {
-          // CRITICAL 11: Transactionally create atomic workspace
+          // ITEM 6: Secure parameterless RPC using auth.uid()
           const newOrg = await organizationService.createOrganizationForUser(
-            userId,
             `${name.split(' ')[0]}'s Workspace`
           );
           userOrgs = [newOrg];
@@ -176,8 +176,8 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
     if (sessionUserId && isSupabaseConfigured()) {
       const activeSession = (await supabase.auth.getSession()).data?.session;
       if (activeSession) {
-        const currentSessionToken = activeSession.access_token ? activeSession.access_token.substring(0, 32) : sessionUserId;
-        setVerifiedTokenInStorage(currentSessionToken);
+        const currentSessionId = getSupabaseSessionId(activeSession) || sessionUserId;
+        setVerifiedTokenInStorage(currentSessionId);
         await evaluateAuthState(activeSession);
       }
     }

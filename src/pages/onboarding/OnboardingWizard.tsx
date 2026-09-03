@@ -56,7 +56,6 @@ export const OnboardingWizard: React.FC = () => {
     try {
       // 1. Transactionally create workspace organization for this user in PostgreSQL
       const newOrg = await organizationService.createOrganizationForUser(
-        user.id,
         companyName || `${user.name.split(' ')[0]}'s Workspace`
       );
 

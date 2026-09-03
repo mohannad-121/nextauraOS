@@ -2,7 +2,8 @@ import { isSupabaseConfigured, supabase } from './supabaseClient';
 
 export const verificationService = {
   /**
-   * Dispatches 6-digit OTP generation and email dispatch via server Edge Function
+   * Dispatches 6-digit OTP generation and email dispatch via server Edge Function.
+   * Session ID is derived directly from the authenticated JWT server-side.
    */
   async sendLoginVerification(_userId: string, email: string): Promise<{ success: boolean; error?: string }> {
     if (!email) return { success: false, error: 'Email address is required' };
@@ -16,8 +17,9 @@ export const verificationService = {
           return { success: false, error: 'User authentication session not initialized.' };
         }
 
+        // ITEM 3: Server derives session_id directly from Bearer JWT token. Do not send in body.
         const { data, error } = await supabase.functions.invoke('send-login-verification', {
-          body: { email, sessionId: token.substring(0, 32) },
+          body: { email },
           headers: { Authorization: `Bearer ${token}` },
         });
 
@@ -37,7 +39,7 @@ export const verificationService = {
   },
 
   /**
-   * Verifies the 6-digit code strictly via server Edge Function
+   * Verifies the 6-digit code strictly via server Edge Function.
    */
   async verifyLoginVerification(_userId: string, code: string): Promise<{ success: boolean; error?: string }> {
     if (!code || code.length !== 6 || !/^\d{6}$/.test(code)) {

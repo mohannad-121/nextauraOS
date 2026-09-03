@@ -6,6 +6,20 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+function parseJwtPayload(token: string): any {
+  try {
+    const parts = token.split('.');
+    if (parts.length === 3) {
+      const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      const jsonStr = atob(base64);
+      return JSON.parse(jsonStr);
+    }
+  } catch (err) {
+    console.error('Failed to parse JWT in Edge Function:', err);
+  }
+  return {};
+}
+
 async function hmacSha256(secret: string, message: string): Promise<string> {
   const encoder = new TextEncoder();
   const keyData = encoder.encode(secret);
@@ -41,8 +55,17 @@ serve(async (req) => {
     const token = authHeader.replace('Bearer ', '');
     const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+    const otpHmacSecret = Deno.env.get('OTP_HMAC_SECRET');
 
-    // Verify user JWT
+    // ITEM 4: Strict OTP secret check
+    if (!otpHmacSecret) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'OTP_HMAC_SECRET server configuration is missing.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Authenticate user JWT
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
     const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
 
@@ -63,11 +86,16 @@ serve(async (req) => {
       );
     }
 
-    // Fetch active challenge for user
+    // ITEM 1 & ITEM 2: Extract real session_id from JWT payload
+    const payload = parseJwtPayload(token);
+    const sessionId = payload.session_id || payload.sid || payload.sub || user.id;
+
+    // ITEM 2: Query active challenge filtering strictly by user_id AND session_id
     const { data: challenges, error: fetchErr } = await supabaseAdmin
       .from('login_verification_challenges')
       .select('*')
       .eq('user_id', user.id)
+      .eq('session_id', sessionId)
       .is('verified_at', null)
       .gt('expires_at', new Date().toISOString())
       .order('created_at', { ascending: false })
@@ -75,7 +103,7 @@ serve(async (req) => {
 
     if (fetchErr || !challenges || challenges.length === 0) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Verification code missing or expired. Please request a new code.' }),
+        JSON.stringify({ success: false, error: 'Verification code missing or expired for this login session. Please request a new code.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -84,14 +112,13 @@ serve(async (req) => {
 
     if (challenge.attempt_count >= challenge.max_attempts) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Maximum attempts exceeded. Please request a new code.' }),
+        JSON.stringify({ success: false, error: 'Maximum verification attempts exceeded. Please request a new code.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Compute HMAC candidate hash
-    const serverSecret = serviceRoleKey || 'nextaura-server-otp-secret';
-    const candidateHash = await hmacSha256(serverSecret, candidateCode);
+    // Compute HMAC candidate hash using OTP_HMAC_SECRET
+    const candidateHash = await hmacSha256(otpHmacSecret, candidateCode);
 
     if (challenge.code_hash !== candidateHash) {
       // Increment attempt count in DB

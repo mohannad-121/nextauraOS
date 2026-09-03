@@ -49,21 +49,22 @@ export const organizationService = {
   },
 
   /**
-   * Atomically create workspace organization + owner membership via PostgreSQL RPC
+   * Atomically create workspace organization + owner membership via secure parameterless RPC
+   * User identity derived strictly from server-authenticated auth.uid().
    */
-  async createOrganizationForUser(userId: string, orgName: string): Promise<Organization> {
-    if (!userId || !orgName) {
-      throw new Error('User ID and Organization Name are required to create a workspace.');
+  async createOrganizationForUser(orgName: string): Promise<Organization> {
+    if (!orgName) {
+      throw new Error('Organization Name is required to create a workspace.');
     }
 
     if (isSupabaseConfigured()) {
+      // ITEM 6: Parameterless user identity. Uses auth.uid() inside database function.
       const { data, error } = await supabase.rpc('create_user_workspace', {
-        p_user_id: userId,
         p_org_name: orgName,
       });
 
       if (error || !data) {
-        console.error('[Organization Service] Atomic workspace creation RPC failed:', error);
+        console.error('[Organization Service] Secure workspace creation RPC failed:', error);
         throw new Error(`Failed to create workspace: ${error?.message || 'Unknown database error'}`);
       }
 
