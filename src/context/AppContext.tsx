@@ -104,6 +104,7 @@ import { marketingService } from '../services/marketingService';
 import { calendarService } from '../services/calendarService';
 import { auditService } from '../services/auditService';
 import { entitlementService } from '../services/entitlementService';
+import { organizationService } from '../services/organizationService';
 import { NEXTAURA_SERVICES } from '../data/appRegistry';
 import { isSupabaseConfigured, supabase } from '../services/supabaseClient';
 
@@ -275,8 +276,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [selectedResourceId, setSelectedResourceId] = useState<string | undefined>(undefined);
 
   // Shell State
-  const [organizations, setOrganizations] = useState<Organization[]>(initialOrganizations);
-  const [currentOrg, setCurrentOrg] = useState<Organization>(initialOrganizations[0]);
+  const [organizations, setOrganizations] = useState<Organization[]>(
+    isSupabaseConfigured() ? [] : initialOrganizations
+  );
+  const [currentOrg, setCurrentOrg] = useState<Organization>(
+    isSupabaseConfigured()
+      ? {
+          id: 'org_pending',
+          name: 'Workspace Loading...',
+          legalName: 'NextAura Enterprise',
+          logo: '⚡',
+          taxId: 'US-000000',
+          registrationNumber: 'REG-000',
+          baseCurrency: 'USD',
+          country: 'United States',
+          address: '100 Corporate Way',
+          fiscalYearEnd: '12-31',
+        }
+      : initialOrganizations[0]
+  );
   const [user, setUser] = useState<User>(currentUser);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
   const [language, setLanguage] = useState<'en' | 'ar'>('en');
@@ -287,34 +305,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [searchQuery, setSearchQuery] = useState('');
   const [isGlobalCreateOpen, setGlobalCreateOpen] = useState(false);
 
-  // State Collections initialized from Database / Seed
-  const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices);
-  const [customers] = useState<Customer[]>(initialCustomers);
-  const [accounts] = useState<Account[]>(initialAccounts);
-  const [journalEntries, setJournalEntries] = useState<JournalEntry[]>(initialJournalEntries);
-  const [bankTransactions, setBankTransactions] = useState<BankTransaction[]>(initialBankTransactions);
-  const [expenses, setExpenses] = useState<Expense[]>(initialExpenses);
-  const [corporateCards] = useState<CorporateCard[]>(initialCards);
-  const [signDocuments, setSignDocuments] = useState<SignDocument[]>(initialSignDocuments);
-  const [shareholders, setShareholders] = useState<Shareholder[]>(initialShareholders);
-  const [optionGrants] = useState<OptionGrant[]>(initialOptionGrants);
-  const [esgMetrics] = useState<ESGMetric[]>(initialESGMetrics);
-  const [carbonActivities, setCarbonActivities] = useState<CarbonActivity[]>(initialCarbonActivities);
-  const [esgInitiatives] = useState<ESGInitiative[]>(initialESGInitiatives);
+  // State Collections initialized from Database / Seed (Isolated per tenant)
+  const isSupabase = isSupabaseConfigured();
+  const [invoices, setInvoices] = useState<Invoice[]>(isSupabase ? [] : initialInvoices);
+  const [customers] = useState<Customer[]>(isSupabase ? [] : initialCustomers);
+  const [accounts] = useState<Account[]>(isSupabase ? [] : initialAccounts);
+  const [journalEntries, setJournalEntries] = useState<JournalEntry[]>(isSupabase ? [] : initialJournalEntries);
+  const [bankTransactions, setBankTransactions] = useState<BankTransaction[]>(isSupabase ? [] : initialBankTransactions);
+  const [expenses, setExpenses] = useState<Expense[]>(isSupabase ? [] : initialExpenses);
+  const [corporateCards] = useState<CorporateCard[]>(isSupabase ? [] : initialCards);
+  const [signDocuments, setSignDocuments] = useState<SignDocument[]>(isSupabase ? [] : initialSignDocuments);
+  const [shareholders, setShareholders] = useState<Shareholder[]>(isSupabase ? [] : initialShareholders);
+  const [optionGrants] = useState<OptionGrant[]>(isSupabase ? [] : initialOptionGrants);
+  const [esgMetrics] = useState<ESGMetric[]>(isSupabase ? [] : initialESGMetrics);
+  const [carbonActivities, setCarbonActivities] = useState<CarbonActivity[]>(isSupabase ? [] : initialCarbonActivities);
+  const [esgInitiatives] = useState<ESGInitiative[]>(isSupabase ? [] : initialESGInitiatives);
 
   // HR
-  const [employees, setEmployees] = useState<Employee[]>(initialEmployees);
-  const [departments] = useState<Department[]>(initialDepartments);
-  const [jobPositions] = useState<JobPosition[]>(initialJobPositions);
-  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>(initialAttendanceRecords);
-  const [jobOpenings, setJobOpenings] = useState<JobOpening[]>(initialJobOpenings);
-  const [candidates, setCandidates] = useState<Candidate[]>(initialCandidates);
-  const [interviews, setInterviews] = useState<Interview[]>(initialInterviews);
-  const [jobOffers, setJobOffers] = useState<JobOffer[]>(initialJobOffers);
-  const [timeOffRequests, setTimeOffRequests] = useState<TimeOffRequest[]>(initialTimeOffRequests);
-  const [appraisals, setAppraisals] = useState<Appraisal[]>(initialAppraisals);
-  const [employeeGoals] = useState<EmployeeGoal[]>(initialEmployeeGoals);
-  const [vehicles, setVehicles] = useState<Vehicle[]>(initialVehicles);
+  const [employees, setEmployees] = useState<Employee[]>(isSupabase ? [] : initialEmployees);
+  const [departments] = useState<Department[]>(isSupabase ? [] : initialDepartments);
+  const [jobPositions] = useState<JobPosition[]>(isSupabase ? [] : initialJobPositions);
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>(isSupabase ? [] : initialAttendanceRecords);
+  const [jobOpenings, setJobOpenings] = useState<JobOpening[]>(isSupabase ? [] : initialJobOpenings);
+  const [candidates, setCandidates] = useState<Candidate[]>(isSupabase ? [] : initialCandidates);
+  const [interviews, setInterviews] = useState<Interview[]>(isSupabase ? [] : initialInterviews);
+  const [jobOffers, setJobOffers] = useState<JobOffer[]>(isSupabase ? [] : initialJobOffers);
+  const [timeOffRequests, setTimeOffRequests] = useState<TimeOffRequest[]>(isSupabase ? [] : initialTimeOffRequests);
+  const [appraisals, setAppraisals] = useState<Appraisal[]>(isSupabase ? [] : initialAppraisals);
+  const [employeeGoals] = useState<EmployeeGoal[]>(isSupabase ? [] : initialEmployeeGoals);
+  const [vehicles, setVehicles] = useState<Vehicle[]>(isSupabase ? [] : initialVehicles);
   const [vehicleMaintenance, setVehicleMaintenance] = useState<VehicleMaintenance[]>(initialVehicleMaintenance);
   const [payrollRuns, setPayrollRuns] = useState<PayrollRun[]>(initialPayrollRuns);
   const [payslips] = useState<Payslip[]>(initialPayslips);
@@ -391,7 +410,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     if (!isSupabaseConfigured()) return;
 
-    const handleSessionUser = (sessionUser: any) => {
+    const clearTenantData = () => {
+      setEmployees([]);
+      setInvoices([]);
+      setExpenses([]);
+      setCandidates([]);
+      setAttendanceRecords([]);
+      setPayrollRuns([]);
+      setCalendarEvents([]);
+      setVehicles([]);
+      setOrganizations([]);
+    };
+
+    const handleSessionUser = async (sessionUser: any) => {
       if (!sessionUser) return;
       const fullName =
         sessionUser.user_metadata?.full_name ||
@@ -412,43 +443,50 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         lastActive: new Date().toISOString(),
       });
 
-      // Create dedicated workspace for newly logged in user if not in org list
-      const userOrgId = `org_${sessionUser.id.substring(0, 8)}`;
-      const userOrg: Organization = {
-        id: userOrgId,
-        name: `${fullName.split(' ')[0]}'s Workspace`,
-        legalName: `${fullName} Global Inc.`,
-        logo: '⚡',
-        baseCurrency: 'USD',
-        taxId: 'US-999999',
-        registrationNumber: 'REG-888',
-        country: 'United States',
-        address: '100 Enterprise Way, Suite 400',
-        fiscalYearEnd: '12-31',
-      };
+      // Query PostgreSQL organization_members to check user's authorized workspaces
+      const userOrgs = await organizationService.getUserOrganizations(sessionUser.id);
 
-      setOrganizations((prev) => {
-        if (!prev.some((o) => o.id === userOrg.id)) {
-          return [userOrg, ...prev];
-        }
-        return prev;
-      });
+      if (userOrgs.length > 0) {
+        setOrganizations(userOrgs);
+        setCurrentOrg(userOrgs[0]);
+        setOnboardingActive(false);
+      } else {
+        // User has NO organization memberships — DO NOT load seed demo org or demo business data!
+        clearTenantData();
+        setOnboardingActive(true);
 
-      setCurrentOrg(userOrg);
+        const tempOrg: Organization = {
+          id: `org_temp_${sessionUser.id.substring(0, 8)}`,
+          name: `${fullName.split(' ')[0]}'s Workspace`,
+          legalName: `${fullName} Global Inc.`,
+          logo: '⚡',
+          baseCurrency: 'USD',
+          taxId: 'US-000000',
+          registrationNumber: 'REG-100',
+          country: 'United States',
+          address: '100 Corporate Way',
+          fiscalYearEnd: '12-31',
+        };
+        setCurrentOrg(tempOrg);
+      }
     };
 
     // Initial session check
     supabase.auth.getSession().then(({ data }) => {
       if (data?.session?.user) {
         handleSessionUser(data.session.user);
+      } else {
+        clearTenantData();
+        setActiveApp('auth');
       }
     });
 
     // Subscribe to auth state changes (login, logout, Google OAuth redirect)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string, session: any) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: string, session: any) => {
       if (session?.user) {
-        handleSessionUser(session.user);
+        await handleSessionUser(session.user);
       } else if (event === 'SIGNED_OUT') {
+        clearTenantData();
         setUser(currentUser);
         setActiveApp('auth');
       }
@@ -460,6 +498,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Load database records per organization
   useEffect(() => {
     if (!isSupabaseConfigured()) return;
+
+    if (!currentOrg || currentOrg.id.startsWith('org_temp_')) {
+      setEmployees([]);
+      setCandidates([]);
+      setVehicles([]);
+      setInvoices([]);
+      setPayrollRuns([]);
+      setCalendarEvents([]);
+      return;
+    }
+
     const loadOrgData = async () => {
       try {
         const [dbEmps, dbCands, dbVehs, dbInv, dbRuns, dbCal] = await Promise.all([
@@ -471,18 +520,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           calendarService.fetchEvents(currentOrg.id),
         ]);
 
-        if (dbEmps.length > 0) setEmployees(dbEmps);
-        if (dbCands.length > 0) setCandidates(dbCands);
-        if (dbVehs.length > 0) setVehicles(dbVehs);
-        if (dbInv.length > 0) setInvoices(dbInv);
-        if (dbRuns.length > 0) setPayrollRuns(dbRuns);
-        if (dbCal.length > 0) setCalendarEvents(dbCal);
+        setEmployees(dbEmps);
+        setCandidates(dbCands);
+        setVehicles(dbVehs);
+        setInvoices(dbInv);
+        setPayrollRuns(dbRuns);
+        setCalendarEvents(dbCal);
       } catch (err) {
         console.error('Failed loading tenant data from Supabase:', err);
       }
     };
     loadOrgData();
-  }, [currentOrg.id]);
+  }, [currentOrg?.id]);
 
   useEffect(() => {
     document.documentElement.dir = isRtl ? 'rtl' : 'ltr';

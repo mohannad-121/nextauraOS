@@ -14,6 +14,7 @@ import { useApp } from '../../context/AppContext';
 import { NEXTAURA_SERVICES } from '../../data/appRegistry';
 import { entitlementService } from '../../services/entitlementService';
 import { emailService } from '../../services/emailService';
+import { organizationService } from '../../services/organizationService';
 
 export const OnboardingWizard: React.FC = () => {
   const { user, currentOrg, setOnboardingActive, navigate } = useApp();
@@ -54,9 +55,16 @@ export const OnboardingWizard: React.FC = () => {
   const handleSubmitRequest = async () => {
     setSubmitting(true);
     try {
-      // 1. Submit service request to database
+      // 1. Create dedicated workspace organization for this user in PostgreSQL
+      const newOrg = await organizationService.createOrganizationForUser(
+        user.id,
+        companyName || `${user.name.split(' ')[0]}'s Company`,
+        { industry, country }
+      );
+
+      // 2. Submit service request to database for the new organization
       await entitlementService.submitServiceRequest(
-        currentOrg.id,
+        newOrg.id,
         user.id,
         selectedKeys,
         `Initial onboarding service request for ${companyName}`
