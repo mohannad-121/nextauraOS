@@ -2,8 +2,39 @@ import { isSupabaseConfigured, supabase } from './supabaseClient';
 
 export const verificationService = {
   /**
+   * Server-side check: Verifies if current Supabase login session has completed 6-digit OTP verification.
+   * NEVER relies on client browser storage.
+   */
+  async checkSessionVerification(): Promise<{ success: boolean; verified: boolean; error?: string }> {
+    if (!isSupabaseConfigured()) {
+      return { success: true, verified: true };
+    }
+
+    try {
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+
+      if (!token) {
+        return { success: false, verified: false, error: 'User session not initialized.' };
+      }
+
+      const { data, error } = await supabase.functions.invoke('check-login-verification', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (error || !data?.success) {
+        return { success: false, verified: false, error: data?.error || error?.message || 'Server check failed.' };
+      }
+
+      return { success: true, verified: Boolean(data.verified) };
+    } catch (err: any) {
+      console.error('[Verification Service] Check session Edge Function error:', err);
+      return { success: false, verified: false, error: err.message || 'Server verification check failed.' };
+    }
+  },
+
+  /**
    * Dispatches 6-digit OTP generation and email dispatch via server Edge Function.
-   * Session ID is derived directly from the authenticated JWT server-side.
    */
   async sendLoginVerification(_userId: string, email: string): Promise<{ success: boolean; error?: string }> {
     if (!email) return { success: false, error: 'Email address is required' };
@@ -17,7 +48,6 @@ export const verificationService = {
           return { success: false, error: 'User authentication session not initialized.' };
         }
 
-        // ITEM 3: Server derives session_id directly from Bearer JWT token. Do not send in body.
         const { data, error } = await supabase.functions.invoke('send-login-verification', {
           body: { email },
           headers: { Authorization: `Bearer ${token}` },

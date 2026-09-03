@@ -29,7 +29,7 @@ serve(async (req) => {
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Missing Authorization header' }),
+        JSON.stringify({ success: false, verified: false, error: 'Missing Authorization header' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -44,24 +44,24 @@ serve(async (req) => {
 
     if (userError || !user) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Invalid authentication token' }),
+        JSON.stringify({ success: false, verified: false, error: 'Invalid authentication token' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Extract real session_id claim
+    // Extract real session_id claim. FAIL CLOSED if missing! No user.id or sub fallbacks.
     const payload = parseJwtPayload(token);
     const sessionId = payload.session_id || payload.sid || null;
 
     if (!sessionId) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Valid Supabase session_id claim is missing from authentication token.' }),
+        JSON.stringify({ success: false, verified: false, error: 'Valid Supabase session_id claim is missing from authentication token.' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // SERVICE SELECTION DEFENSE: Require completed OTP verification for THIS session
-    const { data: verificationCheck, error: checkErr } = await supabaseAdmin
+    // Query login_verification_challenges for completed verification for THIS exact session
+    const { data: challenges, error: fetchErr } = await supabaseAdmin
       .from('login_verification_challenges')
       .select('id')
       .eq('user_id', user.id)
@@ -69,46 +69,23 @@ serve(async (req) => {
       .not('verified_at', 'is', null)
       .limit(1);
 
-    if (checkErr || !verificationCheck || verificationCheck.length === 0) {
+    if (fetchErr) {
+      console.error('[CheckVerification] Database query error:', fetchErr);
       return new Response(
-        JSON.stringify({ success: false, error: 'Forbidden: 6-digit OTP verification must be completed before service activation.' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ success: false, verified: false, error: 'Failed to verify session status.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const body = await req.json().catch(() => ({}));
-    const organizationId = body.organizationId;
-    const serviceKeys = body.serviceKeys;
-
-    if (!organizationId || !Array.isArray(serviceKeys) || serviceKeys.length === 0) {
-      return new Response(
-        JSON.stringify({ success: false, error: 'Valid organization ID and at least one service key are required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // User ID comes EXCLUSIVELY from authenticated user.id from token
-    const { data, error } = await supabaseAdmin.rpc('complete_initial_service_selection', {
-      p_user_id: user.id,
-      p_organization_id: organizationId,
-      p_service_keys: serviceKeys,
-    });
-
-    if (error) {
-      console.error('[CompleteServiceSelection] Privileged RPC execution failed:', error);
-      return new Response(
-        JSON.stringify({ success: false, error: error.message || 'Atomic service selection failed' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
+    const isVerified = Boolean(challenges && challenges.length > 0);
 
     return new Response(
-      JSON.stringify({ success: true, data }),
+      JSON.stringify({ success: true, verified: isVerified }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (err: any) {
     return new Response(
-      JSON.stringify({ success: false, error: err.message || 'Server error completing service selection' }),
+      JSON.stringify({ success: false, verified: false, error: err.message || 'Server error checking verification status' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }

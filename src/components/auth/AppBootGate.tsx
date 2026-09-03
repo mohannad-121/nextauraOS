@@ -7,6 +7,7 @@ import { VerificationScreen } from '../../pages/auth/VerificationScreen';
 import { ServiceSelectionScreen } from '../../pages/onboarding/ServiceSelectionScreen';
 import { AppShell } from '../layout/AppShell';
 import { organizationService } from '../../services/organizationService';
+import { verificationService } from '../../services/verificationService';
 import { getSupabaseSessionId } from '../../utils/sessionHelper';
 
 export type BootState =
@@ -21,8 +22,6 @@ interface AppBootGateProps {
   children: React.ReactNode;
 }
 
-const SESSION_VERIFIED_KEY = 'nextaura_verified_session_token';
-
 export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
   const { currentOrg, setCurrentOrg, refreshServices, setUserProfile } = useApp();
   const [bootState, setBootState] = useState<BootState>('loading');
@@ -31,33 +30,8 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
   const [activeOrgId, setActiveOrgId] = useState<string>('');
   const [bootstrapErrorMessage, setBootstrapErrorMessage] = useState<string>('');
 
-  const getVerifiedTokenFromStorage = (): string | null => {
-    try {
-      return sessionStorage.getItem(SESSION_VERIFIED_KEY);
-    } catch {
-      return null;
-    }
-  };
-
-  const setVerifiedTokenInStorage = (token: string) => {
-    try {
-      sessionStorage.setItem(SESSION_VERIFIED_KEY, token);
-    } catch (err) {
-      console.error('Storage error:', err);
-    }
-  };
-
-  const clearVerifiedTokenInStorage = () => {
-    try {
-      sessionStorage.removeItem(SESSION_VERIFIED_KEY);
-    } catch (err) {
-      console.error('Storage error:', err);
-    }
-  };
-
   const evaluateAuthState = useCallback(async (session: any) => {
     if (!session || !session.user) {
-      clearVerifiedTokenInStorage();
       setBootState('unauthenticated');
       return;
     }
@@ -74,7 +48,7 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
       setUserProfile({ name, email, avatar: session.user.user_metadata?.avatar_url });
     }
 
-    // BLOCKER 2: Extract real session_id claim. FAIL CLOSED if missing! No user.id fallbacks.
+    // STRICT SESSION ISOLATION: Extract real session_id claim. FAIL CLOSED if missing!
     const currentSessionId = getSupabaseSessionId(session);
 
     if (!currentSessionId) {
@@ -83,14 +57,25 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
       return;
     }
 
-    const storedVerifiedId = getVerifiedTokenFromStorage();
+    // SERVER-SIDE VERIFICATION CHECK: Query database challenges table via Edge Function.
+    // NEVER TRUST CLIENT BROWSER STORAGE.
+    if (isSupabaseConfigured()) {
+      const checkRes = await verificationService.checkSessionVerification();
 
-    if (storedVerifiedId !== currentSessionId) {
-      setBootState('emailVerificationRequired');
-      return;
+      if (!checkRes.success) {
+        // MANDATORY TEST 6: Fail closed on server check failure
+        setBootstrapErrorMessage(checkRes.error || 'Server error verifying session security state.');
+        setBootState('bootstrapError');
+        return;
+      }
+
+      if (!checkRes.verified) {
+        setBootState('emailVerificationRequired');
+        return;
+      }
     }
 
-    // BLOCKER 3: Workspace & profile bootstrap with strict error handling
+    // Step 2: Ensure user has a workspace organization in PostgreSQL
     if (isSupabaseConfigured()) {
       try {
         let userOrgs = await organizationService.getUserOrganizations(userId);
@@ -116,7 +101,6 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
           .eq('id', userId)
           .single();
 
-        // Distinguish DB failure vs no profile row
         if (profileErr && profileErr.code !== 'PGRST116') {
           console.error('[AppBootGate] Database profile fetch failure:', profileErr);
           setBootstrapErrorMessage(`Database failure loading profile: ${profileErr.message}`);
@@ -130,7 +114,6 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
         }
       } catch (err: any) {
         console.error('[AppBootGate] Bootstrap exception:', err);
-        // BLOCKER 3: DO NOT open AppShell on error! Set bootstrapError state.
         setBootstrapErrorMessage(err.message || 'Failed to initialize workspace data.');
         setBootState('bootstrapError');
         return;
@@ -177,7 +160,6 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMounted) return;
       if (event === 'SIGNED_OUT') {
-        clearVerifiedTokenInStorage();
         setBootState('unauthenticated');
       } else if (session) {
         await evaluateAuthState(session);
@@ -194,14 +176,7 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
     if (sessionUserId && isSupabaseConfigured()) {
       const activeSession = (await supabase.auth.getSession()).data?.session;
       if (activeSession) {
-        const currentSessionId = getSupabaseSessionId(activeSession);
-        if (currentSessionId) {
-          setVerifiedTokenInStorage(currentSessionId);
-          await evaluateAuthState(activeSession);
-        } else {
-          setBootstrapErrorMessage('Valid session identifier missing from token.');
-          setBootState('bootstrapError');
-        }
+        await evaluateAuthState(activeSession);
       }
     }
   };
@@ -212,7 +187,6 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
   };
 
   const handleSignOut = async () => {
-    clearVerifiedTokenInStorage();
     if (isSupabaseConfigured()) {
       await supabase.auth.signOut();
     }
