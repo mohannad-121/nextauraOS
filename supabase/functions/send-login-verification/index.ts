@@ -59,7 +59,6 @@ serve(async (req) => {
     const resendApiKey = Deno.env.get('RESEND_API_KEY');
     const resendFromEmail = Deno.env.get('RESEND_FROM_EMAIL');
 
-    // ITEM 4: Strict secret checks
     if (!otpHmacSecret) {
       return new Response(
         JSON.stringify({ success: false, error: 'OTP_HMAC_SECRET server configuration is missing.' }),
@@ -67,7 +66,6 @@ serve(async (req) => {
       );
     }
 
-    // ITEM 10: Strict Resend sender email check
     if (!resendApiKey || !resendFromEmail) {
       return new Response(
         JSON.stringify({ success: false, error: 'RESEND_API_KEY or RESEND_FROM_EMAIL server configuration is missing.' }),
@@ -75,7 +73,7 @@ serve(async (req) => {
       );
     }
 
-    // Authenticate user token server-side
+    // Verify user JWT token server-side
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
     const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
 
@@ -86,11 +84,18 @@ serve(async (req) => {
       );
     }
 
-    // ITEM 1 & ITEM 3: Derive session_id directly from verified JWT (Never from client body!)
+    // BLOCKER 2: Extract real session_id claim. FAIL CLOSED if missing! No user.id or sub fallbacks.
     const payload = parseJwtPayload(token);
-    const sessionId = payload.session_id || payload.sid || payload.sub || user.id;
-    const email = user.email;
+    const sessionId = payload.session_id || payload.sid || null;
 
+    if (!sessionId) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Valid Supabase session_id claim is missing from authentication token.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const email = user.email;
     if (!email) {
       return new Response(
         JSON.stringify({ success: false, error: 'User email address not found' }),
@@ -107,7 +112,7 @@ serve(async (req) => {
     const codeHash = await hmacSha256(otpHmacSecret, otpCode);
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
-    // Invalidate existing active challenges for this user + session
+    // Invalidate existing active challenges for user + session
     await supabaseAdmin
       .from('login_verification_challenges')
       .delete()
@@ -161,7 +166,7 @@ serve(async (req) => {
       }),
     });
 
-    // ITEM 11: If Resend API fails, DELETE/INVALIDATE newly created challenge!
+    // Cleanup challenge if Resend email dispatch fails
     if (!resendRes.ok) {
       const errText = await resendRes.text();
       console.error('Resend delivery failure, cleaning up challenge:', errText);

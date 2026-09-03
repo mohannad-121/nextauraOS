@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { ShieldAlert, RefreshCw, LogOut } from 'lucide-react';
 import { isSupabaseConfigured, supabase } from '../../services/supabaseClient';
 import { useApp } from '../../context/AppContext';
 import { AuthScreens } from '../../pages/auth/AuthScreens';
@@ -13,7 +14,8 @@ export type BootState =
   | 'unauthenticated'
   | 'emailVerificationRequired'
   | 'serviceSelectionRequired'
-  | 'ready';
+  | 'ready'
+  | 'bootstrapError';
 
 interface AppBootGateProps {
   children: React.ReactNode;
@@ -27,6 +29,7 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
   const [sessionUserId, setSessionUserId] = useState<string | null>(null);
   const [sessionUserEmail, setSessionUserEmail] = useState<string>('');
   const [activeOrgId, setActiveOrgId] = useState<string>('');
+  const [bootstrapErrorMessage, setBootstrapErrorMessage] = useState<string>('');
 
   const getVerifiedTokenFromStorage = (): string | null => {
     try {
@@ -71,8 +74,15 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
       setUserProfile({ name, email, avatar: session.user.user_metadata?.avatar_url });
     }
 
-    // ITEM 1: Real JWT session_id claim extraction
-    const currentSessionId = getSupabaseSessionId(session) || userId;
+    // BLOCKER 2: Extract real session_id claim. FAIL CLOSED if missing! No user.id fallbacks.
+    const currentSessionId = getSupabaseSessionId(session);
+
+    if (!currentSessionId) {
+      setBootstrapErrorMessage('Valid session identifier missing from authentication token.');
+      setBootState('bootstrapError');
+      return;
+    }
+
     const storedVerifiedId = getVerifiedTokenFromStorage();
 
     if (storedVerifiedId !== currentSessionId) {
@@ -80,12 +90,12 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
       return;
     }
 
-    // Step 2: Ensure user has a workspace organization in PostgreSQL
+    // BLOCKER 3: Workspace & profile bootstrap with strict error handling
     if (isSupabaseConfigured()) {
       try {
         let userOrgs = await organizationService.getUserOrganizations(userId);
         if (userOrgs.length === 0) {
-          // ITEM 6: Secure parameterless RPC using auth.uid()
+          // Transactionally create atomic workspace
           const newOrg = await organizationService.createOrganizationForUser(
             `${name.split(' ')[0]}'s Workspace`
           );
@@ -95,24 +105,35 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
         const activeOrg = userOrgs[0];
         setActiveOrgId(activeOrg.id);
 
-        // CRITICAL 10: Set active organization in context before service selection
         if (setCurrentOrg && (!currentOrg || currentOrg.id !== activeOrg.id)) {
           setCurrentOrg(activeOrg);
         }
 
-        // Step 3: Check profile initial service selection
-        const { data: profile } = await supabase
+        // Profile read with explicit error inspection
+        const { data: profile, error: profileErr } = await supabase
           .from('profiles')
           .select('initial_service_selection_completed')
           .eq('id', userId)
           .single();
 
+        // Distinguish DB failure vs no profile row
+        if (profileErr && profileErr.code !== 'PGRST116') {
+          console.error('[AppBootGate] Database profile fetch failure:', profileErr);
+          setBootstrapErrorMessage(`Database failure loading profile: ${profileErr.message}`);
+          setBootState('bootstrapError');
+          return;
+        }
+
         if (!profile || !profile.initial_service_selection_completed) {
           setBootState('serviceSelectionRequired');
           return;
         }
-      } catch (err) {
-        console.error('[AppBootGate] Error during workspace bootstrap:', err);
+      } catch (err: any) {
+        console.error('[AppBootGate] Bootstrap exception:', err);
+        // BLOCKER 3: DO NOT open AppShell on error! Set bootstrapError state.
+        setBootstrapErrorMessage(err.message || 'Failed to initialize workspace data.');
+        setBootState('bootstrapError');
+        return;
       }
     }
 
@@ -128,7 +149,7 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
     let isMounted = true;
 
     const initializeAuth = async () => {
-      // CRITICAL 12: PKCE Google OAuth callback URL handling
+      // PKCE Google OAuth callback URL handling
       const urlParams = new URLSearchParams(window.location.search);
       const code = urlParams.get('code');
 
@@ -136,7 +157,6 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
         try {
           const { data, error } = await supabase.auth.exchangeCodeForSession(code);
           if (!error && data.session && isMounted) {
-            // Clean code parameter from URL without page reload
             window.history.replaceState({}, document.title, window.location.pathname);
             await evaluateAuthState(data.session);
             return;
@@ -146,7 +166,6 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
         }
       }
 
-      // Check active Supabase session
       const { data } = await supabase.auth.getSession();
       if (isMounted) {
         await evaluateAuthState(data?.session);
@@ -155,7 +174,6 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
 
     initializeAuth();
 
-    // Listen to Auth State Changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isMounted) return;
       if (event === 'SIGNED_OUT') {
@@ -176,9 +194,14 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
     if (sessionUserId && isSupabaseConfigured()) {
       const activeSession = (await supabase.auth.getSession()).data?.session;
       if (activeSession) {
-        const currentSessionId = getSupabaseSessionId(activeSession) || sessionUserId;
-        setVerifiedTokenInStorage(currentSessionId);
-        await evaluateAuthState(activeSession);
+        const currentSessionId = getSupabaseSessionId(activeSession);
+        if (currentSessionId) {
+          setVerifiedTokenInStorage(currentSessionId);
+          await evaluateAuthState(activeSession);
+        } else {
+          setBootstrapErrorMessage('Valid session identifier missing from token.');
+          setBootState('bootstrapError');
+        }
       }
     }
   };
@@ -235,6 +258,51 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
             }
           }}
         />
+      );
+
+    case 'bootstrapError':
+      return (
+        <div className="min-h-screen w-full bg-slate-950 text-slate-100 flex items-center justify-center p-6 relative overflow-hidden font-sans">
+          <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl text-center space-y-6 animate-in zoom-in-95">
+            <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center mx-auto shadow-xl">
+              <ShieldAlert className="w-7 h-7" />
+            </div>
+
+            <div className="space-y-2">
+              <h2 className="text-xl font-extrabold text-slate-100 font-heading">
+                We couldn't initialize your NextAura workspace
+              </h2>
+              <p className="text-xs text-slate-400 leading-relaxed max-w-xs mx-auto">
+                {bootstrapErrorMessage || 'A database or session error occurred while loading your organization workspace.'}
+              </p>
+            </div>
+
+            <div className="pt-4 flex flex-col gap-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setBootState('loading');
+                  if (isSupabaseConfigured()) {
+                    supabase.auth.getSession().then(({ data }) => evaluateAuthState(data?.session));
+                  }
+                }}
+                className="w-full py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-extrabold text-xs shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 transition-all"
+              >
+                <RefreshCw className="w-4 h-4" />
+                <span>Retry Connection</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleSignOut}
+                className="w-full py-2.5 rounded-xl border border-slate-800 text-slate-400 hover:text-slate-200 text-xs font-bold flex items-center justify-center gap-2 transition-colors"
+              >
+                <LogOut className="w-4 h-4 text-rose-400" />
+                <span>Sign Out</span>
+              </button>
+            </div>
+          </div>
+        </div>
       );
 
     case 'ready':

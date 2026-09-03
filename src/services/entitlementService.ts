@@ -61,8 +61,9 @@ export const entitlementService = {
   },
 
   /**
-   * Instantly activate organization services in database
-   * Strictly inspects Supabase error and throws on failure.
+   * Atomically activate organization services AND complete profile onboarding
+   * via trusted server-side Edge Function + PostgreSQL RPC.
+   * NO direct browser writes to organization_services or profiles!
    */
   async activateOrganizationServices(orgId: string, serviceKeys: string[]): Promise<void> {
     if (!orgId) {
@@ -74,48 +75,32 @@ export const entitlementService = {
     }
 
     if (isSupabaseConfigured()) {
-      const rows = serviceKeys.map((key) => ({
-        organization_id: orgId,
-        service_key: key,
-        status: 'active',
-        activated_at: new Date().toISOString(),
-      }));
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
 
-      const { error } = await supabase
-        .from('organization_services')
-        .upsert(rows, { onConflict: 'organization_id,service_key' });
+      if (!token) {
+        throw new Error('User authentication session expired. Please sign in again.');
+      }
 
-      if (error) {
-        console.error('[Entitlement] Error activating services:', error);
-        throw new Error(`Failed to activate services: ${error.message}`);
+      // Routes through trusted Edge Function complete-service-selection
+      const { data, error } = await supabase.functions.invoke('complete-service-selection', {
+        body: { organizationId: orgId, serviceKeys },
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (error || !data?.success) {
+        const errorMessage = data?.error || error?.message || 'Failed to complete service activation.';
+        console.error('[Entitlement Error] Trusted service activation failed:', errorMessage);
+        throw new Error(errorMessage);
       }
     }
   },
 
   /**
    * Complete User Onboarding & Service Selection
-   * Strictly checks database mutation error.
+   * Delegates to trusted Edge Function complete-service-selection.
    */
-  async completeUserOnboarding(userId: string): Promise<void> {
-    if (!userId) {
-      throw new Error('User ID is required to complete onboarding.');
-    }
-
-    if (isSupabaseConfigured()) {
-      const { error } = await supabase
-        .from('profiles')
-        .update({
-          initial_service_selection_completed: true,
-          onboarding_completed: true,
-          email_verified: true,
-          updated_at: new Date().toISOString(),
-        })
-        .eq('id', userId);
-
-      if (error) {
-        console.error('[Entitlement] Error updating onboarding profile:', error);
-        throw new Error(`Failed to update onboarding profile: ${error.message}`);
-      }
-    }
+  async completeUserOnboarding(_userId: string): Promise<void> {
+    // Service selection & onboarding completion handled atomically in activateOrganizationServices
   },
 };

@@ -57,7 +57,6 @@ serve(async (req) => {
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
     const otpHmacSecret = Deno.env.get('OTP_HMAC_SECRET');
 
-    // ITEM 4: Strict OTP secret check
     if (!otpHmacSecret) {
       return new Response(
         JSON.stringify({ success: false, error: 'OTP_HMAC_SECRET server configuration is missing.' }),
@@ -65,7 +64,7 @@ serve(async (req) => {
       );
     }
 
-    // Authenticate user JWT
+    // Authenticate user JWT token server-side
     const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey);
     const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
 
@@ -86,11 +85,18 @@ serve(async (req) => {
       );
     }
 
-    // ITEM 1 & ITEM 2: Extract real session_id from JWT payload
+    // BLOCKER 2: Extract real session_id claim. FAIL CLOSED if missing! No user.id or sub fallbacks.
     const payload = parseJwtPayload(token);
-    const sessionId = payload.session_id || payload.sid || payload.sub || user.id;
+    const sessionId = payload.session_id || payload.sid || null;
 
-    // ITEM 2: Query active challenge filtering strictly by user_id AND session_id
+    if (!sessionId) {
+      return new Response(
+        JSON.stringify({ success: false, error: 'Valid Supabase session_id claim is missing from authentication token.' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Query active challenge filtering strictly by user_id AND session_id
     const { data: challenges, error: fetchErr } = await supabaseAdmin
       .from('login_verification_challenges')
       .select('*')
