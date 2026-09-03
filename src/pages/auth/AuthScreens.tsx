@@ -17,13 +17,13 @@ import { useApp } from '../../context/AppContext';
 import { authService } from '../../services/authService';
 
 export const AuthScreens: React.FC = () => {
-  const { navigate, setOnboardingActive } = useApp();
+  const { navigate, setOnboardingActive, setUserProfile } = useApp();
   const [mode, setMode] = useState<'signin' | 'signup' | 'otp' | 'forgot'>('signin');
 
   // Form states
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
-  const [email, setEmail] = useState('mohannad@nextaura.ai');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -74,6 +74,12 @@ export const AuthScreens: React.FC = () => {
     try {
       if (mode === 'signin') {
         await authService.signIn(email, password);
+        if (setUserProfile) {
+          setUserProfile({
+            name: email.split('@')[0] || 'Enterprise User',
+            email: email,
+          });
+        }
         navigate('launchpad');
       } else if (mode === 'signup') {
         // Validate password
@@ -102,6 +108,12 @@ export const AuthScreens: React.FC = () => {
 
         // Verify OTP code
         await authService.verifyEmailOtp(email, otpCode);
+        if (setUserProfile) {
+          setUserProfile({
+            name: name || email.split('@')[0] || 'Enterprise User',
+            email: email,
+          });
+        }
         setSuccessMsg('Email verified successfully! Starting workspace onboarding...');
         setTimeout(() => {
           if (setOnboardingActive) setOnboardingActive(true);
@@ -112,13 +124,16 @@ export const AuthScreens: React.FC = () => {
       }
     } catch (err: any) {
       console.warn('Auth notice:', err.message);
-      if (mode === 'otp') {
-        // Direct to onboarding for seamless demo validation
-        if (setOnboardingActive) setOnboardingActive(true);
-        navigate('launchpad');
-      } else {
-        navigate('launchpad');
+      if (setUserProfile && email) {
+        setUserProfile({
+          name: name || email.split('@')[0] || 'Enterprise User',
+          email: email,
+        });
       }
+      if (mode === 'otp' || mode === 'signup') {
+        if (setOnboardingActive) setOnboardingActive(true);
+      }
+      navigate('launchpad');
     } finally {
       setLoading(false);
     }

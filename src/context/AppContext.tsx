@@ -263,6 +263,7 @@ interface AppContextType {
   refreshServices: () => void;
   isOnboardingActive: boolean;
   setOnboardingActive: (active: boolean) => void;
+  setUserProfile: (profile: { name: string; email: string; avatar?: string }) => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -342,6 +343,43 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setActiveServices(services);
     });
   }, [currentOrg.id]);
+
+  const setUserProfile = useCallback((profile: { name: string; email: string; avatar?: string }) => {
+    const userName = profile.name || profile.email.split('@')[0] || 'Enterprise User';
+    const userAvatar =
+      profile.avatar ||
+      `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=06b6d4&color=020617`;
+
+    const newUserObj: User = {
+      id: `usr_${Math.random().toString(36).substring(2, 9)}`,
+      name: userName,
+      email: profile.email,
+      role: 'Owner',
+      avatar: userAvatar,
+      department: 'Executive Office',
+      status: 'Active',
+      lastActive: new Date().toISOString(),
+    };
+
+    setUser(newUserObj);
+
+    const userOrgId = `org_${Math.random().toString(36).substring(2, 9)}`;
+    const newOrg: Organization = {
+      id: userOrgId,
+      name: `${userName.split(' ')[0]}'s Workspace`,
+      legalName: `${userName} Global Inc.`,
+      logo: '⚡',
+      baseCurrency: 'USD',
+      taxId: 'US-999999',
+      registrationNumber: 'REG-888',
+      country: 'United States',
+      address: '100 Enterprise Way, Suite 400',
+      fiscalYearEnd: '12-31',
+    };
+
+    setOrganizations((prev) => [newOrg, ...prev.filter((o) => o.id !== newOrg.id)]);
+    setCurrentOrg(newOrg);
+  }, []);
 
   useEffect(() => {
     refreshServices();
@@ -980,6 +1018,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         refreshServices,
         isOnboardingActive,
         setOnboardingActive,
+        setUserProfile,
       }}
     >
       {children}
