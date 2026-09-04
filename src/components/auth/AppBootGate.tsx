@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ShieldAlert, RefreshCw, LogOut } from 'lucide-react';
 import { isSupabaseConfigured, supabase } from '../../services/supabaseClient';
 import { useApp } from '../../context/AppContext';
@@ -30,57 +30,96 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
   const [activeOrgId, setActiveOrgId] = useState<string>('');
   const [bootstrapErrorMessage, setBootstrapErrorMessage] = useState<string>('');
 
-  const evaluateAuthState = useCallback(async (session: any) => {
-    if (!session || !session.user) {
-      setBootState('unauthenticated');
+  // Single-flight & reference stability refs (REMOVES AUTH RENDER LOOP)
+  const evaluationInProgressRef = useRef<boolean>(false);
+  const lastEvaluatedSessionRef = useRef<string | null>(null);
+  const bootStateRef = useRef<BootState>('loading');
+  bootStateRef.current = bootState;
+
+  const setCurrentOrgRef = useRef(setCurrentOrg);
+  setCurrentOrgRef.current = setCurrentOrg;
+
+  const setUserProfileRef = useRef(setUserProfile);
+  setUserProfileRef.current = setUserProfile;
+
+  const currentOrgIdRef = useRef(currentOrg?.id);
+  currentOrgIdRef.current = currentOrg?.id;
+
+  const evaluateAuthState = useCallback(async (session: any, forceReevaluate = false) => {
+    if (evaluationInProgressRef.current) {
+      if (import.meta.env.DEV) {
+        console.log('[AppBootGate] Evaluation already in progress, skipping concurrent run.');
+      }
       return;
     }
 
-    const userId = session.user.id;
-    const email = session.user.email || '';
-    const name =
-      session.user.user_metadata?.full_name || email.split('@')[0] || 'Enterprise User';
+    const sessionId = getSupabaseSessionId(session);
 
-    setSessionUserId(userId);
-    setSessionUserEmail(email);
-
-    if (setUserProfile) {
-      setUserProfile({ name, email, avatar: session.user.user_metadata?.avatar_url });
-    }
-
-    // STRICT SESSION ISOLATION: Extract real session_id claim. FAIL CLOSED if missing!
-    const currentSessionId = getSupabaseSessionId(session);
-
-    if (!currentSessionId) {
-      setBootstrapErrorMessage('Valid session identifier missing from authentication token.');
-      setBootState('bootstrapError');
+    if (
+      !forceReevaluate &&
+      sessionId &&
+      lastEvaluatedSessionRef.current === sessionId &&
+      (bootStateRef.current === 'emailVerificationRequired' || bootStateRef.current === 'ready')
+    ) {
+      if (import.meta.env.DEV) {
+        console.log('[AppBootGate] Session already evaluated for state:', bootStateRef.current);
+      }
       return;
     }
 
-    // SERVER-SIDE VERIFICATION CHECK: Query database challenges table via Edge Function.
-    // NEVER TRUST CLIENT BROWSER STORAGE.
-    if (isSupabaseConfigured()) {
-      const checkRes = await verificationService.checkSessionVerification();
+    evaluationInProgressRef.current = true;
+    if (import.meta.env.DEV) {
+      console.log('[AppBootGate] evaluate start');
+    }
 
-      if (!checkRes.success) {
-        // MANDATORY TEST 6: Fail closed on server check failure
-        setBootstrapErrorMessage(checkRes.error || 'Server error verifying session security state.');
+    try {
+      if (!session || !session.user) {
+        lastEvaluatedSessionRef.current = null;
+        setBootState('unauthenticated');
+        if (import.meta.env.DEV) console.log('[AppBootGate] unauthenticated');
+        return;
+      }
+
+      const userId = session.user.id;
+      const email = session.user.email || '';
+      const name =
+        session.user.user_metadata?.full_name || email.split('@')[0] || 'Enterprise User';
+
+      setSessionUserId(userId);
+      setSessionUserEmail(email);
+
+      if (setUserProfileRef.current) {
+        setUserProfileRef.current({ name, email, avatar: session.user.user_metadata?.avatar_url });
+      }
+
+      if (!sessionId) {
+        setBootstrapErrorMessage('Valid session identifier missing from authentication token.');
         setBootState('bootstrapError');
         return;
       }
 
-      if (!checkRes.verified) {
-        setBootState('emailVerificationRequired');
-        return;
-      }
-    }
+      // Step 1: Server-side Verification Check
+      if (isSupabaseConfigured()) {
+        const checkRes = await verificationService.checkSessionVerification();
 
-    // Step 2: Ensure user has a workspace organization in PostgreSQL
-    if (isSupabaseConfigured()) {
-      try {
+        if (!checkRes.success) {
+          setBootstrapErrorMessage(checkRes.error || 'Server error verifying session security state.');
+          setBootState('bootstrapError');
+          return;
+        }
+
+        if (!checkRes.verified) {
+          lastEvaluatedSessionRef.current = sessionId;
+          setBootState('emailVerificationRequired');
+          if (import.meta.env.DEV) console.log('[AppBootGate] verification required');
+          return;
+        }
+      }
+
+      // Step 2: Ensure user has a workspace organization in PostgreSQL
+      if (isSupabaseConfigured()) {
         let userOrgs = await organizationService.getUserOrganizations(userId);
         if (userOrgs.length === 0) {
-          // Transactionally create atomic workspace
           const newOrg = await organizationService.createOrganizationForUser(
             `${name.split(' ')[0]}'s Workspace`
           );
@@ -90,8 +129,8 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
         const activeOrg = userOrgs[0];
         setActiveOrgId(activeOrg.id);
 
-        if (setCurrentOrg && (!currentOrg || currentOrg.id !== activeOrg.id)) {
-          setCurrentOrg(activeOrg);
+        if (setCurrentOrgRef.current && currentOrgIdRef.current !== activeOrg.id) {
+          setCurrentOrgRef.current(activeOrg);
         }
 
         // Profile read with explicit error inspection
@@ -109,19 +148,25 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
         }
 
         if (!profile || !profile.initial_service_selection_completed) {
+          lastEvaluatedSessionRef.current = sessionId;
           setBootState('serviceSelectionRequired');
+          if (import.meta.env.DEV) console.log('[AppBootGate] service selection required');
           return;
         }
-      } catch (err: any) {
-        console.error('[AppBootGate] Bootstrap exception:', err);
-        setBootstrapErrorMessage(err.message || 'Failed to initialize workspace data.');
-        setBootState('bootstrapError');
-        return;
       }
-    }
 
-    setBootState('ready');
-  }, [currentOrg, setCurrentOrg, setUserProfile]);
+      lastEvaluatedSessionRef.current = sessionId;
+      setBootState('ready');
+      if (import.meta.env.DEV) console.log('[AppBootGate] ready');
+    } catch (err: any) {
+      console.error('[AppBootGate] Bootstrap exception:', err);
+      setBootstrapErrorMessage(err.message || 'Failed to initialize workspace data.');
+      setBootState('bootstrapError');
+    } finally {
+      evaluationInProgressRef.current = false;
+      if (import.meta.env.DEV) console.log('[AppBootGate] evaluate end');
+    }
+  }, []);
 
   useEffect(() => {
     if (!isSupabaseConfigured()) {
@@ -132,7 +177,6 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
     let isMounted = true;
 
     const initializeAuth = async () => {
-      // PKCE Google OAuth callback URL handling
       const urlParams = new URLSearchParams(window.location.search);
       const code = urlParams.get('code');
 
@@ -141,7 +185,7 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
           const { data, error } = await supabase.auth.exchangeCodeForSession(code);
           if (!error && data.session && isMounted) {
             window.history.replaceState({}, document.title, window.location.pathname);
-            await evaluateAuthState(data.session);
+            await evaluateAuthState(data.session, true);
             return;
           }
         } catch (err) {
@@ -150,19 +194,31 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
       }
 
       const { data } = await supabase.auth.getSession();
-      if (isMounted) {
-        await evaluateAuthState(data?.session);
+      if (isMounted && data?.session) {
+        await evaluateAuthState(data.session);
+      } else if (isMounted) {
+        setBootState('unauthenticated');
       }
     };
 
     initializeAuth();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!isMounted) return;
+
+      if (import.meta.env.DEV) {
+        console.log(`[AppBootGate] auth event: ${event}`);
+      }
+
       if (event === 'SIGNED_OUT') {
+        lastEvaluatedSessionRef.current = null;
         setBootState('unauthenticated');
-      } else if (session) {
-        await evaluateAuthState(session);
+      } else if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+        if (session) {
+          setTimeout(() => {
+            if (isMounted) void evaluateAuthState(session);
+          }, 0);
+        }
       }
     });
 
@@ -176,7 +232,7 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
     if (sessionUserId && isSupabaseConfigured()) {
       const activeSession = (await supabase.auth.getSession()).data?.session;
       if (activeSession) {
-        await evaluateAuthState(activeSession);
+        await evaluateAuthState(activeSession, true);
       }
     }
   };
@@ -187,6 +243,7 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
   };
 
   const handleSignOut = async () => {
+    lastEvaluatedSessionRef.current = null;
     if (isSupabaseConfigured()) {
       await supabase.auth.signOut();
     }
@@ -228,7 +285,7 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
           onCompleted={handleServiceSelectionCompleted}
           onRetryWorkspace={() => {
             if (isSupabaseConfigured()) {
-              supabase.auth.getSession().then(({ data }) => evaluateAuthState(data?.session));
+              supabase.auth.getSession().then(({ data }) => evaluateAuthState(data?.session, true));
             }
           }}
         />
@@ -257,7 +314,7 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
                 onClick={() => {
                   setBootState('loading');
                   if (isSupabaseConfigured()) {
-                    supabase.auth.getSession().then(({ data }) => evaluateAuthState(data?.session));
+                    supabase.auth.getSession().then(({ data }) => evaluateAuthState(data?.session, true));
                   }
                 }}
                 className="w-full py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-extrabold text-xs shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 transition-all"

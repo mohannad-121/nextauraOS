@@ -104,7 +104,6 @@ import { marketingService } from '../services/marketingService';
 import { calendarService } from '../services/calendarService';
 import { auditService } from '../services/auditService';
 import { entitlementService } from '../services/entitlementService';
-import { organizationService } from '../services/organizationService';
 import { NEXTAURA_SERVICES } from '../data/appRegistry';
 import { isSupabaseConfigured, supabase } from '../services/supabaseClient';
 
@@ -334,34 +333,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [appraisals, setAppraisals] = useState<Appraisal[]>(isSupabase ? [] : initialAppraisals);
   const [employeeGoals] = useState<EmployeeGoal[]>(isSupabase ? [] : initialEmployeeGoals);
   const [vehicles, setVehicles] = useState<Vehicle[]>(isSupabase ? [] : initialVehicles);
-  const [vehicleMaintenance, setVehicleMaintenance] = useState<VehicleMaintenance[]>(initialVehicleMaintenance);
-  const [payrollRuns, setPayrollRuns] = useState<PayrollRun[]>(initialPayrollRuns);
-  const [payslips] = useState<Payslip[]>(initialPayslips);
+  const [vehicleMaintenance, setVehicleMaintenance] = useState<VehicleMaintenance[]>(isSupabase ? [] : initialVehicleMaintenance);
+  const [payrollRuns, setPayrollRuns] = useState<PayrollRun[]>(isSupabase ? [] : initialPayrollRuns);
+  const [payslips] = useState<Payslip[]>(isSupabase ? [] : initialPayslips);
 
   // Marketing
-  const [emailCampaigns, setEmailCampaigns] = useState<EmailCampaign[]>(initialEmailCampaigns);
-  const [emailTemplates] = useState<EmailTemplate[]>(initialEmailTemplates);
-  const [smsCampaigns, setSMSCampaigns] = useState<SMSCampaign[]>(initialSMSCampaigns);
-  const [surveys, setSurveys] = useState<Survey[]>(initialSurveys);
-  const [socialAccounts] = useState<SocialAccount[]>(initialSocialAccounts);
-  const [socialPosts, setSocialPosts] = useState<SocialPost[]>(initialSocialPosts);
+  const [emailCampaigns, setEmailCampaigns] = useState<EmailCampaign[]>(isSupabase ? [] : initialEmailCampaigns);
+  const [emailTemplates] = useState<EmailTemplate[]>(isSupabase ? [] : initialEmailTemplates);
+  const [smsCampaigns, setSMSCampaigns] = useState<SMSCampaign[]>(isSupabase ? [] : initialSMSCampaigns);
+  const [surveys, setSurveys] = useState<Survey[]>(isSupabase ? [] : initialSurveys);
+  const [socialAccounts] = useState<SocialAccount[]>(isSupabase ? [] : initialSocialAccounts);
+  const [socialPosts, setSocialPosts] = useState<SocialPost[]>(isSupabase ? [] : initialSocialPosts);
 
   // Global
-  const [contacts] = useState<Contact[]>(initialContacts);
-  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(initialCalendarEvents);
-  const [globalApprovals] = useState<GlobalApprovalItem[]>(initialGlobalApprovals);
-  const [notifications, setNotifications] = useState<NotificationItem[]>(initialNotifications);
-  const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>(initialAuditLogs);
+  const [contacts] = useState<Contact[]>(isSupabase ? [] : initialContacts);
+  const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(isSupabase ? [] : initialCalendarEvents);
+  const [globalApprovals] = useState<GlobalApprovalItem[]>(isSupabase ? [] : initialGlobalApprovals);
+  const [notifications, setNotifications] = useState<NotificationItem[]>(isSupabase ? [] : initialNotifications);
+  const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>(isSupabase ? [] : initialAuditLogs);
 
   // Entitlements & Onboarding State
-  const [activeServices, setActiveServices] = useState<string[]>(NEXTAURA_SERVICES.map((s) => s.key));
+  const [activeServices, setActiveServices] = useState<string[]>(isSupabase ? [] : NEXTAURA_SERVICES.map((s) => s.key));
   const [isOnboardingActive, setOnboardingActive] = useState<boolean>(false);
-
-  const refreshServices = useCallback(() => {
-    entitlementService.getActiveOrgServices(currentOrg.id).then((services) => {
-      setActiveServices(services);
-    });
-  }, [currentOrg.id]);
 
   const setUserProfile = useCallback((profile: { name: string; email: string; avatar?: string }) => {
     const userName = profile.name || profile.email.split('@')[0] || 'Enterprise User';
@@ -400,13 +393,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCurrentOrg(newOrg);
   }, []);
 
+  const refreshServices = useCallback(() => {
+    if (!currentOrg || currentOrg.id === 'org_pending' || currentOrg.id.startsWith('org_temp_')) return;
+    entitlementService
+      .getActiveOrgServices(currentOrg.id)
+      .then((services) => {
+        setActiveServices(services);
+      })
+      .catch((err) => {
+        console.error('[AppContext] Failed to load organization services:', err);
+      });
+  }, [currentOrg.id]);
+
   useEffect(() => {
     refreshServices();
   }, [currentOrg.id, refreshServices]);
 
   const isRtl = language === 'ar';
 
-  // Supabase Real-Time Auth Listener for dynamic user profile & workspace binding
+  // Supabase Auth Session Sync for user profile state
   useEffect(() => {
     if (!isSupabaseConfigured()) return;
 
@@ -422,7 +427,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setOrganizations([]);
     };
 
-    const handleSessionUser = async (sessionUser: any) => {
+    const handleSessionUser = (sessionUser: any) => {
       if (!sessionUser) return;
       const fullName =
         sessionUser.user_metadata?.full_name ||
@@ -442,33 +447,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         status: 'Active',
         lastActive: new Date().toISOString(),
       });
-
-      // Query PostgreSQL organization_members to check user's authorized workspaces
-      const userOrgs = await organizationService.getUserOrganizations(sessionUser.id);
-
-      if (userOrgs.length > 0) {
-        setOrganizations(userOrgs);
-        setCurrentOrg(userOrgs[0]);
-        setOnboardingActive(false);
-      } else {
-        // User has NO organization memberships — DO NOT load seed demo org or demo business data!
-        clearTenantData();
-        setOnboardingActive(true);
-
-        const tempOrg: Organization = {
-          id: `org_temp_${sessionUser.id.substring(0, 8)}`,
-          name: `${fullName.split(' ')[0]}'s Workspace`,
-          legalName: `${fullName} Global Inc.`,
-          logo: '⚡',
-          baseCurrency: 'USD',
-          taxId: 'US-000000',
-          registrationNumber: 'REG-100',
-          country: 'United States',
-          address: '100 Corporate Way',
-          fiscalYearEnd: '12-31',
-        };
-        setCurrentOrg(tempOrg);
-      }
     };
 
     // Initial session check
@@ -481,10 +459,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       }
     });
 
-    // Subscribe to auth state changes (login, logout, Google OAuth redirect)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: string, session: any) => {
+    // Lightweight auth state listener (AppBootGate handles workspace resolution & onboarding state machine)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string, session: any) => {
       if (session?.user) {
-        await handleSessionUser(session.user);
+        handleSessionUser(session.user);
       } else if (event === 'SIGNED_OUT') {
         clearTenantData();
         setUser(currentUser);
@@ -495,11 +473,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return () => subscription.unsubscribe();
   }, []);
 
-  // Load database records per organization
+  // Load database records per organization (Only when organization is resolved and active)
   useEffect(() => {
     if (!isSupabaseConfigured()) return;
 
-    if (!currentOrg || currentOrg.id.startsWith('org_temp_')) {
+    if (!currentOrg || currentOrg.id === 'org_pending' || currentOrg.id.startsWith('org_temp_')) {
       setEmployees([]);
       setCandidates([]);
       setVehicles([]);
@@ -508,6 +486,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setCalendarEvents([]);
       return;
     }
+
+    let isCancelled = false;
 
     const loadOrgData = async () => {
       try {
@@ -520,17 +500,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           calendarService.fetchEvents(currentOrg.id),
         ]);
 
-        setEmployees(dbEmps);
-        setCandidates(dbCands);
-        setVehicles(dbVehs);
-        setInvoices(dbInv);
-        setPayrollRuns(dbRuns);
-        setCalendarEvents(dbCal);
+        if (!isCancelled) {
+          setEmployees(dbEmps);
+          setCandidates(dbCands);
+          setVehicles(dbVehs);
+          setInvoices(dbInv);
+          setPayrollRuns(dbRuns);
+          setCalendarEvents(dbCal);
+        }
       } catch (err) {
         console.error('Failed loading tenant data from Supabase:', err);
       }
     };
+
     loadOrgData();
+
+    return () => {
+      isCancelled = true;
+    };
   }, [currentOrg?.id]);
 
   useEffect(() => {

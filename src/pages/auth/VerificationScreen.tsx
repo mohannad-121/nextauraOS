@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { ShieldCheck, LogOut, RefreshCw, ArrowRight, AlertCircle } from 'lucide-react';
 import { verificationService } from '../../services/verificationService';
 
@@ -22,6 +22,9 @@ export const VerificationScreen: React.FC<VerificationScreenProps> = ({
   const [resendCooldown, setResendCooldown] = useState(60);
   const [resending, setResending] = useState(false);
 
+  // Prevent duplicate OTP emails on remount/StrictMode
+  const initialCodeSentRef = useRef(false);
+
   // Mask email e.g. m***h@gmail.com
   const maskEmail = (str: string) => {
     if (!str || !str.includes('@')) return str;
@@ -38,21 +41,24 @@ export const VerificationScreen: React.FC<VerificationScreenProps> = ({
     }
   }, [resendCooldown]);
 
-  // Initial code send on mount
+  // Initial code send on mount — strictly executed once per mounted session
   useEffect(() => {
-    if (userId && email) {
+    if (userId && email && !initialCodeSentRef.current) {
+      initialCodeSentRef.current = true;
       verificationService.sendLoginVerification(userId, email);
     }
   }, [userId, email]);
 
   const handleDigitChange = (index: number, val: string) => {
-    if (!/^\d*$/.test(val)) return;
+    const cleanVal = val.replace(/\D/g, '');
+    if (val && !cleanVal) return;
+
     const newDigits = [...digits];
-    newDigits[index] = val.slice(-1);
+    newDigits[index] = cleanVal.slice(-1);
     setDigits(newDigits);
 
-    // Auto focus next
-    if (val && index < 5) {
+    // Auto focus next input
+    if (cleanVal && index < 5) {
       const nextEl = document.getElementById(`digit-input-${index + 1}`);
       nextEl?.focus();
     }
@@ -62,6 +68,27 @@ export const VerificationScreen: React.FC<VerificationScreenProps> = ({
     if (e.key === 'Backspace' && !digits[index] && index > 0) {
       const prevEl = document.getElementById(`digit-input-${index - 1}`);
       prevEl?.focus();
+    }
+  };
+
+  // Full 6-digit paste support
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pastedText = e.clipboardData.getData('text').replace(/\D/g, '').trim();
+    if (pastedText.length === 6) {
+      const newDigits = pastedText.split('');
+      setDigits(newDigits);
+      const lastInput = document.getElementById('digit-input-5');
+      lastInput?.focus();
+    } else if (pastedText.length > 0) {
+      const newDigits = [...digits];
+      for (let i = 0; i < Math.min(pastedText.length, 6); i++) {
+        newDigits[i] = pastedText[i];
+      }
+      setDigits(newDigits);
+      const targetIdx = Math.min(pastedText.length, 5);
+      const targetInput = document.getElementById(`digit-input-${targetIdx}`);
+      targetInput?.focus();
     }
   };
 
@@ -165,11 +192,16 @@ export const VerificationScreen: React.FC<VerificationScreenProps> = ({
                 key={idx}
                 id={`digit-input-${idx}`}
                 type="text"
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                pattern="\d*"
                 maxLength={1}
                 value={digit}
                 onChange={(e) => handleDigitChange(idx, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(idx, e)}
-                className="w-11 h-13 text-center text-xl font-bold font-mono rounded-xl bg-slate-950 border border-slate-800 text-cyan-400 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/20 focus:outline-none transition-all"
+                onPaste={handlePaste}
+                disabled={loading}
+                className="w-11 h-13 text-center text-xl font-bold font-mono rounded-xl bg-slate-950 border border-slate-800 text-cyan-400 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/20 focus:outline-none transition-all pointer-events-auto disabled:opacity-50"
               />
             ))}
           </div>
@@ -177,7 +209,7 @@ export const VerificationScreen: React.FC<VerificationScreenProps> = ({
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-slate-950 font-extrabold text-xs shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 transition-all"
+            className="w-full py-3.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-slate-950 font-extrabold text-xs shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 transition-all pointer-events-auto"
           >
             <span>{loading ? 'Verifying Code...' : 'Verify & Continue'}</span>
             <ArrowRight className="w-4 h-4" />
