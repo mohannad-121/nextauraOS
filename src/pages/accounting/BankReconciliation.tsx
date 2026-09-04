@@ -6,9 +6,12 @@ import { PageHeader } from '../../components/common/PageHeader';
 export const BankReconciliation: React.FC = () => {
   const { bankTransactions, reconcileBankTx, accounts } = useApp();
 
-  const operatingAccount = accounts.find((a) => a.code === '1000');
+  const operatingAccount = accounts.find((a) => a.category === 'Assets' || a.code === '1000');
   const pendingTx = bankTransactions.filter((tx) => tx.status !== 'Reconciled');
   const reconciledTx = bankTransactions.filter((tx) => tx.status === 'Reconciled');
+  const matchRate = bankTransactions.length > 0
+    ? `${((reconciledTx.length / bankTransactions.length) * 100).toFixed(1)}%`
+    : '0%';
 
   return (
     <div className="space-y-8">
@@ -22,9 +25,9 @@ export const BankReconciliation: React.FC = () => {
         <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-1">
           <span className="text-xs text-slate-400 font-semibold">Bank Statement Balance</span>
           <div className="text-2xl font-black text-slate-100 font-heading">
-            ${operatingAccount?.balance.toLocaleString()}
+            ${(operatingAccount?.balance || 0).toLocaleString()}
           </div>
-          <span className="text-[10px] text-emerald-400 font-mono">Silicon Valley Bank Feed • Synced Live</span>
+          <span className="text-[10px] text-emerald-400 font-mono">Bank Feed Sync</span>
         </div>
 
         <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-1">
@@ -35,7 +38,7 @@ export const BankReconciliation: React.FC = () => {
 
         <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-1">
           <span className="text-xs text-slate-400 font-semibold">Match Rate Confidence</span>
-          <div className="text-2xl font-black text-cyan-400 font-heading">98.4%</div>
+          <div className="text-2xl font-black text-cyan-400 font-heading">{matchRate}</div>
           <span className="text-[10px] text-cyan-400 font-mono">AI Neural Matcher Active</span>
         </div>
       </div>

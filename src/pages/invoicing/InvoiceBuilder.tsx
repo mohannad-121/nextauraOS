@@ -9,18 +9,17 @@ export const InvoiceBuilder: React.FC = () => {
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>(customers[0]?.id || '');
   const selectedCustomer = customers.find((c) => c.id === selectedCustomerId) || customers[0];
 
-  const [invoiceNumber, setInvoiceNumber] = useState(`INV-2026-00${Math.floor(Math.random() * 90 + 10)}`);
+  const [invoiceNumber, setInvoiceNumber] = useState(`INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`);
   const [issueDate, setIssueDate] = useState(new Date().toISOString().substring(0, 10));
   const [dueDate, setDueDate] = useState(
     new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().substring(0, 10)
   );
   const [currency, setCurrency] = useState<Currency>('USD');
   const [paymentTerms] = useState('Net 30');
-  const [notes, setNotes] = useState('Thank you for choosing NextAura AI. Please transfer payments to our bank account.');
+  const [notes, setNotes] = useState('Thank you for your business.');
 
   const [items, setItems] = useState<InvoiceItem[]>([
-    { id: '1', description: 'Enterprise SaaS Annual License & AI Suite', quantity: 1, unitPrice: 12000, taxRate: 15, discount: 0, amount: 12000 },
-    { id: '2', description: 'Custom Financial Data Pipeline & Integration', quantity: 1, unitPrice: 4000, taxRate: 15, discount: 0, amount: 4000 },
+    { id: '1', description: '', quantity: 1, unitPrice: 0, taxRate: 0, discount: 0, amount: 0 },
   ]);
 
   const updateItem = (id: string, field: keyof InvoiceItem, val: any) => {

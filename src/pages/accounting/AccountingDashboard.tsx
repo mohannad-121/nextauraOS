@@ -30,7 +30,7 @@ export const AccountingDashboard: React.FC = () => {
               onClick={() => navigate('accounting', 'reconciliation')}
               className="px-4 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-slate-950 font-bold text-xs shadow-lg shadow-indigo-500/20"
             >
-              Bank Recon (98% Match)
+              Bank Reconciliation
             </button>
           </div>
         }
@@ -55,10 +55,10 @@ export const AccountingDashboard: React.FC = () => {
 
       {/* KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <StatCard title="Total Assets" value={totalAssets} isCurrency change={11.5} accentColor="indigo" />
-        <StatCard title="Total Liabilities" value={totalLiabilities} isCurrency change={-4.2} accentColor="cyan" />
-        <StatCard title="Total Revenue" value={totalRevenue} isCurrency change={14.8} accentColor="emerald" />
-        <StatCard title="Total Operating Expenses" value={totalExpenses} isCurrency change={3.1} accentColor="amber" />
+        <StatCard title="Total Assets" value={totalAssets} isCurrency change={0} accentColor="indigo" />
+        <StatCard title="Total Liabilities" value={totalLiabilities} isCurrency change={0} accentColor="cyan" />
+        <StatCard title="Total Revenue" value={totalRevenue} isCurrency change={0} accentColor="emerald" />
+        <StatCard title="Total Operating Expenses" value={totalExpenses} isCurrency change={0} accentColor="amber" />
       </div>
 
       {/* Module Shortcuts Grid */}

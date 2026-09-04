@@ -6,13 +6,23 @@ import { StatCard } from '../../components/common/StatCard';
 import { Modal } from '../../components/common/Modal';
 
 export const EmailMarketingApp: React.FC = () => {
-  const { emailCampaigns, emailTemplates, createEmailCampaign } = useApp();
+  const { emailCampaigns, emailTemplates, createEmailCampaign, contacts } = useApp();
   const [activeTab, setActiveTab] = useState<'campaigns' | 'templates'>('campaigns');
 
   const [isModalOpen, setModalOpen] = useState(false);
   const [name, setName] = useState('');
   const [subject, setSubject] = useState('');
   const [targetSegment, setTargetSegment] = useState('All Customers');
+
+  const avgOpenRate = emailCampaigns.length > 0 
+    ? `${(emailCampaigns.reduce((sum, c) => sum + (c.openRate || 0), 0) / emailCampaigns.length).toFixed(1)}%` 
+    : '0%';
+
+  const avgClickRate = emailCampaigns.length > 0 
+    ? `${(emailCampaigns.reduce((sum, c) => sum + (c.clickRate || 0), 0) / emailCampaigns.length).toFixed(1)}%` 
+    : '0%';
+
+  const totalSubscribers = contacts.length > 0 ? contacts.length : emailCampaigns.reduce((sum, c) => sum + (c.recipientCount || 0), 0);
 
   const handleCreate = () => {
     if (!name || !subject) return;
@@ -23,8 +33,8 @@ export const EmailMarketingApp: React.FC = () => {
       senderEmail: 'growth@nextaura.ai',
       status: 'Scheduled',
       targetSegment,
-      recipientCount: 24500,
-      sentCount: 24500,
+      recipientCount: totalSubscribers || 100,
+      sentCount: totalSubscribers || 100,
     });
     setModalOpen(false);
   };
@@ -48,9 +58,9 @@ export const EmailMarketingApp: React.FC = () => {
       {/* KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <StatCard title="Active Campaigns" value={emailCampaigns.length} comparisonText="sent & scheduled" accentColor="rose" />
-        <StatCard title="Avg Open Rate" value="41.8%" change={2.4} accentColor="cyan" />
-        <StatCard title="Click-Through Rate" value="18.2%" change={1.2} accentColor="indigo" />
-        <StatCard title="Total Subscribers" value="78.4K" comparisonText="verified emails" accentColor="emerald" />
+        <StatCard title="Avg Open Rate" value={avgOpenRate} change={0} accentColor="cyan" />
+        <StatCard title="Click-Through Rate" value={avgClickRate} change={0} accentColor="indigo" />
+        <StatCard title="Total Subscribers" value={totalSubscribers.toLocaleString()} comparisonText="verified contacts" accentColor="emerald" />
       </div>
 
       {/* Tabs */}

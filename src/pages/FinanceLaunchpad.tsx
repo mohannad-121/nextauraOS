@@ -22,16 +22,43 @@ import {
 } from 'lucide-react';
 import type { AppView } from '../context/AppContext';
 import { useApp } from '../context/AppContext';
+import { getServiceCustomIcon } from '../utils/serviceIconMapper';
 
 export const FinanceLaunchpad: React.FC = () => {
-  const { navigate, currentOrg, employees, attendanceRecords, candidates, timeOffRequests, vehicles, emailCampaigns, surveys, socialPosts } = useApp();
+  const {
+    navigate,
+    currentOrg,
+    invoices,
+    journalEntries,
+    expenses,
+    signDocuments,
+    shareholders,
+    carbonActivities,
+    employees,
+    attendanceRecords,
+    candidates,
+    timeOffRequests,
+    appraisals,
+    vehicles,
+    payrollRuns,
+    emailCampaigns,
+    smsCampaigns,
+    surveys,
+    socialPosts,
+  } = useApp();
+
+  const totalRevenue = invoices.filter((i) => i.status === 'Paid').reduce((acc, i) => acc + i.total, 0);
+  const paidInvoicesCount = invoices.filter((i) => i.status === 'Paid').length;
+  const pendingExpensesCount = expenses.filter((e) => e.status === 'Manager Review').length;
+  const activeSignDocsCount = signDocuments.filter((d) => d.status === 'Sent' || d.status === 'Partially Signed').length;
 
   const activeEmployeesCount = employees.filter((e) => e.status === 'Active').length;
   const checkedInCount = attendanceRecords.filter((r) => r.status === 'Working' || r.status === 'Remote').length;
   const activeCandidatesCount = candidates.length;
   const pendingLeaveCount = timeOffRequests.filter((r) => r.status === 'Pending').length;
   const activeVehiclesCount = vehicles.filter((v) => v.status === 'Assigned' || v.status === 'Available').length;
-  const avgEmailOpenRate = emailCampaigns.length > 0 ? emailCampaigns[0].openRate : 41.8;
+  const emailOpenBadge = emailCampaigns.length > 0 ? `${emailCampaigns[0].openRate}% Open Rate` : '0% Open Rate';
+  const smsDeliveryBadge = smsCampaigns.length > 0 ? `${smsCampaigns[0].deliveryRate}% Delivery` : '0% Delivery';
   const activeSurveysCount = surveys.length;
   const scheduledPostsCount = socialPosts.filter((p) => p.status === 'Scheduled').length;
 
@@ -43,7 +70,8 @@ export const FinanceLaunchpad: React.FC = () => {
       desc: 'Customer invoices, multi-currency schedules & receivables.',
       icon: CreditCard,
       accent: 'from-azure-500/20 to-blue-600/10 border-azure-500/30 text-azure-400',
-      badge: '98% On-Time Pay',
+      badge: `${paidInvoicesCount} Paid Invoices`,
+      category: 'finance',
     },
     {
       id: 'accounting',
@@ -52,7 +80,8 @@ export const FinanceLaunchpad: React.FC = () => {
       desc: 'General ledger, AI reconciliation & GAAP financial reports.',
       icon: CreditCard,
       accent: 'from-indigo-500/20 to-purple-600/10 border-indigo-500/30 text-indigo-400',
-      badge: '98.4% AI Match',
+      badge: `${journalEntries.length} Entries`,
+      category: 'finance',
     },
     {
       id: 'expenses',
@@ -61,7 +90,8 @@ export const FinanceLaunchpad: React.FC = () => {
       desc: 'Receipt OCR scanning, spend policies & virtual cards.',
       icon: CreditCard,
       accent: 'from-rose-500/20 to-pink-600/10 border-rose-500/30 text-rose-400',
-      badge: '1 Pending Review',
+      badge: `${pendingExpensesCount} Pending Review`,
+      category: 'finance',
     },
     {
       id: 'sign',
@@ -70,7 +100,8 @@ export const FinanceLaunchpad: React.FC = () => {
       desc: 'Legally binding e-signatures & audit trail certificates.',
       icon: FileSignature,
       accent: 'from-teal-500/20 to-emerald-600/10 border-teal-500/30 text-teal-400',
-      badge: '2 Active Docs',
+      badge: `${activeSignDocsCount} Active Docs`,
+      category: 'finance',
     },
     {
       id: 'equity',
@@ -79,7 +110,8 @@ export const FinanceLaunchpad: React.FC = () => {
       desc: 'Cap table modeling, option pools & funding dilution.',
       icon: PieChart,
       accent: 'from-amber-500/20 to-orange-600/10 border-amber-500/30 text-amber-400',
-      badge: '$15.0M Valuation',
+      badge: `${shareholders.length} Shareholders`,
+      category: 'finance',
     },
     {
       id: 'esg',
@@ -88,7 +120,8 @@ export const FinanceLaunchpad: React.FC = () => {
       desc: 'CSRD readiness scorecard & Scope 1-3 carbon tracking.',
       icon: Leaf,
       accent: 'from-emerald-500/20 to-teal-600/10 border-emerald-500/30 text-emerald-400',
-      badge: '74/100 Scorecard',
+      badge: `${carbonActivities.length} Activities`,
+      category: 'finance',
     },
   ];
 
@@ -101,6 +134,7 @@ export const FinanceLaunchpad: React.FC = () => {
       icon: Users,
       accent: 'from-orange-500/20 to-amber-600/10 border-orange-500/30 text-orange-400',
       badge: `${activeEmployeesCount} Active Staff`,
+      category: 'hr',
     },
     {
       id: 'attendance',
@@ -110,6 +144,7 @@ export const FinanceLaunchpad: React.FC = () => {
       icon: Clock,
       accent: 'from-cyan-500/20 to-blue-600/10 border-cyan-500/30 text-cyan-400',
       badge: `${checkedInCount} Checked In`,
+      category: 'hr',
     },
     {
       id: 'recruitment',
@@ -119,6 +154,7 @@ export const FinanceLaunchpad: React.FC = () => {
       icon: UserPlus,
       accent: 'from-pink-500/20 to-rose-600/10 border-pink-500/30 text-pink-400',
       badge: `${activeCandidatesCount} Candidates`,
+      category: 'hr',
     },
     {
       id: 'time-off',
@@ -128,6 +164,7 @@ export const FinanceLaunchpad: React.FC = () => {
       icon: Calendar,
       accent: 'from-purple-500/20 to-indigo-600/10 border-purple-500/30 text-purple-400',
       badge: `${pendingLeaveCount} Pending Req`,
+      category: 'hr',
     },
     {
       id: 'appraisals',
@@ -136,7 +173,8 @@ export const FinanceLaunchpad: React.FC = () => {
       desc: '360° review cycles, OKRs/goals & skills matrix.',
       icon: Award,
       accent: 'from-yellow-500/20 to-amber-600/10 border-yellow-500/30 text-yellow-400',
-      badge: 'Q3 Cycle Active',
+      badge: `${appraisals.length} Active Reviews`,
+      category: 'hr',
     },
     {
       id: 'fleet',
@@ -146,6 +184,7 @@ export const FinanceLaunchpad: React.FC = () => {
       icon: Car,
       accent: 'from-blue-500/20 to-cyan-600/10 border-blue-500/30 text-blue-400',
       badge: `${activeVehiclesCount} Active Vehicles`,
+      category: 'hr',
     },
     {
       id: 'payroll',
@@ -154,7 +193,8 @@ export const FinanceLaunchpad: React.FC = () => {
       desc: 'Monthly payroll runs, automated payslips & GL posting.',
       icon: Wallet,
       accent: 'from-emerald-500/20 to-teal-600/10 border-emerald-500/30 text-emerald-400',
-      badge: 'Sep Payroll Ready',
+      badge: `${payrollRuns.length} Payroll Runs`,
+      category: 'hr',
     },
   ];
 
@@ -166,7 +206,8 @@ export const FinanceLaunchpad: React.FC = () => {
       desc: 'Visual email designer, audience segmentation & open analytics.',
       icon: Mail,
       accent: 'from-rose-500/20 to-red-600/10 border-rose-500/30 text-rose-400',
-      badge: `${avgEmailOpenRate}% Open Rate`,
+      badge: emailOpenBadge,
+      category: 'marketing',
     },
     {
       id: 'sms',
@@ -175,7 +216,8 @@ export const FinanceLaunchpad: React.FC = () => {
       desc: 'Broadcast SMS, phone preview & short trackable links.',
       icon: MessageSquare,
       accent: 'from-indigo-500/20 to-purple-600/10 border-indigo-500/30 text-indigo-400',
-      badge: '96.4% Delivery',
+      badge: smsDeliveryBadge,
+      category: 'marketing',
     },
     {
       id: 'surveys',
@@ -185,6 +227,7 @@ export const FinanceLaunchpad: React.FC = () => {
       icon: ClipboardList,
       accent: 'from-amber-500/20 to-orange-600/10 border-amber-500/30 text-amber-400',
       badge: `${activeSurveysCount} Active Surveys`,
+      category: 'marketing',
     },
     {
       id: 'social',
@@ -194,8 +237,49 @@ export const FinanceLaunchpad: React.FC = () => {
       icon: Share2,
       accent: 'from-cyan-500/20 to-blue-600/10 border-cyan-500/30 text-cyan-400',
       badge: `${scheduledPostsCount} Posts Scheduled`,
+      category: 'marketing',
     },
   ];
+
+  const renderAppCard = (app: any) => {
+    const Icon = app.icon;
+    const customIcon = getServiceCustomIcon(app.category, app.title, app.id);
+
+    return (
+      <div
+        key={app.id}
+        onClick={() => navigate(app.id as AppView, app.sub)}
+        className={`p-6 rounded-3xl bg-slate-900/90 border shadow-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer flex flex-col justify-between space-y-4 ${app.accent}`}
+      >
+        <div className="flex items-start justify-between">
+          <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800 shadow-inner flex items-center justify-center">
+            {customIcon ? (
+              <img
+                src={customIcon}
+                alt={`${app.title} icon`}
+                className="w-6 h-6 object-contain select-none"
+              />
+            ) : (
+              <Icon className="w-6 h-6" />
+            )}
+          </div>
+          <span className="px-2.5 py-1 rounded-full bg-slate-950/80 border border-slate-800 text-[10px] font-bold font-mono">
+            {app.badge}
+          </span>
+        </div>
+
+        <div className="space-y-1">
+          <h3 className="text-base font-bold text-slate-100 font-heading">{app.title}</h3>
+          <p className="text-xs text-slate-400 leading-relaxed font-sans">{app.desc}</p>
+        </div>
+
+        <div className="pt-2 flex items-center justify-between text-xs font-bold">
+          <span>Open Application</span>
+          <ArrowUpRight className="w-4 h-4 opacity-70" />
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-10 max-w-7xl mx-auto pb-12">
@@ -242,7 +326,7 @@ export const FinanceLaunchpad: React.FC = () => {
           </div>
           <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800/80">
             <span className="text-slate-500 font-medium block text-[10px] uppercase">Monthly Revenue</span>
-            <span className="font-bold text-emerald-400 mt-0.5 block">$92,840 USD</span>
+            <span className="font-bold text-emerald-400 mt-0.5 block">${totalRevenue.toLocaleString()} USD</span>
           </div>
           <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-slate-800/80">
             <span className="text-slate-500 font-medium block text-[10px] uppercase">System Security</span>
@@ -271,35 +355,7 @@ export const FinanceLaunchpad: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {financeApps.map((app) => {
-            const Icon = app.icon;
-            return (
-              <div
-                key={app.id}
-                onClick={() => navigate(app.id as AppView, app.sub)}
-                className={`p-6 rounded-3xl bg-slate-900/90 border shadow-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer flex flex-col justify-between space-y-4 ${app.accent}`}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800 shadow-inner">
-                    <Icon className="w-6 h-6" />
-                  </div>
-                  <span className="px-2.5 py-1 rounded-full bg-slate-950/80 border border-slate-800 text-[10px] font-bold font-mono">
-                    {app.badge}
-                  </span>
-                </div>
-
-                <div className="space-y-1">
-                  <h3 className="text-base font-bold text-slate-100 font-heading">{app.title}</h3>
-                  <p className="text-xs text-slate-400 leading-relaxed font-sans">{app.desc}</p>
-                </div>
-
-                <div className="pt-2 flex items-center justify-between text-xs font-bold">
-                  <span>Open Application</span>
-                  <ArrowUpRight className="w-4 h-4 opacity-70" />
-                </div>
-              </div>
-            );
-          })}
+          {financeApps.map(renderAppCard)}
         </div>
       </div>
 
@@ -321,35 +377,7 @@ export const FinanceLaunchpad: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {hrApps.map((app) => {
-            const Icon = app.icon;
-            return (
-              <div
-                key={app.id}
-                onClick={() => navigate(app.id as AppView, app.sub)}
-                className={`p-6 rounded-3xl bg-slate-900/90 border shadow-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer flex flex-col justify-between space-y-4 ${app.accent}`}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800 shadow-inner">
-                    <Icon className="w-6 h-6" />
-                  </div>
-                  <span className="px-2.5 py-1 rounded-full bg-slate-950/80 border border-slate-800 text-[10px] font-bold font-mono">
-                    {app.badge}
-                  </span>
-                </div>
-
-                <div className="space-y-1">
-                  <h3 className="text-base font-bold text-slate-100 font-heading">{app.title}</h3>
-                  <p className="text-xs text-slate-400 leading-relaxed font-sans">{app.desc}</p>
-                </div>
-
-                <div className="pt-2 flex items-center justify-between text-xs font-bold">
-                  <span>Open Application</span>
-                  <ArrowUpRight className="w-4 h-4 opacity-70" />
-                </div>
-              </div>
-            );
-          })}
+          {hrApps.map(renderAppCard)}
         </div>
       </div>
 
@@ -371,35 +399,7 @@ export const FinanceLaunchpad: React.FC = () => {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5">
-          {marketingApps.map((app) => {
-            const Icon = app.icon;
-            return (
-              <div
-                key={app.id}
-                onClick={() => navigate(app.id as AppView, app.sub)}
-                className={`p-6 rounded-3xl bg-slate-900/90 border shadow-xl transition-all duration-300 hover:scale-[1.02] cursor-pointer flex flex-col justify-between space-y-4 ${app.accent}`}
-              >
-                <div className="flex items-start justify-between">
-                  <div className="p-3 rounded-2xl bg-slate-950 border border-slate-800 shadow-inner">
-                    <Icon className="w-6 h-6" />
-                  </div>
-                  <span className="px-2.5 py-1 rounded-full bg-slate-950/80 border border-slate-800 text-[10px] font-bold font-mono">
-                    {app.badge}
-                  </span>
-                </div>
-
-                <div className="space-y-1">
-                  <h3 className="text-base font-bold text-slate-100 font-heading">{app.title}</h3>
-                  <p className="text-xs text-slate-400 leading-relaxed font-sans">{app.desc}</p>
-                </div>
-
-                <div className="pt-2 flex items-center justify-between text-xs font-bold">
-                  <span>Open Application</span>
-                  <ArrowUpRight className="w-4 h-4 opacity-70" />
-                </div>
-              </div>
-            );
-          })}
+          {marketingApps.map(renderAppCard)}
         </div>
       </div>
     </div>

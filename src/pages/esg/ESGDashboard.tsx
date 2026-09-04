@@ -11,6 +11,14 @@ export const ESGDashboard: React.FC = () => {
   const socMetrics = esgMetrics.filter((m) => m.category === 'Social');
   const govMetrics = esgMetrics.filter((m) => m.category === 'Governance');
 
+  const overallScore = esgMetrics.length > 0
+    ? Math.round(esgMetrics.reduce((sum, m) => sum + (m.currentValue || 0), 0) / esgMetrics.length)
+    : 0;
+
+  const envScore = envMetrics.length > 0 ? Math.round(envMetrics.reduce((sum, m) => sum + (m.currentValue || 0), 0) / envMetrics.length) : 0;
+  const socScore = socMetrics.length > 0 ? Math.round(socMetrics.reduce((sum, m) => sum + (m.currentValue || 0), 0) / socMetrics.length) : 0;
+  const govScore = govMetrics.length > 0 ? Math.round(govMetrics.reduce((sum, m) => sum + (m.currentValue || 0), 0) / govMetrics.length) : 0;
+
   return (
     <div className="space-y-8">
       <PageHeader
@@ -34,28 +42,30 @@ export const ESGDashboard: React.FC = () => {
             2026 CSRD & ESRS READINESS
           </div>
           <h2 className="text-2xl sm:text-3xl font-black text-slate-100 font-heading">
-            Overall ESG Scorecard: <span className="text-emerald-400">74 / 100</span>
+            Overall ESG Scorecard: <span className="text-emerald-400">{overallScore} / 100</span>
           </h2>
           <p className="text-xs text-slate-400 max-w-xl">
-            Your company is currently performing above industry benchmarks for tech enterprise SaaS platforms.
+            {overallScore > 0
+              ? 'Your company sustainability performance derived from active environmental, social & governance metrics.'
+              : 'No CSRD sustainability metrics recorded yet. Add carbon activities to generate your company scorecard.'}
           </p>
         </div>
 
         <div className="grid grid-cols-3 gap-4 text-center shrink-0">
           <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800">
             <div className="text-[10px] uppercase font-bold text-emerald-400">Environment</div>
-            <div className="text-2xl font-black text-slate-100 mt-1">68</div>
-            <div className="text-[10px] text-slate-500">Target 80</div>
+            <div className="text-2xl font-black text-slate-100 mt-1">{envScore}</div>
+            <div className="text-[10px] text-slate-500">{envMetrics.length} Metrics</div>
           </div>
           <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800">
             <div className="text-[10px] uppercase font-bold text-cyan-400">Social</div>
-            <div className="text-2xl font-black text-slate-100 mt-1">82</div>
-            <div className="text-[10px] text-slate-500">Exceeded</div>
+            <div className="text-2xl font-black text-slate-100 mt-1">{socScore}</div>
+            <div className="text-[10px] text-slate-500">{socMetrics.length} Metrics</div>
           </div>
           <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800">
             <div className="text-[10px] uppercase font-bold text-indigo-400">Governance</div>
-            <div className="text-2xl font-black text-slate-100 mt-1">77</div>
-            <div className="text-[10px] text-slate-500">SOC2 Ready</div>
+            <div className="text-2xl font-black text-slate-100 mt-1">{govScore}</div>
+            <div className="text-[10px] text-slate-500">{govMetrics.length} Metrics</div>
           </div>
         </div>
       </div>

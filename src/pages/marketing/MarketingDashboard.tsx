@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import {
   AreaChart,
   Area,
@@ -9,28 +9,57 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import {
-  Mail,
-  MessageSquare,
-  ClipboardList,
-  Share2,
   Users,
   Send,
   Sparkles,
   ArrowUpRight,
+  Building2,
+  Mail,
+  MessageSquare,
+  ClipboardList,
+  Share2,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { PageHeader } from '../../components/common/PageHeader';
 import { StatCard } from '../../components/common/StatCard';
-
-const campaignPerfData = [
-  { week: 'Week 1', opens: 14200, clicks: 4800, conversions: 980 },
-  { week: 'Week 2', opens: 18500, clicks: 6200, conversions: 1240 },
-  { week: 'Week 3', opens: 22100, clicks: 7900, conversions: 1650 },
-  { week: 'Week 4', opens: 26400, clicks: 9400, conversions: 2100 },
-];
+import { getServiceCustomIcon } from '../../utils/serviceIconMapper';
 
 export const MarketingDashboard: React.FC = () => {
-  const { navigate, emailCampaigns, smsCampaigns, surveys, socialPosts } = useApp();
+  const { navigate, emailCampaigns, smsCampaigns, surveys, socialPosts, contacts } = useApp();
+
+  const totalReach = contacts.length > 0 ? contacts.length : emailCampaigns.reduce((sum, c) => sum + (c.recipientCount || 0), 0);
+  
+  const avgEmailOpenRate = useMemo(() => {
+    if (emailCampaigns.length === 0) return '0%';
+    const totalRate = emailCampaigns.reduce((sum, c) => sum + (c.openRate || 0), 0);
+    return `${(totalRate / emailCampaigns.length).toFixed(1)}%`;
+  }, [emailCampaigns]);
+
+  const avgSMSDeliveryRate = useMemo(() => {
+    if (smsCampaigns.length === 0) return '0%';
+    const totalRate = smsCampaigns.reduce((sum, c) => sum + (c.deliveryRate || 0), 0);
+    return `${(totalRate / smsCampaigns.length).toFixed(1)}%`;
+  }, [smsCampaigns]);
+
+  const csatRating = useMemo(() => {
+    if (surveys.length === 0) return '0 / 5';
+    return `${surveys[0].avgScore ? (surveys[0].avgScore / 20).toFixed(1) : '0'} / 5`;
+  }, [surveys]);
+
+  const campaignPerfData = useMemo(() => {
+    if (emailCampaigns.length === 0) return [];
+    return emailCampaigns.map((c, i) => ({
+      week: `Campaign ${i + 1}`,
+      opens: c.sentCount ? Math.round(c.sentCount * ((c.openRate || 0) / 100)) : 0,
+      clicks: c.sentCount ? Math.round(c.sentCount * ((c.clickRate || 0) / 100)) : 0,
+    }));
+  }, [emailCampaigns]);
+
+  // Custom PNG icons
+  const emailIcon = getServiceCustomIcon('email');
+  const smsIcon = getServiceCustomIcon('sms');
+  const surveyIcon = getServiceCustomIcon('surveys');
+  const socialIcon = getServiceCustomIcon('social');
 
   return (
     <div className="space-y-8">
@@ -54,8 +83,8 @@ export const MarketingDashboard: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <StatCard
           title="Total Audience Reach"
-          value="78.4K"
-          change={12.4}
+          value={totalReach.toLocaleString()}
+          change={0}
           comparisonText="active contacts"
           icon={Users}
           accentColor="rose"
@@ -63,26 +92,26 @@ export const MarketingDashboard: React.FC = () => {
         />
         <StatCard
           title="Email Open Rate"
-          value="41.8%"
-          change={3.2}
-          comparisonText="industry avg 21%"
+          value={avgEmailOpenRate}
+          change={0}
+          comparisonText="campaign average"
           icon={Mail}
           accentColor="cyan"
           onClick={() => navigate('email', 'overview')}
         />
         <StatCard
           title="SMS Delivery Rate"
-          value="96.4%"
-          change={0.8}
-          comparisonText="high conversion"
+          value={avgSMSDeliveryRate}
+          change={0}
+          comparisonText="successful delivery"
           icon={MessageSquare}
           accentColor="indigo"
           onClick={() => navigate('sms', 'overview')}
         />
         <StatCard
           title="CSAT Survey Rating"
-          value="4.8 / 5"
-          comparisonText="840 responses"
+          value={csatRating}
+          comparisonText={`${surveys.length} active surveys`}
           icon={ClipboardList}
           accentColor="amber"
           onClick={() => navigate('surveys', 'overview')}
@@ -100,21 +129,29 @@ export const MarketingDashboard: React.FC = () => {
           </div>
 
           <div className="h-72 w-full pt-4">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={campaignPerfData}>
-                <defs>
-                  <linearGradient id="colorOpens" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#f43f5e" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                <XAxis dataKey="week" stroke="#64748b" fontSize={11} />
-                <YAxis stroke="#64748b" fontSize={11} />
-                <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px' }} />
-                <Area type="monotone" dataKey="opens" stroke="#f43f5e" strokeWidth={2} fillOpacity={1} fill="url(#colorOpens)" />
-              </AreaChart>
-            </ResponsiveContainer>
+            {campaignPerfData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={campaignPerfData}>
+                  <defs>
+                    <linearGradient id="colorOpens" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#f43f5e" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#f43f5e" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                  <XAxis dataKey="week" stroke="#64748b" fontSize={11} />
+                  <YAxis stroke="#64748b" fontSize={11} />
+                  <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px' }} />
+                  <Area type="monotone" dataKey="opens" stroke="#f43f5e" strokeWidth={2} fillOpacity={1} fill="url(#colorOpens)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full w-full flex flex-col items-center justify-center text-slate-500 text-xs">
+                <Building2 className="w-8 h-8 text-slate-600 mb-2" />
+                <p className="font-semibold text-slate-300">No marketing campaign activity yet.</p>
+                <p className="text-[11px] text-slate-500 mt-1">Create an email or SMS campaign to visualize engagement performance.</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -133,7 +170,11 @@ export const MarketingDashboard: React.FC = () => {
                 className="p-3.5 rounded-2xl bg-slate-950 border border-rose-500/20 hover:border-rose-500/40 cursor-pointer transition-colors flex items-center justify-between"
               >
                 <div className="flex items-center gap-3">
-                  <Mail className="w-4 h-4 text-rose-400" />
+                  {emailIcon ? (
+                    <img src={emailIcon} alt="Email icon" className="w-5 h-5 object-contain" />
+                  ) : (
+                    <Mail className="w-4 h-4 text-rose-400" />
+                  )}
                   <div>
                     <div className="text-xs font-bold text-slate-200">Email Marketing</div>
                     <div className="text-[10px] text-slate-400">{emailCampaigns.length} Active Campaigns</div>
@@ -147,7 +188,11 @@ export const MarketingDashboard: React.FC = () => {
                 className="p-3.5 rounded-2xl bg-slate-950 border border-indigo-500/20 hover:border-indigo-500/40 cursor-pointer transition-colors flex items-center justify-between"
               >
                 <div className="flex items-center gap-3">
-                  <MessageSquare className="w-4 h-4 text-indigo-400" />
+                  {smsIcon ? (
+                    <img src={smsIcon} alt="SMS icon" className="w-5 h-5 object-contain" />
+                  ) : (
+                    <MessageSquare className="w-4 h-4 text-indigo-400" />
+                  )}
                   <div>
                     <div className="text-xs font-bold text-slate-200">SMS Marketing</div>
                     <div className="text-[10px] text-slate-400">{smsCampaigns.length} Broadcasts Sent</div>
@@ -161,7 +206,11 @@ export const MarketingDashboard: React.FC = () => {
                 className="p-3.5 rounded-2xl bg-slate-950 border border-amber-500/20 hover:border-amber-500/40 cursor-pointer transition-colors flex items-center justify-between"
               >
                 <div className="flex items-center gap-3">
-                  <ClipboardList className="w-4 h-4 text-amber-400" />
+                  {surveyIcon ? (
+                    <img src={surveyIcon} alt="Surveys icon" className="w-5 h-5 object-contain" />
+                  ) : (
+                    <ClipboardList className="w-4 h-4 text-amber-400" />
+                  )}
                   <div>
                     <div className="text-xs font-bold text-slate-200">Surveys & Forms</div>
                     <div className="text-[10px] text-slate-400">{surveys.length} Active Surveys</div>
@@ -175,7 +224,11 @@ export const MarketingDashboard: React.FC = () => {
                 className="p-3.5 rounded-2xl bg-slate-950 border border-cyan-500/20 hover:border-cyan-500/40 cursor-pointer transition-colors flex items-center justify-between"
               >
                 <div className="flex items-center gap-3">
-                  <Share2 className="w-4 h-4 text-cyan-400" />
+                  {socialIcon ? (
+                    <img src={socialIcon} alt="Social icon" className="w-5 h-5 object-contain" />
+                  ) : (
+                    <Share2 className="w-4 h-4 text-cyan-400" />
+                  )}
                   <div>
                     <div className="text-xs font-bold text-slate-200">Social Marketing</div>
                     <div className="text-[10px] text-slate-400">{socialPosts.length} Scheduled Posts</div>
@@ -190,3 +243,4 @@ export const MarketingDashboard: React.FC = () => {
     </div>
   );
 };
+

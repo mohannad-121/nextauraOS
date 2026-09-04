@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   AreaChart,
   Area,
@@ -18,24 +18,15 @@ import {
   DollarSign,
   AlertTriangle,
   CheckCircle2,
+  Building2,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { StatCard } from '../components/common/StatCard';
 import { PageHeader } from '../components/common/PageHeader';
-
-const cashFlowChartData = [
-  { month: 'Jan', cashIn: 68000, cashOut: 42000, netCash: 26000 },
-  { month: 'Feb', cashIn: 72000, cashOut: 39000, netCash: 33000 },
-  { month: 'Mar', cashIn: 84000, cashOut: 51000, netCash: 33000 },
-  { month: 'Apr', cashIn: 79000, cashOut: 44000, netCash: 35000 },
-  { month: 'May', cashIn: 91000, cashOut: 48000, netCash: 43000 },
-  { month: 'Jun', cashIn: 88000, cashOut: 46000, netCash: 42000 },
-  { month: 'Jul', cashIn: 94000, cashOut: 52000, netCash: 42000 },
-  { month: 'Aug', cashIn: 92840, cashOut: 47310, netCash: 45530 },
-];
+import { getServiceCustomIcon } from '../utils/serviceIconMapper';
 
 export const HomeDashboard: React.FC = () => {
-  const { navigate, user, invoices, expenses, signDocuments, shareholders } = useApp();
+  const { navigate, user, currentOrg, invoices, expenses, signDocuments, shareholders, esgMetrics } = useApp();
   const [timeRange, setTimeRange] = useState('30d');
 
   const totalRevenue = invoices.filter((i) => i.status === 'Paid').reduce((acc, i) => acc + i.total, 0);
@@ -45,6 +36,80 @@ export const HomeDashboard: React.FC = () => {
 
   const pendingApprovals = expenses.filter((e) => e.status === 'Manager Review');
   const openDocs = signDocuments.filter((d) => d.status === 'Sent' || d.status === 'Partially Signed');
+  const esgScore = esgMetrics.length > 0 ? (esgMetrics[0].currentValue || 0) : 0;
+
+  // Custom PNG Service Icons
+  const expensesIcon = getServiceCustomIcon('expenses');
+  const signIcon = getServiceCustomIcon('sign');
+  const equityIcon = getServiceCustomIcon('equity');
+
+  // Dynamic cash flow chart derived strictly from real invoices & expenses
+  const cashFlowChartData = useMemo(() => {
+    if (invoices.length === 0 && expenses.length === 0) return [];
+    
+    const monthlyMap: Record<string, { month: string; cashIn: number; cashOut: number }> = {};
+    
+    invoices.forEach((inv) => {
+      if (inv.status === 'Paid' && inv.issueDate) {
+        const month = new Date(inv.issueDate).toLocaleString('default', { month: 'short' });
+        if (!monthlyMap[month]) monthlyMap[month] = { month, cashIn: 0, cashOut: 0 };
+        monthlyMap[month].cashIn += inv.total;
+      }
+    });
+
+    expenses.forEach((exp) => {
+      if (exp.date) {
+        const month = new Date(exp.date).toLocaleString('default', { month: 'short' });
+        if (!monthlyMap[month]) monthlyMap[month] = { month, cashIn: 0, cashOut: 0 };
+        monthlyMap[month].cashOut += exp.amount;
+      }
+    });
+
+    return Object.values(monthlyMap);
+  }, [invoices, expenses]);
+
+  // AI insights derived strictly from real tenant data
+  const realInsights = useMemo(() => {
+    const insights = [];
+    const paidInvoices = invoices.filter((i) => i.status === 'Paid');
+    const overdueInvoices = invoices.filter((i) => i.status === 'Overdue');
+    
+    if (paidInvoices.length > 0) {
+      insights.push({
+        title: `Collected Revenue: $${totalRevenue.toLocaleString()}`,
+        desc: `${paidInvoices.length} paid invoices processed for ${currentOrg.name}.`,
+        icon: TrendingUp,
+        borderColor: 'border-cyan-500/20',
+        bgColor: 'bg-cyan-500/10',
+        textColor: 'text-cyan-400',
+      });
+    }
+
+    if (overdueInvoices.length > 0) {
+      const totalOverdue = overdueInvoices.reduce((sum, i) => sum + i.amountDue, 0);
+      insights.push({
+        title: `${overdueInvoices.length} Overdue Invoices`,
+        desc: `$${totalOverdue.toLocaleString()} pending collection across overdue billing items.`,
+        icon: AlertTriangle,
+        borderColor: 'border-rose-500/20',
+        bgColor: 'bg-rose-500/10',
+        textColor: 'text-rose-400',
+      });
+    }
+
+    if (expenses.length > 0) {
+      insights.push({
+        title: `Logged Expenses: $${totalExpenses.toLocaleString()}`,
+        desc: `${expenses.length} corporate expenses recorded in current cycle.`,
+        icon: CheckCircle2,
+        borderColor: 'border-emerald-500/20',
+        bgColor: 'bg-emerald-500/10',
+        textColor: 'text-emerald-400',
+      });
+    }
+
+    return insights;
+  }, [invoices, expenses, totalRevenue, totalExpenses, currentOrg]);
 
   return (
     <div className="space-y-8">
@@ -77,7 +142,7 @@ export const HomeDashboard: React.FC = () => {
           title="Cash Balance"
           value={cashBalance}
           isCurrency
-          change={cashBalance > 0 ? 8.4 : 0}
+          change={0}
           icon={DollarSign}
           accentColor="cyan"
           onClick={() => navigate('accounting', 'reconciliation')}
@@ -86,7 +151,7 @@ export const HomeDashboard: React.FC = () => {
           title="Monthly Revenue"
           value={totalRevenue}
           isCurrency
-          change={totalRevenue > 0 ? 12.4 : 0}
+          change={0}
           icon={TrendingUp}
           accentColor="azure"
           onClick={() => navigate('invoicing', 'overview')}
@@ -95,8 +160,8 @@ export const HomeDashboard: React.FC = () => {
           title="Monthly Expenses"
           value={totalExpenses}
           isCurrency
-          change={totalExpenses > 0 ? 3.2 : 0}
-          comparisonText="vs budget limit"
+          change={0}
+          comparisonText="actual expenditure"
           icon={CreditCard}
           accentColor="indigo"
           onClick={() => navigate('expenses', 'overview')}
@@ -105,7 +170,7 @@ export const HomeDashboard: React.FC = () => {
           title="Net Operating Profit"
           value={netProfit}
           isCurrency
-          change={netProfit > 0 ? 18.2 : 0}
+          change={0}
           icon={Sparkles}
           accentColor="emerald"
           onClick={() => navigate('accounting', 'reports')}
@@ -134,29 +199,37 @@ export const HomeDashboard: React.FC = () => {
           </div>
 
           <div className="h-72 w-full pt-4">
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={cashFlowChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorCashIn" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#38bdf8" stopOpacity={0} />
-                  </linearGradient>
-                  <linearGradient id="colorCashOut" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#818cf8" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#818cf8" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                <XAxis dataKey="month" stroke="#64748b" fontSize={11} tickLine={false} />
-                <YAxis stroke="#64748b" fontSize={11} tickLine={false} tickFormatter={(v) => `$${v / 1000}k`} />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px' }}
-                  formatter={(value: any) => [`$${Number(value).toLocaleString()}`, '']}
-                />
-                <Area type="monotone" dataKey="cashIn" stroke="#38bdf8" strokeWidth={2} fillOpacity={1} fill="url(#colorCashIn)" />
-                <Area type="monotone" dataKey="cashOut" stroke="#818cf8" strokeWidth={2} fillOpacity={1} fill="url(#colorCashOut)" />
-              </AreaChart>
-            </ResponsiveContainer>
+            {cashFlowChartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={cashFlowChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorCashIn" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#38bdf8" stopOpacity={0} />
+                    </linearGradient>
+                    <linearGradient id="colorCashOut" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#818cf8" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#818cf8" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                  <XAxis dataKey="month" stroke="#64748b" fontSize={11} tickLine={false} />
+                  <YAxis stroke="#64748b" fontSize={11} tickLine={false} tickFormatter={(v) => `$${v / 1000}k`} />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px' }}
+                    formatter={(value: any) => [`$${Number(value).toLocaleString()}`, '']}
+                  />
+                  <Area type="monotone" dataKey="cashIn" stroke="#38bdf8" strokeWidth={2} fillOpacity={1} fill="url(#colorCashIn)" />
+                  <Area type="monotone" dataKey="cashOut" stroke="#818cf8" strokeWidth={2} fillOpacity={1} fill="url(#colorCashOut)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-full w-full flex flex-col items-center justify-center text-slate-500 text-xs">
+                <Building2 className="w-8 h-8 text-slate-600 mb-2" />
+                <p className="font-semibold text-slate-300">No financial activity yet.</p>
+                <p className="text-[11px] text-slate-500 mt-1">Create invoices or record expenses to generate cash flow charts.</p>
+              </div>
+            )}
           </div>
         </div>
 
@@ -170,47 +243,34 @@ export const HomeDashboard: React.FC = () => {
             <h3 className="text-base font-bold text-slate-100 font-heading mt-1">Automated Observations</h3>
 
             <div className="mt-4 space-y-3">
-              <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-cyan-500/20 flex items-start gap-3">
-                <div className="p-1.5 rounded-lg bg-cyan-500/10 text-cyan-400 shrink-0 mt-0.5">
-                  <TrendingUp className="w-3.5 h-3.5" />
+              {realInsights.length > 0 ? (
+                realInsights.map((insight, idx) => {
+                  const Icon = insight.icon;
+                  return (
+                    <div key={idx} className={`p-3.5 rounded-2xl bg-slate-950/80 border ${insight.borderColor} flex items-start gap-3`}>
+                      <div className={`p-1.5 rounded-lg ${insight.bgColor} ${insight.textColor} shrink-0 mt-0.5`}>
+                        <Icon className="w-3.5 h-3.5" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold text-slate-200">{insight.title}</div>
+                        <p className="text-[11px] text-slate-400 mt-0.5">{insight.desc}</p>
+                      </div>
+                    </div>
+                  );
+                })
+              ) : (
+                <div className="p-6 rounded-2xl bg-slate-950/80 border border-slate-800 text-center space-y-2 my-auto py-8">
+                  <Sparkles className="w-6 h-6 text-slate-600 mx-auto" />
+                  <div className="text-xs font-semibold text-slate-300">No insights available yet.</div>
+                  <p className="text-[11px] text-slate-500">Add business activity to generate insights.</p>
                 </div>
-                <div>
-                  <div className="text-xs font-semibold text-slate-200">Revenue Up +12.4%</div>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    SaaS expansion contract from Arzana Arabia boosted recurring revenue.
-                  </p>
-                </div>
-              </div>
-
-              <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-rose-500/20 flex items-start gap-3">
-                <div className="p-1.5 rounded-lg bg-rose-500/10 text-rose-400 shrink-0 mt-0.5">
-                  <AlertTriangle className="w-3.5 h-3.5" />
-                </div>
-                <div>
-                  <div className="text-xs font-semibold text-slate-200">Overdue Invoice Warning</div>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    Invoice INV-2026-0041 ($8,450) is 12 days past due date.
-                  </p>
-                </div>
-              </div>
-
-              <div className="p-3.5 rounded-2xl bg-slate-950/80 border border-emerald-500/20 flex items-start gap-3">
-                <div className="p-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 shrink-0 mt-0.5">
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                </div>
-                <div>
-                  <div className="text-xs font-semibold text-slate-200">Cash Runway: 9.4 Months</div>
-                  <p className="text-[11px] text-slate-400 mt-0.5">
-                    Healthy burn rate ensures sufficient runway into Q3 2027.
-                  </p>
-                </div>
-              </div>
+              )}
             </div>
           </div>
 
           <button
             onClick={() => navigate('analytics')}
-            className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 transition-colors flex items-center justify-center gap-2"
+            className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 transition-colors flex items-center justify-center gap-2 mt-4"
           >
             Open Analytics Center
             <ArrowUpRight className="w-3.5 h-3.5 text-cyan-400" />
@@ -224,7 +284,11 @@ export const HomeDashboard: React.FC = () => {
         <div className="p-6 rounded-3xl bg-slate-900/90 border border-slate-800/90 shadow-xl space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <CreditCard className="w-4 h-4 text-cyan-400" />
+              {expensesIcon ? (
+                <img src={expensesIcon} alt="Expenses icon" className="w-5 h-5 object-contain" />
+              ) : (
+                <CreditCard className="w-4 h-4 text-cyan-400" />
+              )}
               <h4 className="text-sm font-bold text-slate-100 font-heading">Expense Approvals</h4>
             </div>
             <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-cyan-500/10 text-cyan-400">
@@ -233,20 +297,26 @@ export const HomeDashboard: React.FC = () => {
           </div>
 
           <div className="space-y-2.5">
-            {pendingApprovals.map((exp) => (
-              <div key={exp.id} className="p-3 rounded-2xl bg-slate-950 border border-slate-800/80 flex items-center justify-between">
-                <div>
-                  <div className="text-xs font-semibold text-slate-200">{exp.title}</div>
-                  <div className="text-[10px] text-slate-400">{exp.employeeName} • ${exp.amount}</div>
+            {pendingApprovals.length > 0 ? (
+              pendingApprovals.map((exp) => (
+                <div key={exp.id} className="p-3 rounded-2xl bg-slate-950 border border-slate-800/80 flex items-center justify-between">
+                  <div>
+                    <div className="text-xs font-semibold text-slate-200">{exp.title}</div>
+                    <div className="text-[10px] text-slate-400">{exp.employeeName} • ${exp.amount}</div>
+                  </div>
+                  <button
+                    onClick={() => navigate('expenses', 'approvals')}
+                    className="px-2.5 py-1 rounded-lg bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 text-[11px] font-bold"
+                  >
+                    Review
+                  </button>
                 </div>
-                <button
-                  onClick={() => navigate('expenses', 'approvals')}
-                  className="px-2.5 py-1 rounded-lg bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 text-[11px] font-bold"
-                >
-                  Review
-                </button>
+              ))
+            ) : (
+              <div className="p-4 text-center text-xs text-slate-500 bg-slate-950/40 rounded-2xl border border-slate-800/40">
+                No pending expense approvals
               </div>
-            ))}
+            )}
           </div>
         </div>
 
@@ -254,7 +324,11 @@ export const HomeDashboard: React.FC = () => {
         <div className="p-6 rounded-3xl bg-slate-900/90 border border-slate-800/90 shadow-xl space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <FileSignature className="w-4 h-4 text-teal-400" />
+              {signIcon ? (
+                <img src={signIcon} alt="Sign icon" className="w-5 h-5 object-contain" />
+              ) : (
+                <FileSignature className="w-4 h-4 text-teal-400" />
+              )}
               <h4 className="text-sm font-bold text-slate-100 font-heading">Pending Signatures</h4>
             </div>
             <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-teal-500/10 text-teal-400">
@@ -263,20 +337,26 @@ export const HomeDashboard: React.FC = () => {
           </div>
 
           <div className="space-y-2.5">
-            {openDocs.map((doc) => (
-              <div key={doc.id} className="p-3 rounded-2xl bg-slate-950 border border-slate-800/80 flex items-center justify-between">
-                <div className="truncate me-2">
-                  <div className="text-xs font-semibold text-slate-200 truncate">{doc.title}</div>
-                  <div className="text-[10px] text-slate-400">{doc.recipients.length} recipients</div>
+            {openDocs.length > 0 ? (
+              openDocs.map((doc) => (
+                <div key={doc.id} className="p-3 rounded-2xl bg-slate-950 border border-slate-800/80 flex items-center justify-between">
+                  <div className="truncate me-2">
+                    <div className="text-xs font-semibold text-slate-200 truncate">{doc.title}</div>
+                    <div className="text-[10px] text-slate-400">{doc.recipients.length} recipients</div>
+                  </div>
+                  <button
+                    onClick={() => navigate('sign', 'overview')}
+                    className="px-2.5 py-1 rounded-lg bg-teal-500/10 text-teal-400 hover:bg-teal-500/20 text-[11px] font-bold shrink-0"
+                  >
+                    Track
+                  </button>
                 </div>
-                <button
-                  onClick={() => navigate('sign', 'overview')}
-                  className="px-2.5 py-1 rounded-lg bg-teal-500/10 text-teal-400 hover:bg-teal-500/20 text-[11px] font-bold shrink-0"
-                >
-                  Track
-                </button>
+              ))
+            ) : (
+              <div className="p-4 text-center text-xs text-slate-500 bg-slate-950/40 rounded-2xl border border-slate-800/40">
+                No active document signatures
               </div>
-            ))}
+            )}
           </div>
         </div>
 
@@ -284,7 +364,11 @@ export const HomeDashboard: React.FC = () => {
         <div className="p-6 rounded-3xl bg-slate-900/90 border border-slate-800/90 shadow-xl space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <PieChart className="w-4 h-4 text-amber-400" />
+              {equityIcon ? (
+                <img src={equityIcon} alt="Equity icon" className="w-5 h-5 object-contain" />
+              ) : (
+                <PieChart className="w-4 h-4 text-amber-400" />
+              )}
               <h4 className="text-sm font-bold text-slate-100 font-heading">Ownership & ESG Score</h4>
             </div>
           </div>
@@ -304,8 +388,12 @@ export const HomeDashboard: React.FC = () => {
               className="p-3 rounded-2xl bg-slate-950 border border-slate-800/80 cursor-pointer hover:border-emerald-500/40 transition-colors"
             >
               <div className="text-[10px] font-semibold text-emerald-400">ESG Index</div>
-              <div className="text-lg font-black text-slate-100 mt-1">74 / 100</div>
-              <div className="text-[10px] text-slate-400">On Track</div>
+              <div className="text-lg font-black text-slate-100 mt-1">
+                {esgScore > 0 ? `${esgScore} / 100` : '0 / 100'}
+              </div>
+              <div className="text-[10px] text-slate-400">
+                {esgMetrics.length > 0 ? 'Scorecard Active' : 'Not available yet'}
+              </div>
             </div>
           </div>
         </div>
@@ -313,3 +401,4 @@ export const HomeDashboard: React.FC = () => {
     </div>
   );
 };
+

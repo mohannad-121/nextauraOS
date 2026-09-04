@@ -5,7 +5,13 @@ import { PageHeader } from '../../components/common/PageHeader';
 import { StatCard } from '../../components/common/StatCard';
 
 export const EquityDashboard: React.FC = () => {
-  const { navigate, shareholders } = useApp();
+  const { navigate, shareholders, optionGrants } = useApp();
+
+  const totalInvestment = shareholders.reduce((acc, curr) => acc + (curr.totalInvestment || 0), 0);
+  const totalShares = shareholders.reduce((acc, curr) => acc + (curr.sharesCount || 0), 0);
+  const valuationText = totalInvestment > 0 ? `$${(totalInvestment / 1000000).toFixed(1)}M` : '$0';
+  const esopOptionsCount = optionGrants.reduce((acc, curr) => acc + (curr.grantedCount || 0), 0);
+  const esopPercentage = totalShares > 0 ? `${((esopOptionsCount / totalShares) * 100).toFixed(1)}%` : '0%';
 
   return (
     <div className="space-y-8">
@@ -34,10 +40,10 @@ export const EquityDashboard: React.FC = () => {
 
       {/* KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <StatCard title="Company Valuation" value="$15.0M" change={25.0} accentColor="amber" />
-        <StatCard title="Total Shares Issued" value="10,000,000" comparisonText="fully diluted" accentColor="cyan" />
+        <StatCard title="Total Investment" value={valuationText} change={0} accentColor="amber" />
+        <StatCard title="Total Shares Issued" value={totalShares.toLocaleString()} comparisonText="fully diluted" accentColor="cyan" />
         <StatCard title="Active Shareholders" value={shareholders.length} change={0} accentColor="indigo" />
-        <StatCard title="ESOP Option Pool" value="12.0%" comparisonText="1.2M options" accentColor="emerald" />
+        <StatCard title="ESOP Option Pool" value={esopPercentage} comparisonText={`${esopOptionsCount.toLocaleString()} options`} accentColor="emerald" />
       </div>
 
       {/* Cap Table Preview */}

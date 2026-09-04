@@ -6,7 +6,7 @@ import { StatCard } from '../../components/common/StatCard';
 import { Modal } from '../../components/common/Modal';
 
 export const SMSMarketingApp: React.FC = () => {
-  const { smsCampaigns, createSMSCampaign } = useApp();
+  const { smsCampaigns, createSMSCampaign, contacts } = useApp();
   const [isModalOpen, setModalOpen] = useState(false);
 
   const [name, setName] = useState('');
@@ -16,6 +16,16 @@ export const SMSMarketingApp: React.FC = () => {
   const charCount = message.length;
   const segmentCount = Math.ceil(charCount / 160) || 1;
 
+  const avgDeliveryRate = smsCampaigns.length > 0 
+    ? `${(smsCampaigns.reduce((sum, c) => sum + (c.deliveryRate || 0), 0) / smsCampaigns.length).toFixed(1)}%` 
+    : '0%';
+
+  const avgClickRate = smsCampaigns.length > 0 
+    ? `${(smsCampaigns.reduce((sum, c) => sum + (c.clickRate || 0), 0) / smsCampaigns.length).toFixed(1)}%` 
+    : '0%';
+
+  const totalSMSSubscribers = contacts.length > 0 ? contacts.length : smsCampaigns.reduce((sum, c) => sum + (c.recipientCount || 0), 0);
+
   const handleCreate = () => {
     if (!name || !message) return;
     createSMSCampaign({
@@ -23,9 +33,9 @@ export const SMSMarketingApp: React.FC = () => {
       message,
       status: 'Sent',
       targetSegment,
-      recipientCount: 8400,
-      sentCount: 8400,
-      clickRate: 14.2,
+      recipientCount: totalSMSSubscribers || 50,
+      sentCount: totalSMSSubscribers || 50,
+      clickRate: 0,
     });
     setModalOpen(false);
   };
@@ -49,9 +59,9 @@ export const SMSMarketingApp: React.FC = () => {
       {/* KPIs */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
         <StatCard title="Broadcasts Sent" value={smsCampaigns.length} comparisonText="active messages" accentColor="indigo" />
-        <StatCard title="Delivery Success Rate" value="96.4%" change={0.8} accentColor="emerald" />
-        <StatCard title="Link Click Rate" value="34.1%" change={4.2} accentColor="cyan" />
-        <StatCard title="Total SMS Subscribers" value="28.9K" comparisonText="opted in phone numbers" accentColor="purple" />
+        <StatCard title="Delivery Success Rate" value={avgDeliveryRate} change={0} accentColor="emerald" />
+        <StatCard title="Link Click Rate" value={avgClickRate} change={0} accentColor="cyan" />
+        <StatCard title="Total SMS Subscribers" value={totalSMSSubscribers.toLocaleString()} comparisonText="opted in phone numbers" accentColor="purple" />
       </div>
 
       {/* SMS Broadcast Composer & Phone Simulator */}

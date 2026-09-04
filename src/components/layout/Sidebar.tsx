@@ -28,6 +28,7 @@ import {
 } from 'lucide-react';
 import type { AppView } from '../../context/AppContext';
 import { useApp } from '../../context/AppContext';
+import { getServiceCustomIcon } from '../../utils/serviceIconMapper';
 
 export const Sidebar: React.FC = () => {
   const {
@@ -84,6 +85,10 @@ export const Sidebar: React.FC = () => {
   const hrModules = rawHrModules.filter((m) => activeServices.includes(m.key));
   const marketingModules = rawMarketingModules.filter((m) => activeServices.includes(m.key));
 
+  const contactsCustomIcon = getServiceCustomIcon('contacts');
+  const documentsCustomIcon = getServiceCustomIcon('documents');
+  const analyticsCustomIcon = getServiceCustomIcon('analytics');
+
   const renderModuleGroup = (title: string, categoryKey: 'finance' | 'hr' | 'marketing', modules: any[], badgeColor: string) => {
     const isOpen = expandedCategory === categoryKey;
 
@@ -106,6 +111,7 @@ export const Sidebar: React.FC = () => {
           <div className="space-y-1 ps-2">
             {modules.map((mod) => {
               const Icon = mod.icon;
+              const customIcon = getServiceCustomIcon(categoryKey, mod.title, mod.key);
               const isModExpanded = expandedApp === mod.id;
               const isModActive = activeApp === mod.id;
 
@@ -123,7 +129,15 @@ export const Sidebar: React.FC = () => {
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
-                      <Icon className={`w-4 h-4 ${mod.color}`} />
+                      {customIcon ? (
+                        <img
+                          src={customIcon}
+                          alt={`${mod.title} icon`}
+                          className="w-4 h-4 object-contain select-none pointer-events-none"
+                        />
+                      ) : (
+                        <Icon className={`w-4 h-4 ${mod.color}`} />
+                      )}
                       <span>{mod.title}</span>
                     </div>
                     {isModExpanded ? (
@@ -338,7 +352,11 @@ export const Sidebar: React.FC = () => {
               activeApp === 'contacts' ? 'bg-slate-900 text-slate-100 border border-slate-800' : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <Users className="w-4 h-4 text-indigo-400" />
+            {contactsCustomIcon ? (
+              <img src={contactsCustomIcon} alt="Contacts CRM icon" className="w-4 h-4 object-contain select-none pointer-events-none" />
+            ) : (
+              <Users className="w-4 h-4 text-indigo-400" />
+            )}
             {!isSidebarCollapsed && <span>Contacts CRM</span>}
           </button>
 
@@ -348,7 +366,11 @@ export const Sidebar: React.FC = () => {
               activeApp === 'documents' ? 'bg-slate-900 text-slate-100 border border-slate-800' : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <FolderKanban className="w-4 h-4 text-slate-400" />
+            {documentsCustomIcon ? (
+              <img src={documentsCustomIcon} alt="Document Vault icon" className="w-4 h-4 object-contain select-none pointer-events-none" />
+            ) : (
+              <FolderKanban className="w-4 h-4 text-slate-400" />
+            )}
             {!isSidebarCollapsed && <span>Document Vault</span>}
           </button>
 
@@ -358,7 +380,11 @@ export const Sidebar: React.FC = () => {
               activeApp === 'analytics' ? 'bg-slate-900 text-slate-100 border border-slate-800' : 'text-slate-400 hover:text-slate-200'
             }`}
           >
-            <BarChart3 className="w-4 h-4 text-slate-400" />
+            {analyticsCustomIcon ? (
+              <img src={analyticsCustomIcon} alt="Analytics Center icon" className="w-4 h-4 object-contain select-none pointer-events-none" />
+            ) : (
+              <BarChart3 className="w-4 h-4 text-slate-400" />
+            )}
             {!isSidebarCollapsed && <span>Analytics Center</span>}
           </button>
 
@@ -390,3 +416,4 @@ export const Sidebar: React.FC = () => {
     </aside>
   );
 };
+
