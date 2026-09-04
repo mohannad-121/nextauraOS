@@ -399,21 +399,19 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setCurrentOrg(newOrg);
   }, []);
 
-  const refreshServices = useCallback(() => {
-    if (!currentOrg || currentOrg.id === 'org_pending' || currentOrg.id.startsWith('org_temp_')) return;
-    entitlementService
-      .getActiveOrgServices(currentOrg.id)
-      .then((services) => {
-        setActiveServices(services);
-      })
-      .catch((err) => {
-        console.error('[AppContext] Failed to load organization services:', err);
-      });
-  }, [currentOrg.id]);
+  const refreshServices = useCallback(async (): Promise<void> => {
+    if (!currentOrg || !currentOrg.id || currentOrg.id === 'org_pending' || currentOrg.id.startsWith('org_temp_')) return;
+    try {
+      const services = await entitlementService.getActiveOrgServices(currentOrg.id);
+      setActiveServices(services);
+    } catch (err) {
+      console.error('[AppContext] Failed to load organization services:', err);
+    }
+  }, [currentOrg?.id]);
 
   useEffect(() => {
     refreshServices();
-  }, [currentOrg.id, refreshServices]);
+  }, [currentOrg?.id, refreshServices]);
 
   const isRtl = language === 'ar';
 
@@ -461,7 +459,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         handleSessionUser(data.session.user);
       } else {
         clearTenantData();
-        setActiveApp('auth');
       }
     });
 
@@ -472,7 +469,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       } else if (event === 'SIGNED_OUT') {
         clearTenantData();
         setUser(currentUser);
-        setActiveApp('auth');
+        setActiveApp('launchpad');
       }
     });
 

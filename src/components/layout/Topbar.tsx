@@ -166,7 +166,6 @@ export const Topbar: React.FC = () => {
         <button
           onClick={async () => {
             await authService.signOut();
-            navigate('auth');
           }}
           className="p-2 rounded-xl text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 border border-rose-500/20 transition-colors flex items-center gap-1.5 text-xs font-bold"
           title="Sign Out of NextAura"

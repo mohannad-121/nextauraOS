@@ -8,6 +8,7 @@ import { ServiceSelectionScreen } from '../../pages/onboarding/ServiceSelectionS
 import { AppShell } from '../layout/AppShell';
 import { organizationService } from '../../services/organizationService';
 import { verificationService } from '../../services/verificationService';
+import { entitlementService } from '../../services/entitlementService';
 import { getSupabaseSessionId } from '../../utils/sessionHelper';
 
 export type BootState =
@@ -23,7 +24,7 @@ interface AppBootGateProps {
 }
 
 export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
-  const { currentOrg, setCurrentOrg, refreshServices, setUserProfile } = useApp();
+  const { currentOrg, setCurrentOrg, setUserProfile } = useApp();
   const [bootState, setBootState] = useState<BootState>('loading');
   const [sessionUserId, setSessionUserId] = useState<string | null>(null);
   const [sessionUserEmail, setSessionUserEmail] = useState<string>('');
@@ -45,10 +46,17 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
   const currentOrgIdRef = useRef(currentOrg?.id);
   currentOrgIdRef.current = currentOrg?.id;
 
+  const updateBootState = (newState: BootState) => {
+    setBootState(newState);
+    if (import.meta.env.DEV) {
+      console.log(`[AUTH] BOOT_STATE ${newState}`);
+    }
+  };
+
   const evaluateAuthState = useCallback(async (session: any, forceReevaluate = false) => {
     if (evaluationInProgressRef.current) {
       if (import.meta.env.DEV) {
-        console.log('[AppBootGate] Evaluation already in progress, skipping concurrent run.');
+        console.log('[AUTH] Evaluation already in progress, skipping concurrent run.');
       }
       return;
     }
@@ -62,21 +70,22 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
       (bootStateRef.current === 'emailVerificationRequired' || bootStateRef.current === 'ready')
     ) {
       if (import.meta.env.DEV) {
-        console.log('[AppBootGate] Session already evaluated for state:', bootStateRef.current);
+        console.log('[AUTH] Session already evaluated for state:', bootStateRef.current);
       }
       return;
     }
 
     evaluationInProgressRef.current = true;
-    if (import.meta.env.DEV) {
-      console.log('[AppBootGate] evaluate start');
-    }
 
     try {
+      const isSessionPresent = Boolean(session && session.user);
+      if (import.meta.env.DEV) {
+        console.log(`[AUTH] SESSION_PRESENT ${isSessionPresent}`);
+      }
+
       if (!session || !session.user) {
         lastEvaluatedSessionRef.current = null;
-        setBootState('unauthenticated');
-        if (import.meta.env.DEV) console.log('[AppBootGate] unauthenticated');
+        updateBootState('unauthenticated');
         return;
       }
 
@@ -94,24 +103,23 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
 
       if (!sessionId) {
         setBootstrapErrorMessage('Valid session identifier missing from authentication token.');
-        setBootState('bootstrapError');
+        updateBootState('bootstrapError');
         return;
       }
 
-      // Step 1: Server-side Verification Check
+      // Step 1: Server-side OTP Verification Check
       if (isSupabaseConfigured()) {
         const checkRes = await verificationService.checkSessionVerification();
 
         if (!checkRes.success) {
           setBootstrapErrorMessage(checkRes.error || 'Server error verifying session security state.');
-          setBootState('bootstrapError');
+          updateBootState('bootstrapError');
           return;
         }
 
         if (!checkRes.verified) {
           lastEvaluatedSessionRef.current = sessionId;
-          setBootState('emailVerificationRequired');
-          if (import.meta.env.DEV) console.log('[AppBootGate] verification required');
+          updateBootState('emailVerificationRequired');
           return;
         }
       }
@@ -143,34 +151,38 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
         if (profileErr && profileErr.code !== 'PGRST116') {
           console.error('[AppBootGate] Database profile fetch failure:', profileErr);
           setBootstrapErrorMessage(`Database failure loading profile: ${profileErr.message}`);
-          setBootState('bootstrapError');
+          updateBootState('bootstrapError');
           return;
         }
 
         if (!profile || !profile.initial_service_selection_completed) {
           lastEvaluatedSessionRef.current = sessionId;
-          setBootState('serviceSelectionRequired');
-          if (import.meta.env.DEV) console.log('[AppBootGate] service selection required');
+          updateBootState('serviceSelectionRequired');
           return;
+        }
+
+        // Verify active organization services
+        try {
+          await entitlementService.getActiveOrgServices(activeOrg.id);
+        } catch (orgServicesErr: any) {
+          console.error('[AppBootGate] Failed loading organization services:', orgServicesErr);
         }
       }
 
       lastEvaluatedSessionRef.current = sessionId;
-      setBootState('ready');
-      if (import.meta.env.DEV) console.log('[AppBootGate] ready');
+      updateBootState('ready');
     } catch (err: any) {
       console.error('[AppBootGate] Bootstrap exception:', err);
       setBootstrapErrorMessage(err.message || 'Failed to initialize workspace data.');
-      setBootState('bootstrapError');
+      updateBootState('bootstrapError');
     } finally {
       evaluationInProgressRef.current = false;
-      if (import.meta.env.DEV) console.log('[AppBootGate] evaluate end');
     }
   }, []);
 
   useEffect(() => {
     if (!isSupabaseConfigured()) {
-      setBootState('ready');
+      updateBootState('ready');
       return;
     }
 
@@ -197,7 +209,7 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
       if (isMounted && data?.session) {
         await evaluateAuthState(data.session);
       } else if (isMounted) {
-        setBootState('unauthenticated');
+        updateBootState('unauthenticated');
       }
     };
 
@@ -207,17 +219,29 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
       if (!isMounted) return;
 
       if (import.meta.env.DEV) {
-        console.log(`[AppBootGate] auth event: ${event}`);
+        console.log(`[AUTH] EVENT ${event}`);
       }
 
       if (event === 'SIGNED_OUT') {
         lastEvaluatedSessionRef.current = null;
-        setBootState('unauthenticated');
-      } else if (event === 'SIGNED_IN' || event === 'INITIAL_SESSION') {
+        updateBootState('unauthenticated');
+      } else if (event === 'SIGNED_IN') {
+        if (session) {
+          setTimeout(() => {
+            if (isMounted) void evaluateAuthState(session, true);
+          }, 0);
+        }
+      } else if (event === 'INITIAL_SESSION') {
         if (session) {
           setTimeout(() => {
             if (isMounted) void evaluateAuthState(session);
           }, 0);
+        } else {
+          updateBootState('unauthenticated');
+        }
+      } else if (event === 'TOKEN_REFRESHED') {
+        if (!session) {
+          updateBootState('unauthenticated');
         }
       }
     });
@@ -238,8 +262,34 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
   };
 
   const handleServiceSelectionCompleted = async () => {
-    if (refreshServices) refreshServices();
-    setBootState('ready');
+    if (import.meta.env.DEV) {
+      console.log('[AUTH] SERVICE_SELECTION_START');
+    }
+
+    if (!isSupabaseConfigured()) {
+      updateBootState('ready');
+      return;
+    }
+
+    const { data, error } = await supabase.auth.getSession();
+    const session = data?.session;
+
+    if (import.meta.env.DEV) {
+      console.log(`[AUTH] POST_SELECTION_SESSION ${Boolean(session)}`);
+    }
+
+    if (error || !session) {
+      console.error('[AppBootGate] Session missing post service activation:', error);
+      setBootstrapErrorMessage('Your authentication session could not be verified after service activation. Please click retry.');
+      updateBootState('bootstrapError');
+      return;
+    }
+
+    await evaluateAuthState(session, true);
+
+    if (import.meta.env.DEV) {
+      console.log('[AUTH] SERVICE_SELECTION_SUCCESS');
+    }
   };
 
   const handleSignOut = async () => {
@@ -247,7 +297,7 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
     if (isSupabaseConfigured()) {
       await supabase.auth.signOut();
     }
-    setBootState('unauthenticated');
+    updateBootState('unauthenticated');
   };
 
   // State Machine Render Dispatcher
