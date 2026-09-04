@@ -14,6 +14,7 @@ import {
 import { NEXTAURA_SERVICES } from '../../data/appRegistry';
 import type { NextAuraServiceDefinition } from '../../data/appRegistry';
 import { entitlementService } from '../../services/entitlementService';
+import { getServiceCustomIcon } from '../../utils/serviceIconMapper';
 
 interface ServiceSelectionScreenProps {
   organizationId: string;
@@ -338,6 +339,7 @@ export const ServiceSelectionScreen: React.FC<ServiceSelectionScreenProps> = ({
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
                 {filteredServices.map((service) => {
                   const Icon = service.icon;
+                  const customIcon = getServiceCustomIcon(service.category, service.name, service.key);
                   const isSelected = selectedKeys.includes(service.key);
 
                   return (
@@ -369,7 +371,15 @@ export const ServiceSelectionScreen: React.FC<ServiceSelectionScreenProps> = ({
                                 : 'bg-slate-100 text-slate-600 group-hover:bg-slate-200/80 group-hover:text-slate-900'
                             }`}
                           >
-                            <Icon className="w-5 h-5" />
+                            {customIcon ? (
+                              <img
+                                src={customIcon}
+                                alt={`${service.name} icon`}
+                                className="w-6 h-6 object-contain select-none pointer-events-none"
+                              />
+                            ) : (
+                              <Icon className="w-5 h-5" />
+                            )}
                           </div>
                           <div>
                             <h3 className="font-bold text-sm text-slate-900 group-hover:text-slate-950">
