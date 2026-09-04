@@ -120,14 +120,16 @@ export const Topbar: React.FC = () => {
 
         {/* Theme Switcher */}
         <button
+          type="button"
           onClick={toggleTheme}
-          className="p-2 rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-900 transition-colors"
-          title="Toggle Dark/Light Mode"
+          className="p-2 rounded-xl text-slate-400 hover:text-slate-100 hover:bg-slate-800 transition-colors"
+          title={theme === 'dark' ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+          aria-label="Toggle Dark or Light Theme"
         >
           {theme === 'dark' ? (
             <Sun className="w-4 h-4 text-amber-400" />
           ) : (
-            <Moon className="w-4 h-4 text-slate-300" />
+            <Moon className="w-4 h-4 text-indigo-600" />
           )}
         </button>
 

@@ -295,7 +295,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       : initialOrganizations[0]
   );
   const [user, setUser] = useState<User>(currentUser);
-  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [theme, setTheme] = useState<'dark' | 'light'>(() => {
+    try {
+      const saved = localStorage.getItem('nextaura_theme');
+      if (saved === 'light' || saved === 'dark') return saved;
+    } catch (_) {}
+    return 'dark';
+  });
   const [language, setLanguage] = useState<'en' | 'ar'>('en');
 
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -526,6 +532,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [language, isRtl]);
 
   useEffect(() => {
+    try {
+      localStorage.setItem('nextaura_theme', theme);
+    } catch (_) {}
+
     if (theme === 'dark') {
       document.documentElement.classList.add('dark');
       document.documentElement.classList.remove('light');
