@@ -71,7 +71,10 @@ export const verificationService = {
   /**
    * Verifies the 6-digit code strictly via server Edge Function.
    */
-  async verifyLoginVerification(_userId: string, code: string): Promise<{ success: boolean; error?: string }> {
+  async verifyLoginVerification(
+    _userId: string,
+    code: string
+  ): Promise<{ success: boolean; error?: string; code?: string; attemptsRemaining?: number }> {
     if (!code || code.length !== 6 || !/^\d{6}$/.test(code)) {
       return { success: false, error: 'Please enter a valid 6-digit verification code.' };
     }
@@ -90,9 +93,25 @@ export const verificationService = {
           headers: { Authorization: `Bearer ${token}` },
         });
 
-        if (error || !data?.success) {
-          const errorMessage = data?.error || error?.message || 'Incorrect verification code. Please try again.';
-          return { success: false, error: errorMessage };
+        let payload = data;
+        if (error && (error as any).context) {
+          try {
+            payload = await (error as any).context.json();
+          } catch (_) {
+            // fallback
+          }
+        }
+
+        if (error || !payload?.success) {
+          const errorMessage =
+            payload?.error || error?.message || 'Incorrect verification code. Please try again.';
+          return {
+            success: false,
+            error: errorMessage,
+            code: payload?.code || 'INVALID_CODE',
+            attemptsRemaining:
+              typeof payload?.attemptsRemaining === 'number' ? payload.attemptsRemaining : undefined,
+          };
         }
 
         return { success: true };

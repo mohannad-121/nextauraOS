@@ -115,10 +115,16 @@ serve(async (req) => {
     }
 
     const challenge = challenges[0];
+    const maxAttempts = 4;
 
-    if (challenge.attempt_count >= challenge.max_attempts) {
+    if (challenge.attempt_count >= maxAttempts) {
       return new Response(
-        JSON.stringify({ success: false, error: 'Maximum verification attempts exceeded. Please request a new code.' }),
+        JSON.stringify({
+          success: false,
+          code: 'MAX_ATTEMPTS',
+          attemptsRemaining: 0,
+          error: 'Too many incorrect attempts. Please request a new verification code.',
+        }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -127,14 +133,35 @@ serve(async (req) => {
     const candidateHash = await hmacSha256(otpHmacSecret, candidateCode);
 
     if (challenge.code_hash !== candidateHash) {
+      const newAttemptCount = challenge.attempt_count + 1;
+      const attemptsRemaining = Math.max(0, maxAttempts - newAttemptCount);
+
       // Increment attempt count in DB
       await supabaseAdmin
         .from('login_verification_challenges')
-        .update({ attempt_count: challenge.attempt_count + 1 })
+        .update({ attempt_count: newAttemptCount })
         .eq('id', challenge.id);
 
+      if (attemptsRemaining === 0) {
+        return new Response(
+          JSON.stringify({
+            success: false,
+            code: 'MAX_ATTEMPTS',
+            attemptsRemaining: 0,
+            error: 'Too many incorrect attempts. Please request a new verification code.',
+          }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const attemptLabel = attemptsRemaining === 1 ? '1 attempt' : `${attemptsRemaining} attempts`;
       return new Response(
-        JSON.stringify({ success: false, error: 'Incorrect verification code. Please try again.' }),
+        JSON.stringify({
+          success: false,
+          code: 'INVALID_CODE',
+          attemptsRemaining,
+          error: `Incorrect verification code. ${attemptLabel} remaining.`,
+        }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }

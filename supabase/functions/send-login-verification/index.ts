@@ -129,7 +129,7 @@ serve(async (req) => {
         code_hash: codeHash,
         expires_at: expiresAt,
         attempt_count: 0,
-        max_attempts: 5,
+        max_attempts: 4,
       })
       .select('id')
       .single();

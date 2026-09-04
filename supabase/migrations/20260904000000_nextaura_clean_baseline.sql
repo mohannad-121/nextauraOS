@@ -110,7 +110,7 @@ CREATE TABLE IF NOT EXISTS public.login_verification_challenges (
     code_hash TEXT NOT NULL,
     expires_at TIMESTAMPTZ NOT NULL,
     attempt_count INTEGER NOT NULL DEFAULT 0,
-    max_attempts INTEGER NOT NULL DEFAULT 5,
+    max_attempts INTEGER NOT NULL DEFAULT 4,
     verified_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT NOW()
 );

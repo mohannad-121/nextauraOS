@@ -17,6 +17,7 @@ export const VerificationScreen: React.FC<VerificationScreenProps> = ({
 }) => {
   const [digits, setDigits] = useState<string[]>(['', '', '', '', '', '']);
   const [loading, setLoading] = useState(false);
+  const [isLocked, setIsLocked] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [resendCooldown, setResendCooldown] = useState(60);
@@ -50,6 +51,7 @@ export const VerificationScreen: React.FC<VerificationScreenProps> = ({
   }, [userId, email]);
 
   const handleDigitChange = (index: number, val: string) => {
+    if (isLocked) return;
     const cleanVal = val.replace(/\D/g, '');
     if (val && !cleanVal) return;
 
@@ -65,6 +67,7 @@ export const VerificationScreen: React.FC<VerificationScreenProps> = ({
   };
 
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (isLocked) return;
     if (e.key === 'Backspace' && !digits[index] && index > 0) {
       const prevEl = document.getElementById(`digit-input-${index - 1}`);
       prevEl?.focus();
@@ -73,6 +76,7 @@ export const VerificationScreen: React.FC<VerificationScreenProps> = ({
 
   // Full 6-digit paste support
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    if (isLocked) return;
     e.preventDefault();
     const pastedText = e.clipboardData.getData('text').replace(/\D/g, '').trim();
     if (pastedText.length === 6) {
@@ -94,6 +98,8 @@ export const VerificationScreen: React.FC<VerificationScreenProps> = ({
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (isLocked) return;
+
     const codeStr = digits.join('');
     if (codeStr.length < 6) {
       setErrorMsg('Please enter the complete 6-digit verification code.');
@@ -112,7 +118,12 @@ export const VerificationScreen: React.FC<VerificationScreenProps> = ({
           onVerified();
         }, 800);
       } else {
-        setErrorMsg(result.error || 'Incorrect verification code. Please try again.');
+        if (result.code === 'MAX_ATTEMPTS' || result.attemptsRemaining === 0) {
+          setIsLocked(true);
+          setErrorMsg(result.error || 'Too many incorrect attempts. Please request a new verification code.');
+        } else {
+          setErrorMsg(result.error || 'Incorrect verification code. Please try again.');
+        }
       }
     } catch (err: any) {
       setErrorMsg(err.message || 'Verification failed. Please try again.');
@@ -130,6 +141,8 @@ export const VerificationScreen: React.FC<VerificationScreenProps> = ({
     try {
       const res = await verificationService.sendLoginVerification(userId, email);
       if (res.success) {
+        setIsLocked(false);
+        setDigits(['', '', '', '', '', '']);
         setSuccessMsg(`A new 6-digit verification code was sent to ${email}`);
         setResendCooldown(60);
       } else {
@@ -200,16 +213,16 @@ export const VerificationScreen: React.FC<VerificationScreenProps> = ({
                 onChange={(e) => handleDigitChange(idx, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(idx, e)}
                 onPaste={handlePaste}
-                disabled={loading}
-                className="w-11 h-13 text-center text-xl font-bold font-mono rounded-xl bg-slate-950 border border-slate-800 text-cyan-400 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/20 focus:outline-none transition-all pointer-events-auto disabled:opacity-50"
+                disabled={loading || isLocked}
+                className="w-11 h-13 text-center text-xl font-bold font-mono rounded-xl bg-slate-950 border border-slate-800 text-cyan-400 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/20 focus:outline-none transition-all pointer-events-auto disabled:opacity-50 disabled:cursor-not-allowed"
               />
             ))}
           </div>
 
           <button
             type="submit"
-            disabled={loading}
-            className="w-full py-3.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-slate-950 font-extrabold text-xs shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 transition-all pointer-events-auto"
+            disabled={loading || isLocked}
+            className="w-full py-3.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 font-extrabold text-xs shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 transition-all pointer-events-auto"
           >
             <span>{loading ? 'Verifying Code...' : 'Verify & Continue'}</span>
             <ArrowRight className="w-4 h-4" />
