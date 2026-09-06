@@ -6,6 +6,7 @@ import {
 import { useApp } from '../../context/AppContext';
 import { PageHeader } from '../../components/common/PageHeader';
 import { Modal } from '../../components/common/Modal';
+import { Avatar } from '../../components/common/Avatar';
 
 export const TimeOffApp: React.FC = () => {
   const {
@@ -100,7 +101,7 @@ export const TimeOffApp: React.FC = () => {
               <div key={req.id} className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
                   <div className="flex items-center gap-3">
-                    <img src={req.employeeAvatar} alt="" className="w-10 h-10 rounded-2xl object-cover" />
+                    <Avatar src={req.employeeAvatar} name={req.employeeName} className="w-10 h-10 rounded-2xl" />
                     <div>
                       <h4 className="text-base font-bold text-slate-100 font-heading">{req.employeeName}</h4>
                       <div className="text-xs text-slate-400">{req.department} • {req.leaveType}</div>
@@ -160,7 +161,7 @@ export const TimeOffApp: React.FC = () => {
               {pastRequests.map((req) => (
                 <tr key={req.id} className="hover:bg-slate-800/40">
                   <td className="p-3 flex items-center gap-2">
-                    <img src={req.employeeAvatar} alt="" className="w-6 h-6 rounded-lg object-cover" />
+                    <Avatar src={req.employeeAvatar} name={req.employeeName} className="w-6 h-6 rounded-lg text-[10px]" />
                     <span className="font-bold text-slate-100">{req.employeeName}</span>
                   </td>
                   <td className="p-3 text-purple-400">{req.leaveType}</td>

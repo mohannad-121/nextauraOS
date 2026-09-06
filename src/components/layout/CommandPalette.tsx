@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Avatar } from '../common/Avatar';
 import {
   Search,
   FileText,
@@ -110,7 +111,7 @@ export const CommandPalette: React.FC = () => {
                     className="w-full p-2.5 rounded-xl hover:bg-slate-800 flex items-center justify-between transition-colors text-slate-200"
                   >
                     <div className="flex items-center gap-3">
-                      <img src={emp.avatar} alt="" className="w-6 h-6 rounded-lg object-cover" />
+                      <Avatar src={emp.avatar} name={emp.name} className="w-6 h-6 rounded-lg text-[10px]" />
                       <div>
                         <div className="font-bold text-slate-100">{emp.name}</div>
                         <div className="text-[10px] text-slate-400">{emp.jobTitle} • {emp.department}</div>

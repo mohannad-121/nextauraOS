@@ -188,7 +188,7 @@ export const financeService = {
       id: exp.id,
       employeeId: exp.employee_id || 'emp-1',
       employeeName: exp.employee_name || 'Staff Member',
-      employeeAvatar: exp.employee_avatar || 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&auto=format&fit=crop&q=80',
+      employeeAvatar: exp.employee_avatar || '',
       title: exp.title,
       merchant: exp.merchant,
       date: exp.date,

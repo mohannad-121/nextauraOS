@@ -88,7 +88,7 @@ export const currentUser: User = {
   id: 'usr-1',
   name: 'Mohannad Abuayyash',
   email: 'mohannad@nextaura.ai',
-  avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+  avatar: '',
   role: 'Owner',
   department: 'Executive Office',
   status: 'Active',
@@ -101,7 +101,7 @@ export const initialTeam: User[] = [
     id: 'usr-2',
     name: 'Sarah Chen',
     email: 'sarah.chen@nextaura.ai',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
+    avatar: '',
     role: 'Finance Manager',
     department: 'Finance',
     status: 'Active',
@@ -111,7 +111,7 @@ export const initialTeam: User[] = [
     id: 'usr-3',
     name: 'Alex Rivera',
     email: 'alex.rivera@nextaura.ai',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    avatar: '',
     role: 'Accountant',
     department: 'Accounting',
     status: 'Active',
@@ -121,7 +121,7 @@ export const initialTeam: User[] = [
     id: 'usr-4',
     name: 'Farah Al-Hassan',
     email: 'farah@arzana.sa',
-    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
+    avatar: '',
     role: 'Legal',
     department: 'Legal & Compliance',
     status: 'Active',
@@ -131,7 +131,7 @@ export const initialTeam: User[] = [
     id: 'usr-5',
     name: 'Moayad Mansour',
     email: 'moayad@alkamal.com',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+    avatar: '',
     role: 'Investor Viewer',
     department: 'Board Member',
     status: 'Active',
@@ -173,7 +173,7 @@ export const initialBankTransactions: BankTransaction[] = [
 ];
 
 export const initialExpenses: Expense[] = [
-  { id: 'exp-1', employeeId: 'usr-2', employeeName: 'Sarah Chen', employeeAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80', title: 'Client Dinner & Advisory Meeting', merchant: 'STK Steakhouse San Francisco', date: '2026-08-29', category: 'Meals & Entertainment', amount: 142.50, currency: 'USD', status: 'Manager Review', paymentMethod: 'Personal Cash/Card', policyViolations: ['Meal expense exceeds $100 per-person cap'], notes: 'Discussed Q4 expansion with Arzana Arabia executive team.' },
+  { id: 'exp-1', employeeId: 'usr-2', employeeName: 'Sarah Chen', employeeAvatar: '', title: 'Client Dinner & Advisory Meeting', merchant: 'STK Steakhouse San Francisco', date: '2026-08-29', category: 'Meals & Entertainment', amount: 142.50, currency: 'USD', status: 'Manager Review', paymentMethod: 'Personal Cash/Card', policyViolations: ['Meal expense exceeds $100 per-person cap'], notes: 'Discussed Q4 expansion with Arzana Arabia executive team.' },
 ];
 
 export const initialCards: CorporateCard[] = [
@@ -219,7 +219,7 @@ export const initialEmployees: Employee[] = [
     name: 'Mohannad Abuayyash',
     email: 'mohannad@nextaura.ai',
     phone: '+1 415 901 8820',
-    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    avatar: '',
     jobTitle: 'Founder & CEO',
     department: 'Executive Office',
     workLocation: 'San Francisco HQ',
@@ -255,7 +255,7 @@ export const initialEmployees: Employee[] = [
     name: 'Moayad Mansour',
     email: 'moayad@alkamal.com',
     phone: '+962 7 9123 4567',
-    avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+    avatar: '',
     jobTitle: 'Co-Founder & Technical Lead',
     department: 'Engineering',
     workLocation: 'Amman Tech Hub',
@@ -277,7 +277,7 @@ export const initialEmployees: Employee[] = [
     name: 'Sarah Chen',
     email: 'sarah.chen@nextaura.ai',
     phone: '+1 415 882 1092',
-    avatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
+    avatar: '',
     jobTitle: 'VP of Finance & Operations',
     department: 'Finance',
     managerId: 'emp-1',
@@ -300,7 +300,7 @@ export const initialEmployees: Employee[] = [
     name: 'Alex Rivera',
     email: 'alex.rivera@nextaura.ai',
     phone: '+1 415 302 9918',
-    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    avatar: '',
     jobTitle: 'Senior Lead Accountant',
     department: 'Finance',
     managerId: 'emp-3',
@@ -323,7 +323,7 @@ export const initialEmployees: Employee[] = [
     name: 'Farah Al-Hassan',
     email: 'farah@arzana.sa',
     phone: '+966 50 123 4567',
-    avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=150&auto=format&fit=crop&q=80',
+    avatar: '',
     jobTitle: 'Head of Legal & Compliance',
     department: 'Legal & Compliance',
     managerId: 'emp-1',
@@ -346,7 +346,7 @@ export const initialEmployees: Employee[] = [
     name: 'Tariq Al-Mansoor',
     email: 'tariq@nextaura.ai',
     phone: '+966 55 987 6543',
-    avatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80',
+    avatar: '',
     jobTitle: 'Senior Full Stack Engineer',
     department: 'Engineering',
     managerId: 'emp-2',
@@ -369,7 +369,7 @@ export const initialEmployees: Employee[] = [
     name: 'Elena Rostova',
     email: 'elena@nextaura.ai',
     phone: '+1 415 771 0022',
-    avatar: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
+    avatar: '',
     jobTitle: 'Senior Product Designer',
     department: 'Marketing',
     managerId: 'emp-1',
@@ -405,10 +405,10 @@ export const initialJobPositions: JobPosition[] = [
 ];
 
 export const initialAttendanceRecords: AttendanceRecord[] = [
-  { id: 'att-1', employeeId: 'emp-1', employeeName: 'Mohannad Abuayyash', employeeAvatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80', department: 'Executive Office', date: '2026-09-02', checkIn: '08:30 AM', checkOut: '06:15 PM', breakDurationMins: 45, workedHours: 9.0, expectedHours: 8.0, overtimeHours: 1.0, status: 'Checked Out', locationType: 'Office' },
-  { id: 'att-2', employeeId: 'emp-2', employeeName: 'Moayad Mansour', employeeAvatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80', department: 'Engineering', date: '2026-09-02', checkIn: '09:00 AM', breakDurationMins: 30, workedHours: 5.5, expectedHours: 8.0, overtimeHours: 0, status: 'Working', locationType: 'Office' },
-  { id: 'att-3', employeeId: 'emp-3', employeeName: 'Sarah Chen', employeeAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80', department: 'Finance', date: '2026-09-02', checkIn: '08:45 AM', breakDurationMins: 60, workedHours: 5.75, expectedHours: 8.0, overtimeHours: 0, status: 'Working', locationType: 'Office' },
-  { id: 'att-4', employeeId: 'emp-6', employeeName: 'Tariq Al-Mansoor', employeeAvatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80', department: 'Engineering', date: '2026-09-02', checkIn: '09:15 AM', breakDurationMins: 30, workedHours: 5.25, expectedHours: 8.0, overtimeHours: 0, status: 'Remote', locationType: 'Remote' },
+  { id: 'att-1', employeeId: 'emp-1', employeeName: 'Mohannad Abuayyash', employeeAvatar: '', department: 'Executive Office', date: '2026-09-02', checkIn: '08:30 AM', checkOut: '06:15 PM', breakDurationMins: 45, workedHours: 9.0, expectedHours: 8.0, overtimeHours: 1.0, status: 'Checked Out', locationType: 'Office' },
+  { id: 'att-2', employeeId: 'emp-2', employeeName: 'Moayad Mansour', employeeAvatar: '', department: 'Engineering', date: '2026-09-02', checkIn: '09:00 AM', breakDurationMins: 30, workedHours: 5.5, expectedHours: 8.0, overtimeHours: 0, status: 'Working', locationType: 'Office' },
+  { id: 'att-3', employeeId: 'emp-3', employeeName: 'Sarah Chen', employeeAvatar: '', department: 'Finance', date: '2026-09-02', checkIn: '08:45 AM', breakDurationMins: 60, workedHours: 5.75, expectedHours: 8.0, overtimeHours: 0, status: 'Working', locationType: 'Office' },
+  { id: 'att-4', employeeId: 'emp-6', employeeName: 'Tariq Al-Mansoor', employeeAvatar: '', department: 'Engineering', date: '2026-09-02', checkIn: '09:15 AM', breakDurationMins: 30, workedHours: 5.25, expectedHours: 8.0, overtimeHours: 0, status: 'Remote', locationType: 'Remote' },
 ];
 
 export const initialJobOpenings: JobOpening[] = [
@@ -432,13 +432,13 @@ export const initialJobOffers: JobOffer[] = [
 ];
 
 export const initialTimeOffRequests: TimeOffRequest[] = [
-  { id: 'tor-1', employeeId: 'emp-4', employeeName: 'Alex Rivera', employeeAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80', department: 'Finance', leaveType: 'Annual Leave', startDate: '2026-09-12', endDate: '2026-09-16', totalDays: 5, reason: 'Family vacation and rest.', status: 'Pending', createdAt: '2026-09-01' },
-  { id: 'tor-2', employeeId: 'emp-6', employeeName: 'Tariq Al-Mansoor', employeeAvatar: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=150&auto=format&fit=crop&q=80', department: 'Engineering', leaveType: 'Sick Leave', startDate: '2026-08-28', endDate: '2026-08-29', totalDays: 2, reason: 'Flu recovery.', status: 'Approved', approvedBy: 'Moayad Mansour', createdAt: '2026-08-28' },
+  { id: 'tor-1', employeeId: 'emp-4', employeeName: 'Alex Rivera', employeeAvatar: '', department: 'Finance', leaveType: 'Annual Leave', startDate: '2026-09-12', endDate: '2026-09-16', totalDays: 5, reason: 'Family vacation and rest.', status: 'Pending', createdAt: '2026-09-01' },
+  { id: 'tor-2', employeeId: 'emp-6', employeeName: 'Tariq Al-Mansoor', employeeAvatar: '', department: 'Engineering', leaveType: 'Sick Leave', startDate: '2026-08-28', endDate: '2026-08-29', totalDays: 2, reason: 'Flu recovery.', status: 'Approved', approvedBy: 'Moayad Mansour', createdAt: '2026-08-28' },
 ];
 
 export const initialAppraisals: Appraisal[] = [
-  { id: 'app-1', employeeId: 'emp-3', employeeName: 'Sarah Chen', employeeAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80', jobTitle: 'VP of Finance & Operations', department: 'Finance', managerName: 'Mohannad Abuayyash', cycleTitle: 'Q3 2026 Executive Review', stage: 'Manager Review', overallRating: 4.8, selfRating: 4.7, managerRating: 4.9, goalsOnTrackCount: 4, status: 'In Progress' },
-  { id: 'app-2', employeeId: 'emp-4', employeeName: 'Alex Rivera', employeeAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80', jobTitle: 'Senior Lead Accountant', department: 'Finance', managerName: 'Sarah Chen', cycleTitle: 'Annual Performance Review 2026', stage: 'Completed', overallRating: 4.5, selfRating: 4.4, managerRating: 4.6, goalsOnTrackCount: 3, status: 'Completed' },
+  { id: 'app-1', employeeId: 'emp-3', employeeName: 'Sarah Chen', employeeAvatar: '', jobTitle: 'VP of Finance & Operations', department: 'Finance', managerName: 'Mohannad Abuayyash', cycleTitle: 'Q3 2026 Executive Review', stage: 'Manager Review', overallRating: 4.8, selfRating: 4.7, managerRating: 4.9, goalsOnTrackCount: 4, status: 'In Progress' },
+  { id: 'app-2', employeeId: 'emp-4', employeeName: 'Alex Rivera', employeeAvatar: '', jobTitle: 'Senior Lead Accountant', department: 'Finance', managerName: 'Sarah Chen', cycleTitle: 'Annual Performance Review 2026', stage: 'Completed', overallRating: 4.5, selfRating: 4.4, managerRating: 4.6, goalsOnTrackCount: 3, status: 'Completed' },
 ];
 
 export const initialEmployeeGoals: EmployeeGoal[] = [

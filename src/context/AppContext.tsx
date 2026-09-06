@@ -199,9 +199,11 @@ interface AppContextType {
 
   // HR Collections
   employees: Employee[];
-  createEmployee: (emp: Omit<Employee, 'id' | 'employeeNumber' | 'onboardingProgress'>) => void;
+  createEmployee: (emp: Omit<Employee, 'id' | 'employeeNumber' | 'onboardingProgress'>) => Promise<Employee>;
   updateEmployeeDetails: (employeeId: string, updates: Partial<Employee>) => void;
   departments: Department[];
+  createDepartment: (dept: { name: string; description?: string; managerEmployeeId?: string; managerName?: string }) => Promise<Department>;
+  fetchDepartments: () => Promise<void>;
   jobPositions: JobPosition[];
   attendanceRecords: AttendanceRecord[];
   clockInAttendance: (locationType: 'Office' | 'Remote' | 'Field Work') => void;
@@ -331,7 +333,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   // HR
   const [employees, setEmployees] = useState<Employee[]>(isSupabase ? [] : initialEmployees);
-  const [departments] = useState<Department[]>(isSupabase ? [] : initialDepartments);
+  const [departments, setDepartments] = useState<Department[]>(isSupabase ? [] : initialDepartments);
   const [jobPositions] = useState<JobPosition[]>(isSupabase ? [] : initialJobPositions);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>(isSupabase ? [] : initialAttendanceRecords);
   const [jobOpenings, setJobOpenings] = useState<JobOpening[]>(isSupabase ? [] : initialJobOpenings);
@@ -491,6 +493,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     if (!currentOrg || currentOrg.id === 'org_pending' || currentOrg.id.startsWith('org_temp_')) {
       setEmployees([]);
+      setDepartments([]);
       setCandidates([]);
       setVehicles([]);
       setInvoices([]);
@@ -516,6 +519,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       try {
         const [
           dbEmps,
+          dbDepts,
           dbCands,
           dbVehs,
           dbInv,
@@ -534,6 +538,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           dbContacts,
         ] = await Promise.all([
           employeeService.fetchEmployees(currentOrg.id),
+          employeeService.fetchDepartments(currentOrg.id),
           recruitmentService.fetchCandidates(currentOrg.id),
           employeeService.fetchVehicles(currentOrg.id),
           financeService.fetchInvoices(currentOrg.id),
@@ -554,6 +559,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
         if (!isCancelled) {
           setEmployees(dbEmps);
+          setDepartments(dbDepts);
           setCandidates(dbCands);
           setVehicles(dbVehs);
           setInvoices(dbInv);
@@ -735,11 +741,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // HR Actions
-  const createEmployee = (empData: Omit<Employee, 'id' | 'employeeNumber' | 'onboardingProgress'>) => {
-    employeeService.createEmployee(currentOrg.id, empData).then((newEmp) => {
-      setEmployees((prev) => [newEmp, ...prev]);
-      addAuditLog('CREATE_EMPLOYEE', 'Human Resources', `Created new employee record for ${newEmp.name}`);
-    });
+  const fetchDepartments = useCallback(async () => {
+    if (!currentOrg?.id) return;
+    const depts = await employeeService.fetchDepartments(currentOrg.id);
+    setDepartments(depts);
+  }, [currentOrg?.id]);
+
+  const createDepartment = useCallback(
+    async (dept: { name: string; description?: string; managerEmployeeId?: string; managerName?: string }): Promise<Department> => {
+      if (!currentOrg?.id) throw new Error('No active organization context');
+      const newDept = await employeeService.createDepartment(currentOrg.id, dept);
+      setDepartments((prev) => [...prev.filter((d) => d.id !== newDept.id), newDept]);
+      return newDept;
+    },
+    [currentOrg?.id]
+  );
+
+  const createEmployee = async (empData: Omit<Employee, 'id' | 'employeeNumber' | 'onboardingProgress'>): Promise<Employee> => {
+    const newEmp = await employeeService.createEmployee(currentOrg.id, empData);
+    setEmployees((prev) => [newEmp, ...prev]);
+    addAuditLog('CREATE_EMPLOYEE', 'Human Resources', `Created new employee record for ${newEmp.name}`);
+    return newEmp;
   };
 
   const updateEmployeeDetails = (employeeId: string, updates: Partial<Employee>) => {
@@ -1115,6 +1137,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         createEmployee,
         updateEmployeeDetails,
         departments,
+        createDepartment,
+        fetchDepartments,
         jobPositions,
         attendanceRecords,
         clockInAttendance,

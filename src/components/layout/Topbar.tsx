@@ -1,4 +1,5 @@
 import React from 'react';
+import { Avatar } from '../common/Avatar';
 import {
   Search,
   Plus,
@@ -149,10 +150,10 @@ export const Topbar: React.FC = () => {
           onClick={() => navigate('settings')}
           className="flex items-center gap-2.5 ps-2 border-s border-slate-800 cursor-pointer group"
         >
-          <img
+          <Avatar
             src={user.avatar}
-            alt={user.name}
-            className="w-8 h-8 rounded-xl object-cover ring-2 ring-cyan-500/30 group-hover:ring-cyan-400 transition-all"
+            name={user.name}
+            className="w-8 h-8 rounded-xl ring-2 ring-cyan-500/30 group-hover:ring-cyan-400 transition-all"
           />
           <div className="hidden lg:block text-start">
             <div className="text-xs font-bold text-slate-200 group-hover:text-slate-100 transition-colors">

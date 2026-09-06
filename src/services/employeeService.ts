@@ -1,7 +1,158 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient';
-import type { Employee, Vehicle, VehicleMaintenance, AttendanceRecord, TimeOffRequest, Appraisal } from '../types';
+import type { Employee, Department, Vehicle, VehicleMaintenance, AttendanceRecord, TimeOffRequest, Appraisal } from '../types';
+
+const avatarSignedUrlCache = new Map<string, { url: string; expiresAt: number }>();
 
 export const employeeService = {
+  // Departments
+  async fetchDepartments(orgId: string): Promise<Department[]> {
+    if (!isSupabaseConfigured() || !orgId) return [];
+    const { data, error } = await supabase
+      .from('departments')
+      .select('*')
+      .eq('organization_id', orgId)
+      .order('name', { ascending: true });
+
+    if (error) {
+      console.error('Error fetching departments from Supabase:', error);
+      return [];
+    }
+
+    return (data || []).map((row) => ({
+      id: row.id,
+      name: row.name,
+      code: row.code,
+      description: row.description || '',
+      managerEmployeeId: row.manager_employee_id,
+      managerName: row.manager_name || '',
+      employeeCount: row.employee_count || 0,
+      openPositions: 0,
+      monthlyPayrollCost: Number(row.budget) || 0,
+      createdAt: row.created_at,
+    }));
+  },
+
+  async createDepartment(
+    orgId: string,
+    dept: { name: string; description?: string; managerEmployeeId?: string; managerName?: string }
+  ): Promise<Department> {
+    const id = crypto.randomUUID();
+    const code = dept.name.substring(0, 3).toUpperCase();
+
+    if (isSupabaseConfigured()) {
+      const { error } = await supabase.from('departments').insert({
+        id,
+        organization_id: orgId,
+        name: dept.name.trim(),
+        code,
+        description: dept.description?.trim() || null,
+        manager_employee_id: dept.managerEmployeeId || null,
+        manager_name: dept.managerName || null,
+      });
+
+      if (error) {
+        console.error('Error creating department in Supabase:', error);
+        throw new Error(`Failed to create department: ${error.message}`);
+      }
+    }
+
+    return {
+      id,
+      name: dept.name.trim(),
+      code,
+      description: dept.description?.trim() || '',
+      managerEmployeeId: dept.managerEmployeeId,
+      managerName: dept.managerName || '',
+      employeeCount: 0,
+      openPositions: 0,
+      monthlyPayrollCost: 0,
+    };
+  },
+
+  // Avatar Storage
+  async uploadEmployeeAvatar(orgId: string, employeeId: string, file: File): Promise<string> {
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    const validExtensions = ['.jpg', '.jpeg', '.png', '.webp'];
+    const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+
+    if (!validTypes.includes(file.type) && !validExtensions.includes(ext)) {
+      throw new Error('Please upload a JPG, PNG, or WebP image up to 5 MB.');
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      throw new Error('Please upload a JPG, PNG, or WebP image up to 5 MB.');
+    }
+
+    if (!isSupabaseConfigured()) {
+      return URL.createObjectURL(file);
+    }
+
+    const cleanFileName = `${Date.now()}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+    const storagePath = `${orgId}/${employeeId}/${cleanFileName}`;
+
+    const { data, error } = await supabase.storage
+      .from('employee-avatars')
+      .upload(storagePath, file, { upsert: true });
+
+    if (error) {
+      console.error('Error uploading avatar to Supabase Storage:', error);
+      throw new Error(`Avatar upload failed: ${error.message}`);
+    }
+
+    return data.path;
+  },
+
+  async deleteEmployeeAvatar(path: string): Promise<void> {
+    if (!path || !isSupabaseConfigured() || path.startsWith('http') || path.startsWith('blob:')) return;
+    try {
+      await supabase.storage.from('employee-avatars').remove([path]);
+      avatarSignedUrlCache.delete(path);
+    } catch (e) {
+      console.error('Error deleting avatar from storage:', e);
+    }
+  },
+
+  async getEmployeeAvatarUrl(avatarPathOrUrl?: string): Promise<string> {
+    if (!avatarPathOrUrl) return '';
+    if (
+      avatarPathOrUrl.startsWith('http://') ||
+      avatarPathOrUrl.startsWith('https://') ||
+      avatarPathOrUrl.startsWith('blob:') ||
+      avatarPathOrUrl.startsWith('data:')
+    ) {
+      return avatarPathOrUrl;
+    }
+
+    if (!isSupabaseConfigured()) return '';
+
+    const cached = avatarSignedUrlCache.get(avatarPathOrUrl);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.url;
+    }
+
+    try {
+      const { data, error } = await supabase.storage
+        .from('employee-avatars')
+        .createSignedUrl(avatarPathOrUrl, 3600);
+
+      if (error || !data?.signedUrl) {
+        const { data: pubData } = supabase.storage.from('employee-avatars').getPublicUrl(avatarPathOrUrl);
+        return pubData.publicUrl || '';
+      }
+
+      avatarSignedUrlCache.set(avatarPathOrUrl, {
+        url: data.signedUrl,
+        expiresAt: Date.now() + 50 * 60 * 1000,
+      });
+
+      return data.signedUrl;
+    } catch (err) {
+      console.error('Error creating signed avatar URL:', err);
+      return '';
+    }
+  },
+
+  // Employees
   async fetchEmployees(orgId: string): Promise<Employee[]> {
     if (!isSupabaseConfigured() || !orgId) return [];
     const { data, error } = await supabase
@@ -20,17 +171,17 @@ export const employeeService = {
       employeeNumber: row.employee_number,
       name: row.name,
       email: row.email,
-      phone: row.phone,
-      avatar: row.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(row.name)}&background=06b6d4&color=020617`,
+      phone: row.phone || '',
+      avatar: row.avatar || '',
       jobTitle: row.job_title,
       department: row.department,
       workLocation: row.work_location,
       startDate: row.start_date,
       employmentType: row.employment_type,
       status: row.status,
-      baseSalary: Number(row.base_salary),
-      payFrequency: row.pay_frequency,
-      managerName: row.manager_name,
+      baseSalary: Number(row.base_salary) || 0,
+      payFrequency: row.pay_frequency || 'Monthly',
+      managerName: row.manager_name || '',
       skills: row.skills || [],
       onboardingProgress: 100,
     }));
@@ -47,17 +198,17 @@ export const employeeService = {
         employee_number: empNum,
         name: emp.name,
         email: emp.email,
-        phone: emp.phone,
-        avatar: emp.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(emp.name)}&background=06b6d4&color=020617`,
+        phone: emp.phone || null,
+        avatar: emp.avatar || null,
         job_title: emp.jobTitle,
         department: emp.department,
-        work_location: emp.workLocation,
+        work_location: emp.workLocation || 'HQ',
         start_date: emp.startDate,
         employment_type: emp.employmentType,
         status: emp.status,
         base_salary: emp.baseSalary,
         pay_frequency: emp.payFrequency,
-        manager_name: emp.managerName,
+        manager_name: emp.managerName || null,
       });
 
       if (error) {
@@ -79,11 +230,12 @@ export const employeeService = {
     const dbUpdates: any = {};
     if (updates.name) dbUpdates.name = updates.name;
     if (updates.email) dbUpdates.email = updates.email;
-    if (updates.phone) dbUpdates.phone = updates.phone;
+    if (updates.phone !== undefined) dbUpdates.phone = updates.phone;
+    if (updates.avatar !== undefined) dbUpdates.avatar = updates.avatar;
     if (updates.jobTitle) dbUpdates.job_title = updates.jobTitle;
     if (updates.department) dbUpdates.department = updates.department;
     if (updates.status) dbUpdates.status = updates.status;
-    if (updates.baseSalary) dbUpdates.base_salary = updates.baseSalary;
+    if (updates.baseSalary !== undefined) dbUpdates.base_salary = updates.baseSalary;
 
     const { error } = await supabase
       .from('employees')

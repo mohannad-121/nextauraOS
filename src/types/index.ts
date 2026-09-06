@@ -375,10 +375,14 @@ export interface Employee {
 export interface Department {
   id: string;
   name: string;
-  managerName: string;
-  employeeCount: number;
-  openPositions: number;
-  monthlyPayrollCost: number;
+  code?: string;
+  description?: string;
+  managerEmployeeId?: string;
+  managerName?: string;
+  employeeCount?: number;
+  openPositions?: number;
+  monthlyPayrollCost?: number;
+  createdAt?: string;
 }
 
 export interface JobPosition {

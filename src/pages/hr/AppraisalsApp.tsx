@@ -4,6 +4,7 @@ import { useApp } from '../../context/AppContext';
 import { PageHeader } from '../../components/common/PageHeader';
 import { StatCard } from '../../components/common/StatCard';
 import { Modal } from '../../components/common/Modal';
+import { Avatar } from '../../components/common/Avatar';
 
 export const AppraisalsApp: React.FC = () => {
   const { appraisals, employeeGoals, employees, submitSelfReview, submitManagerReview, completeAppraisal } = useApp();
@@ -83,7 +84,7 @@ export const AppraisalsApp: React.FC = () => {
             <div key={app.id} className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800 pb-4 gap-4">
                 <div className="flex items-center gap-3">
-                  <img src={app.employeeAvatar} alt="" className="w-10 h-10 rounded-2xl object-cover" />
+                  <Avatar src={app.employeeAvatar} name={app.employeeName} className="w-10 h-10 rounded-2xl" />
                   <div>
                     <h4 className="text-base font-bold text-slate-100 font-heading">{app.employeeName}</h4>
                     <div className="text-xs text-slate-400">{app.jobTitle} • {app.department}</div>

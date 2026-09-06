@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../../context/AppContext';
 import { PageHeader } from '../../components/common/PageHeader';
+import { Avatar } from '../../components/common/Avatar';
 import { initialTeam } from '../../data/mockData';
 
 export const SettingsPage: React.FC = () => {
@@ -76,7 +77,7 @@ export const SettingsPage: React.FC = () => {
             {initialTeam.map((member) => (
               <div key={member.id} className="py-3 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <img src={member.avatar} alt="" className="w-8 h-8 rounded-xl object-cover" />
+                  <Avatar src={member.avatar} name={member.name} className="w-8 h-8 rounded-xl text-xs" />
                   <div>
                     <div className="font-bold text-slate-100">{member.name}</div>
                     <div className="text-[10px] text-slate-400">{member.email}</div>

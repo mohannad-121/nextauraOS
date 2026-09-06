@@ -3,6 +3,7 @@ import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { CommandPalette } from './CommandPalette';
 import { NotificationDrawer } from './NotificationDrawer';
+import { ErrorBoundary } from '../common/ErrorBoundary';
 import { useApp } from '../../context/AppContext';
 
 interface AppShellProps {
@@ -41,7 +42,7 @@ const appTitles: Record<string, string> = {
 };
 
 export const AppShell: React.FC<AppShellProps> = ({ children }) => {
-  const { isRtl, activeApp } = useApp();
+  const { isRtl, activeApp, activeSubView, navigate } = useApp();
 
   useEffect(() => {
     const pageTitle = appTitles[activeApp] || 'Business OS';
@@ -60,7 +61,13 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
         <div className="flex-1 flex flex-col min-w-0 min-h-screen bg-slate-950">
           <Topbar />
           <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-7xl w-full mx-auto animate-in fade-in duration-200">
-            {children}
+            <ErrorBoundary
+              activeApp={activeApp}
+              activeSubView={activeSubView}
+              onReset={() => navigate('launchpad', 'overview')}
+            >
+              {children}
+            </ErrorBoundary>
           </main>
         </div>
       </div>

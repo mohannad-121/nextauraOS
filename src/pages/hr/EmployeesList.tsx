@@ -8,29 +8,49 @@ import {
   Building2,
   Mail,
   Phone,
+  Upload,
+  X,
+  AlertCircle,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { PageHeader } from '../../components/common/PageHeader';
 import { Modal } from '../../components/common/Modal';
+import { Avatar } from '../../components/common/Avatar';
+import { employeeService } from '../../services/employeeService';
 import type { EmploymentType } from '../../types';
 
 export const EmployeesList: React.FC = () => {
-  const { navigate, employees, createEmployee, departments } = useApp();
+  const { navigate, employees, createEmployee, departments, createDepartment, currentOrg, user } = useApp();
   const [viewMode, setViewMode] = useState<'grid' | 'list' | 'orgChart'>('grid');
   const [search, setSearch] = useState('');
   const [selectedDept, setSelectedDept] = useState('all');
 
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
+  const [isDeptModalOpen, setDeptModalOpen] = useState(false);
+
+  // New Department Form State
+  const [newDeptName, setNewDeptName] = useState('');
+  const [newDeptDesc, setNewDeptDesc] = useState('');
+  const [newDeptManagerId, setNewDeptManagerId] = useState('');
+  const [isCreatingDept, setIsCreatingDept] = useState(false);
+  const [deptErrorMessage, setDeptErrorMessage] = useState<string | null>(null);
 
   // New Employee Form State
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [phone] = useState('+1 415 000 0000');
+  const [phone, setPhone] = useState('');
   const [jobTitle, setJobTitle] = useState('');
-  const [department, setDepartment] = useState('Engineering');
-  const [workLocation, setWorkLocation] = useState('San Francisco HQ');
-  const [employmentType] = useState<EmploymentType>('Full-time');
-  const [baseSalary, setBaseSalary] = useState('9500');
+  const [department, setDepartment] = useState('');
+  const [workLocation, setWorkLocation] = useState('HQ');
+  const [employmentType, setEmploymentType] = useState<EmploymentType>('Full-time');
+  const [baseSalary, setBaseSalary] = useState('');
+
+  // Profile Photo Upload State
+  const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
+  const [avatarPreviewUrl, setAvatarPreviewUrl] = useState<string | null>(null);
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   const filteredEmployees = employees.filter((emp) => {
     const matchesSearch =
@@ -41,35 +61,124 @@ export const EmployeesList: React.FC = () => {
     return matchesSearch && matchesDept;
   });
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    const validExtensions = ['.jpg', '.jpeg', '.png', '.webp'];
+    const ext = file.name.substring(file.name.lastIndexOf('.')).toLowerCase();
+
+    if (!validTypes.includes(file.type) && !validExtensions.includes(ext)) {
+      setErrorMessage('Please upload a JPG, PNG, or WebP image up to 5 MB.');
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setErrorMessage('Please upload a JPG, PNG, or WebP image up to 5 MB.');
+      return;
+    }
+
+    setErrorMessage(null);
+    setSelectedImageFile(file);
+    setAvatarPreviewUrl(URL.createObjectURL(file));
+  };
+
+  const handleRemoveImage = () => {
+    setSelectedImageFile(null);
+    setAvatarPreviewUrl(null);
+  };
+
+  const handleCreateDepartmentSubmit = async () => {
+    if (!newDeptName.trim()) {
+      setDeptErrorMessage('Department name is required.');
+      return;
+    }
+
+    setDeptErrorMessage(null);
+    setIsCreatingDept(true);
+
+    try {
+      const selectedManager = employees.find((e) => e.id === newDeptManagerId);
+      const createdDept = await createDepartment({
+        name: newDeptName.trim(),
+        description: newDeptDesc.trim(),
+        managerEmployeeId: newDeptManagerId || undefined,
+        managerName: selectedManager?.name || undefined,
+      });
+
+      setDepartment(createdDept.name);
+      setNewDeptName('');
+      setNewDeptDesc('');
+      setNewDeptManagerId('');
+      setDeptModalOpen(false);
+    } catch (err: any) {
+      setDeptErrorMessage(err.message || 'Failed to create department.');
+    } finally {
+      setIsCreatingDept(false);
+    }
+  };
+
+  const resetEmployeeForm = () => {
+    setName('');
+    setEmail('');
+    setPhone('');
+    setJobTitle('');
+    setDepartment('');
+    setWorkLocation('HQ');
+    setEmploymentType('Full-time');
+    setBaseSalary('');
+    setSelectedImageFile(null);
+    setAvatarPreviewUrl(null);
+    setErrorMessage(null);
+  };
 
   const handleCreate = async () => {
-    if (!name || !email || !jobTitle) {
+    if (!name.trim() || !email.trim() || !jobTitle.trim()) {
       setErrorMessage('Full name, email, and job title are required.');
       return;
     }
+
+    if (!department) {
+      setErrorMessage('Please select or create a department.');
+      return;
+    }
+
     setErrorMessage(null);
     setIsSubmitting(true);
+
     try {
-      await createEmployee({
-        name,
-        email,
-        phone: phone || '+1 415 000 0000',
-        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-        jobTitle,
+      const newEmp = await createEmployee({
+        name: name.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
+        avatar: '',
+        jobTitle: jobTitle.trim(),
         department,
-        workLocation,
+        workLocation: workLocation.trim() || 'HQ',
         startDate: new Date().toISOString().substring(0, 10),
         employmentType,
         status: 'Active',
-        baseSalary: Number(baseSalary),
+        baseSalary: Number(baseSalary) || 0,
         payFrequency: 'Monthly',
-        skills: [{ name: 'Enterprise SaaS', level: 'Advanced' }],
+        skills: [],
       });
-      setName('');
-      setEmail('');
-      setJobTitle('');
+
+      if (selectedImageFile && currentOrg?.id) {
+        try {
+          const avatarPath = await employeeService.uploadEmployeeAvatar(
+            currentOrg.id,
+            newEmp.id,
+            selectedImageFile
+          );
+          await employeeService.updateEmployeeDetails(currentOrg.id, newEmp.id, { avatar: avatarPath });
+        } catch (uploadErr: any) {
+          console.error('Avatar upload failure:', uploadErr);
+          alert('Employee was created, but the profile photo could not be uploaded. You can add it from the employee profile.');
+        }
+      }
+
+      resetEmployeeForm();
       setCreateModalOpen(false);
     } catch (err: any) {
       setErrorMessage(err.message || 'Failed to create employee. Please try again.');
@@ -117,7 +226,10 @@ export const EmployeesList: React.FC = () => {
             </div>
 
             <button
-              onClick={() => setCreateModalOpen(true)}
+              onClick={() => {
+                resetEmployeeForm();
+                setCreateModalOpen(true);
+              }}
               className="px-4 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 font-bold text-xs shadow-lg shadow-orange-500/20 flex items-center gap-1.5"
             >
               <Plus className="w-4 h-4 stroke-[3]" />
@@ -180,10 +292,10 @@ export const EmployeesList: React.FC = () => {
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
-                  <img
+                  <Avatar
                     src={emp.avatar}
-                    alt=""
-                    className="w-12 h-12 rounded-2xl object-cover ring-2 ring-orange-500/30 group-hover:scale-105 transition-transform"
+                    name={emp.name}
+                    className="w-12 h-12 rounded-2xl ring-2 ring-orange-500/30 group-hover:scale-105 transition-transform"
                   />
                   <div>
                     <h3 className="text-base font-bold text-slate-100 font-heading group-hover:text-orange-400 transition-colors">
@@ -206,19 +318,23 @@ export const EmployeesList: React.FC = () => {
                   <Mail className="w-3.5 h-3.5 text-slate-500 shrink-0" />
                   <span className="truncate">{emp.email}</span>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Phone className="w-3.5 h-3.5 text-slate-500 shrink-0" />
-                  <span>{emp.phone}</span>
-                </div>
+                {emp.phone && (
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                    <span>{emp.phone}</span>
+                  </div>
+                )}
               </div>
 
-              <div className="flex flex-wrap gap-1 pt-1">
-                {emp.skills.map((sk) => (
-                  <span key={sk.name} className="px-2 py-0.5 rounded-md bg-slate-950 border border-slate-800 text-slate-300 text-[10px] font-semibold">
-                    {sk.name}
-                  </span>
-                ))}
-              </div>
+              {emp.skills && emp.skills.length > 0 && (
+                <div className="flex flex-wrap gap-1 pt-1">
+                  {emp.skills.map((sk) => (
+                    <span key={sk.name} className="px-2 py-0.5 rounded-md bg-slate-950 border border-slate-800 text-slate-300 text-[10px] font-semibold">
+                      {sk.name}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -243,7 +359,7 @@ export const EmployeesList: React.FC = () => {
                 {filteredEmployees.map((emp) => (
                   <tr key={emp.id} className="hover:bg-slate-800/40">
                     <td className="p-4 flex items-center gap-3">
-                      <img src={emp.avatar} alt="" className="w-8 h-8 rounded-xl object-cover" />
+                      <Avatar src={emp.avatar} name={emp.name} className="w-8 h-8 rounded-xl" />
                       <div>
                         <div className="font-bold text-slate-100">{emp.name}</div>
                         <div className="text-[10px] text-slate-400 font-mono">{emp.employeeNumber}</div>
@@ -290,13 +406,13 @@ export const EmployeesList: React.FC = () => {
             </div>
           ) : (
             <>
-              {/* Level 1: CEO */}
+              {/* Level 1: Leadership / Executive */}
               <div className="flex justify-center">
                 <div
                   onClick={() => navigate('employees', 'detail', employees[0].id)}
                   className="p-4 rounded-2xl bg-gradient-to-b from-orange-950/80 to-slate-950 border border-orange-500/40 text-center space-y-2 cursor-pointer shadow-xl hover:scale-105 transition-transform w-64"
                 >
-                  <img src={employees[0].avatar} alt="" className="w-12 h-12 rounded-2xl object-cover mx-auto ring-2 ring-orange-400" />
+                  <Avatar src={employees[0].avatar} name={employees[0].name} className="w-12 h-12 rounded-2xl mx-auto ring-2 ring-orange-400" />
                   <div>
                     <div className="font-bold text-slate-100 text-xs">{employees[0].name}</div>
                     <div className="text-[11px] text-orange-400 font-semibold">{employees[0].jobTitle}</div>
@@ -307,7 +423,7 @@ export const EmployeesList: React.FC = () => {
               {/* Line Down */}
               {employees.length > 1 && <div className="w-0.5 h-6 bg-slate-700 mx-auto" />}
 
-              {/* Level 2: Tech Lead & VP Finance & Legal */}
+              {/* Level 2 */}
               {employees.length > 1 && (
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
                   {employees.slice(1, 4).map((emp) => (
@@ -316,7 +432,7 @@ export const EmployeesList: React.FC = () => {
                       onClick={() => navigate('employees', 'detail', emp.id)}
                       className="p-4 rounded-2xl bg-slate-950 border border-slate-800 text-center space-y-2 cursor-pointer hover:border-orange-500/40 transition-colors"
                     >
-                      <img src={emp.avatar} alt="" className="w-10 h-10 rounded-xl object-cover mx-auto" />
+                      <Avatar src={emp.avatar} name={emp.name} className="w-10 h-10 rounded-xl mx-auto" />
                       <div>
                         <div className="font-bold text-slate-100 text-xs">{emp.name}</div>
                         <div className="text-[11px] text-cyan-400 font-semibold">{emp.jobTitle}</div>
@@ -340,54 +456,254 @@ export const EmployeesList: React.FC = () => {
           subtitle="Create employee profile and initiate onboarding workflow."
           maxWidth="lg"
         >
-          <div className="space-y-4 text-xs text-slate-300">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-slate-400 font-medium mb-1">Full Name</label>
-                <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Tariq Al-Mansoor" className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100" />
-              </div>
-              <div>
-                <label className="block text-slate-400 font-medium mb-1">Work Email</label>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="tariq@nextaura.ai" className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100" />
+          <div className="space-y-5 text-xs text-slate-300">
+            {/* Profile Photo Section */}
+            <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex items-center gap-4">
+              <Avatar
+                src={avatarPreviewUrl || ''}
+                name={name || 'New Employee'}
+                className="w-16 h-16 rounded-2xl object-cover ring-2 ring-orange-500/30 shrink-0"
+              />
+              <div className="space-y-1.5">
+                <div className="font-bold text-slate-100">Profile Photo</div>
+                <p className="text-[10px] text-slate-400">JPG, PNG, or WebP up to 5 MB</p>
+                <div className="flex items-center gap-2">
+                  <label className="px-3 py-1.5 rounded-lg bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 font-bold text-xs cursor-pointer flex items-center gap-1.5">
+                    <Upload className="w-3.5 h-3.5" />
+                    {avatarPreviewUrl ? 'Change Photo' : 'Upload Photo'}
+                    <input
+                      type="file"
+                      accept=".jpg,.jpeg,.png,.webp"
+                      onChange={handleImageFileChange}
+                      className="hidden"
+                    />
+                  </label>
+                  {avatarPreviewUrl && (
+                    <button
+                      type="button"
+                      onClick={handleRemoveImage}
+                      className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold text-xs flex items-center gap-1"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      Remove
+                    </button>
+                  )}
+                </div>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-slate-400 font-medium mb-1">Job Title</label>
-                <input type="text" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} placeholder="e.g. Senior Full Stack Engineer" className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100" />
+                <label className="block text-slate-400 font-medium mb-1">Full Name *</label>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="e.g. Mohannad Abuayyash"
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 focus:border-orange-500 outline-none"
+                />
               </div>
               <div>
-                <label className="block text-slate-400 font-medium mb-1">Department</label>
-                <select value={department} onChange={(e) => setDepartment(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200">
-                  {departments.map((d) => (
-                    <option key={d.id} value={d.name}>{d.name}</option>
-                  ))}
-                </select>
+                <label className="block text-slate-400 font-medium mb-1">Work Email *</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="m.abuayyash@nextaura.ai"
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 focus:border-orange-500 outline-none"
+                />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-slate-400 font-medium mb-1">Job Title *</label>
+                <input
+                  type="text"
+                  value={jobTitle}
+                  onChange={(e) => setJobTitle(e.target.value)}
+                  placeholder="e.g. Senior Software Engineer"
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 focus:border-orange-500 outline-none"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block text-slate-400 font-medium">Department *</label>
+                  {['Owner', 'Administrator'].includes(user.role) && (
+                    <button
+                      type="button"
+                      onClick={() => setDeptModalOpen(true)}
+                      className="text-[10px] font-bold text-orange-400 hover:text-orange-300"
+                    >
+                      + Create Department
+                    </button>
+                  )}
+                </div>
+
+                {departments.length === 0 ? (
+                  <div className="space-y-1.5">
+                    <div className="px-3.5 py-2 rounded-xl bg-slate-950 border border-amber-500/30 text-amber-400 text-xs flex items-center justify-between">
+                      <span>No departments yet</span>
+                      <button
+                        type="button"
+                        onClick={() => setDeptModalOpen(true)}
+                        className="px-2.5 py-1 rounded-lg bg-orange-500 text-slate-950 font-bold text-[10px]"
+                      >
+                        + Create Department
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <select
+                    value={department}
+                    onChange={(e) => setDepartment(e.target.value)}
+                    className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 focus:border-orange-500 outline-none"
+                  >
+                    <option value="">Select Department...</option>
+                    {departments.map((d) => (
+                      <option key={d.id} value={d.name}>
+                        {d.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div>
+                <label className="block text-slate-400 font-medium mb-1">Phone (Optional)</label>
+                <input
+                  type="text"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="+1 555 0192"
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 focus:border-orange-500 outline-none"
+                />
+              </div>
               <div>
                 <label className="block text-slate-400 font-medium mb-1">Work Location</label>
-                <input type="text" value={workLocation} onChange={(e) => setWorkLocation(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200" />
+                <input
+                  type="text"
+                  value={workLocation}
+                  onChange={(e) => setWorkLocation(e.target.value)}
+                  placeholder="e.g. Main Office / Remote"
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 focus:border-orange-500 outline-none"
+                />
               </div>
               <div>
                 <label className="block text-slate-400 font-medium mb-1">Base Monthly Salary ($)</label>
-                <input type="number" value={baseSalary} onChange={(e) => setBaseSalary(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-orange-400 font-bold" />
+                <input
+                  type="number"
+                  value={baseSalary}
+                  onChange={(e) => setBaseSalary(e.target.value)}
+                  placeholder="e.g. 5000"
+                  className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-orange-400 font-bold focus:border-orange-500 outline-none"
+                />
               </div>
             </div>
 
             {errorMessage && (
-              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold">
-                {errorMessage}
+              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{errorMessage}</span>
               </div>
             )}
 
             <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
-              <button onClick={() => setCreateModalOpen(false)} disabled={isSubmitting} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-200 disabled:opacity-50">Cancel</button>
-              <button onClick={handleCreate} disabled={isSubmitting} className="px-5 py-2 rounded-xl bg-orange-500 text-slate-950 font-bold shadow-lg shadow-orange-500/20 disabled:opacity-50">
-                {isSubmitting ? 'Creating...' : 'Create Employee Profile'}
+              <button
+                type="button"
+                onClick={() => setCreateModalOpen(false)}
+                disabled={isSubmitting}
+                className="px-4 py-2 rounded-xl bg-slate-800 text-slate-200 disabled:opacity-50 font-semibold text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleCreate}
+                disabled={isSubmitting}
+                className="px-5 py-2 rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 font-bold text-xs shadow-lg shadow-orange-500/20 disabled:opacity-50"
+              >
+                {isSubmitting ? 'Creating Employee...' : 'Create Employee Profile'}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Create Department Modal */}
+      {isDeptModalOpen && (
+        <Modal
+          isOpen={isDeptModalOpen}
+          onClose={() => setDeptModalOpen(false)}
+          title="Create New Department"
+          subtitle="Add a tenant-owned department for your organization."
+          maxWidth="md"
+        >
+          <div className="space-y-4 text-xs text-slate-300">
+            <div>
+              <label className="block text-slate-400 font-medium mb-1">Department Name *</label>
+              <input
+                type="text"
+                value={newDeptName}
+                onChange={(e) => setNewDeptName(e.target.value)}
+                placeholder="e.g. Engineering / Product / Finance"
+                className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 focus:border-orange-500 outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-400 font-medium mb-1">Description (Optional)</label>
+              <textarea
+                value={newDeptDesc}
+                onChange={(e) => setNewDeptDesc(e.target.value)}
+                placeholder="Core responsibilities and scope of this department..."
+                rows={3}
+                className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 focus:border-orange-500 outline-none resize-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-slate-400 font-medium mb-1">Department Manager (Optional)</label>
+              <select
+                value={newDeptManagerId}
+                onChange={(e) => setNewDeptManagerId(e.target.value)}
+                className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 focus:border-orange-500 outline-none"
+              >
+                <option value="">No Manager Assigned</option>
+                {employees.map((emp) => (
+                  <option key={emp.id} value={emp.id}>
+                    {emp.name} ({emp.jobTitle})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {deptErrorMessage && (
+              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0" />
+                <span>{deptErrorMessage}</span>
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
+              <button
+                type="button"
+                onClick={() => setDeptModalOpen(false)}
+                disabled={isCreatingDept}
+                className="px-4 py-2 rounded-xl bg-slate-800 text-slate-200 disabled:opacity-50 font-semibold text-xs"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleCreateDepartmentSubmit}
+                disabled={isCreatingDept}
+                className="px-5 py-2 rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 font-bold text-xs shadow-lg shadow-orange-500/20 disabled:opacity-50"
+              >
+                {isCreatingDept ? 'Creating...' : 'Create Department'}
               </button>
             </div>
           </div>

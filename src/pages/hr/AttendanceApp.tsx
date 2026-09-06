@@ -8,6 +8,7 @@ import {
 import { useApp } from '../../context/AppContext';
 import { PageHeader } from '../../components/common/PageHeader';
 import { StatCard } from '../../components/common/StatCard';
+import { Avatar } from '../../components/common/Avatar';
 
 export const AttendanceApp: React.FC = () => {
   const {
@@ -231,7 +232,7 @@ export const AttendanceApp: React.FC = () => {
               {attendanceRecords.map((att) => (
                 <tr key={att.id} className="hover:bg-slate-800/40">
                   <td className="p-4 flex items-center gap-2.5">
-                    <img src={att.employeeAvatar} alt="" className="w-7 h-7 rounded-xl object-cover" />
+                    <Avatar src={att.employeeAvatar} name={att.employeeName} className="w-7 h-7 rounded-xl text-xs" />
                     <div>
                       <div className="font-semibold text-slate-100">{att.employeeName}</div>
                       <div className="text-[10px] text-slate-400">{att.department}</div>
