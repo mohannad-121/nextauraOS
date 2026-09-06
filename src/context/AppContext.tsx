@@ -135,6 +135,8 @@ export type AppView =
   | 'contacts'
   | 'documents'
   | 'analytics'
+  | 'ai'
+  | 'pricing'
   | 'settings'
   | 'auth';
 
@@ -407,6 +409,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   const refreshServices = useCallback(async (): Promise<void> => {
+    if (!isSupabase) return;
     if (!currentOrg || !currentOrg.id || currentOrg.id === 'org_pending' || currentOrg.id.startsWith('org_temp_')) return;
     try {
       const services = await entitlementService.getActiveOrgServices(currentOrg.id);
@@ -414,11 +417,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (err) {
       console.error('[AppContext] Failed to load organization services:', err);
     }
-  }, [currentOrg?.id]);
+  }, [currentOrg, isSupabase]);
 
   useEffect(() => {
     refreshServices();
-  }, [currentOrg?.id, refreshServices]);
+  }, [refreshServices]);
 
   const isRtl = language === 'ar';
 

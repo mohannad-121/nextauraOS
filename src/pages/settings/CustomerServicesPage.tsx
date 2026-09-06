@@ -69,9 +69,9 @@ export const CustomerServicesPage: React.FC = () => {
       {/* ACTIVE SERVICES GRID */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
             Active Applications ({activeServiceDefs.length})
-          </h3>
+          </h2>
           <span className="text-xs font-mono text-indigo-600 dark:text-indigo-400 font-semibold">Workspace Entitlements Active</span>
         </div>
 
@@ -107,9 +107,9 @@ export const CustomerServicesPage: React.FC = () => {
       {/* AVAILABLE SERVICES GRID */}
       {availableServiceDefs.length > 0 && (
         <div className="space-y-4 pt-6 border-t border-slate-200/80 dark:border-slate-800">
-          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
             Available to Enable ({availableServiceDefs.length})
-          </h3>
+          </h2>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {availableServiceDefs.map((service) => {

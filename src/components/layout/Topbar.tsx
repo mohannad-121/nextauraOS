@@ -23,6 +23,7 @@ const appLabels: Record<string, string> = {
   appraisals: 'Appraisals', fleet: 'Fleet', payroll: 'Payroll', marketing: 'Marketing', email: 'Email',
   sms: 'SMS', surveys: 'Surveys', social: 'Social', calendar: 'Calendar', approvals: 'Approvals',
   contacts: 'Contacts', documents: 'Documents', analytics: 'Analytics', settings: 'Settings',
+  ai: 'NextAura AI', pricing: 'Pricing',
 };
 
 export const Topbar: React.FC = () => {
@@ -42,7 +43,7 @@ export const Topbar: React.FC = () => {
     return () => document.removeEventListener('mousedown', closeMenu);
   }, []);
 
-  const contextualAction = (() => {
+  const contextualAction: { label: string; onClick: () => void } | null = (() => {
     switch (activeApp) {
       case 'invoicing': return { label: 'New invoice', onClick: () => navigate('invoicing', 'new-invoice') };
       case 'employees':
@@ -53,7 +54,7 @@ export const Topbar: React.FC = () => {
       case 'marketing': return { label: 'New campaign', onClick: () => navigate('email', 'new') };
       case 'recruitment': return { label: 'New opening', onClick: () => navigate('recruitment', 'overview') };
       case 'contacts': return { label: 'Add contact', onClick: () => navigate('contacts') };
-      default: return { label: 'New invoice', onClick: () => navigate('invoicing', 'new-invoice') };
+      default: return null;
     }
   })();
 
@@ -72,7 +73,7 @@ export const Topbar: React.FC = () => {
 
         <nav aria-label="Breadcrumb" className="min-w-0">
           <ol className="flex min-w-0 items-center gap-2 text-sm">
-            <li className="hidden text-slate-500 sm:block">
+            <li className="hidden text-slate-500 dark:text-slate-400 sm:block">
               <button type="button" onClick={() => navigate('home')} className="transition-colors hover:text-slate-700 dark:hover:text-slate-200">
                 NextAura
               </button>
@@ -92,27 +93,29 @@ export const Topbar: React.FC = () => {
       <button
         type="button"
         onClick={() => setCommandPaletteOpen(true)}
-        className="mx-5 hidden h-10 w-full max-w-sm items-center justify-between rounded-xl border border-slate-200 bg-[#FAFAF8] px-3.5 text-xs text-slate-500 transition-colors hover:border-slate-300 hover:bg-white dark:border-slate-700 dark:bg-slate-800 lg:flex"
+        className="mx-5 hidden h-10 w-full max-w-sm items-center justify-between rounded-xl border border-slate-200 bg-[#FAFAF8] px-3.5 text-xs text-slate-500 transition-colors hover:border-slate-300 hover:bg-white dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 lg:flex"
       >
         <span className="flex items-center gap-2"><Search className="h-4 w-4" aria-hidden="true" />Search your workspace</span>
         <kbd className="rounded-md border border-slate-200 bg-white px-1.5 py-0.5 font-sans text-[10px] font-medium text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">Ctrl K</kbd>
       </button>
 
       <div className="flex flex-1 items-center justify-end gap-1 sm:gap-1.5">
-        <button
-          type="button"
-          onClick={contextualAction.onClick}
-          className="hidden h-10 items-center gap-1.5 whitespace-nowrap rounded-[10px] bg-blue-700 px-3.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-blue-800 sm:flex"
-        >
-          <Plus className="h-4 w-4" aria-hidden="true" />
-          <span className="hidden xl:inline">{contextualAction.label}</span>
-          <span className="xl:hidden">Create</span>
-        </button>
+        {contextualAction && (
+          <button
+            type="button"
+            onClick={contextualAction.onClick}
+            className="hidden h-10 items-center gap-1.5 whitespace-nowrap rounded-[10px] bg-blue-700 px-3.5 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-blue-800 sm:flex"
+          >
+            <Plus className="h-4 w-4" aria-hidden="true" />
+            <span className="hidden xl:inline">{contextualAction.label}</span>
+            <span className="xl:hidden">Create</span>
+          </button>
+        )}
 
         <button type="button" onClick={() => setCommandPaletteOpen(true)} className="flex h-10 w-10 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 lg:hidden" aria-label="Search">
           <Search className="h-[18px] w-[18px]" />
         </button>
-        <button type="button" onClick={toggleLanguage} className="hidden h-10 items-center gap-1.5 rounded-xl px-2.5 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800 sm:flex" aria-label="Change language">
+        <button type="button" onClick={toggleLanguage} className="hidden h-10 items-center gap-1.5 rounded-xl px-2.5 text-xs font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200 sm:flex" aria-label="Change language">
           <Globe className="h-4 w-4" /><span className="uppercase">{language}</span>
         </button>
         <button type="button" onClick={toggleTheme} className="hidden h-10 w-10 items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800 sm:flex" aria-label={theme === 'dark' ? 'Use light theme' : 'Use dark theme'}>

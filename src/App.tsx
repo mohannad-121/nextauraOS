@@ -54,9 +54,11 @@ import { SettingsPage } from './pages/settings/SettingsPage';
 import { CustomerServicesPage } from './pages/settings/CustomerServicesPage';
 import { AdminServiceRequests } from './pages/admin/AdminServiceRequests';
 import { AuthScreens } from './pages/auth/AuthScreens';
+import { NextAuraAI } from './pages/ai/NextAuraAI';
+import { PricingPage, PublicPricingPage } from './pages/PricingPage';
 
 const AppContent: React.FC = () => {
-  const { activeApp, activeSubView, signDocuments, navigate } = useApp();
+  const { activeApp, activeSubView, signDocuments, navigate, currentOrg, user } = useApp();
 
   const renderCurrentView = () => {
     switch (activeApp) {
@@ -161,6 +163,12 @@ const AppContent: React.FC = () => {
       case 'analytics':
         return <AnalyticsCenter />;
 
+      case 'ai':
+        return <NextAuraAI key={`${currentOrg.id}:${user.id}`} />;
+
+      case 'pricing':
+        return <PricingPage />;
+
       case 'settings':
         if (activeSubView === 'services') return <CustomerServicesPage />;
         if (activeSubView === 'admin-requests') return <AdminServiceRequests />;
@@ -182,6 +190,10 @@ const AppContent: React.FC = () => {
 };
 
 export function App() {
+  if (window.location.pathname.replace(/\/$/, '') === '/pricing') {
+    return <PublicPricingPage />;
+  }
+
   return (
     <AppProvider>
       <AppContent />

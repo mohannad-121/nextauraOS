@@ -12,7 +12,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { activeApp, activeServices, currentOrg, refreshServices, navigate } = useApp();
 
   // Core apps accessible to all authenticated org members
-  const coreApps = ['launchpad', 'home', 'contacts', 'documents', 'analytics', 'settings', 'auth'];
+  const coreApps = ['launchpad', 'home', 'contacts', 'documents', 'analytics', 'ai', 'pricing', 'settings', 'auth'];
   if (coreApps.includes(activeApp)) {
     return <>{children}</>;
   }

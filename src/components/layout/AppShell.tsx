@@ -37,6 +37,8 @@ const appTitles: Record<string, string> = {
   contacts: 'Contacts',
   documents: 'Document Vault',
   analytics: 'Analytics',
+  ai: 'NextAura AI',
+  pricing: 'Pricing',
   settings: 'NextAura Settings',
   auth: 'Login',
 };

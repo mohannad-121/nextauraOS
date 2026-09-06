@@ -28,7 +28,7 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, badge, 
           )}
         </div>
         {subtitle && (
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400 max-w-2xl leading-relaxed">
+          <p className="mt-2 text-sm text-slate-600 dark:text-slate-400 max-w-2xl leading-relaxed">
             {subtitle}
           </p>
         )}

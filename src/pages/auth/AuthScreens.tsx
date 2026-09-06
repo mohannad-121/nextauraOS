@@ -132,8 +132,8 @@ export const AuthScreens: React.FC = () => {
                 {[
                   'Server-Backed 6-Digit Email OTP Verification',
                   'Google OAuth 2.0 Single Sign-On (SSO)',
-                  'Tenant Isolation & Role Permissions',
-                  'Complete Auditable Record Persistence',
+                  'Tenant-Scoped Workspace Access',
+                  'Auditable Business Workflows',
                 ].map((feature, idx) => (
                   <div key={idx} className="flex items-start gap-2.5 text-xs text-slate-700 dark:text-slate-300">
                     <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0 mt-0.5" />
@@ -144,12 +144,12 @@ export const AuthScreens: React.FC = () => {
             </div>
           </div>
 
-          <div className="pt-8 border-t border-slate-200/80 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400 font-mono">
+          <div className="pt-8 border-t border-slate-200/80 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
             <div className="flex items-center gap-2">
               <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              <span>SOC2 Type II • 256-bit AES</span>
+              <span>Tenant-scoped access</span>
             </div>
-            <span className="text-blue-700 dark:text-blue-400 font-medium">99.99% Uptime</span>
+            <a href="/pricing" className="font-medium text-blue-700 hover:text-blue-800 dark:text-blue-400">View pricing</a>
           </div>
         </div>
 

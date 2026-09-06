@@ -19,7 +19,7 @@ import { Button } from '../../components/common/Button';
 import { employeeService } from '../../services/employeeService';
 
 export const EmployeeDetail: React.FC = () => {
-  const { navigate, selectedResourceId, employees, user, currentOrg, updateEmployeeDetails } = useApp();
+  const { navigate, selectedResourceId, employees, user, currentOrg, updateEmployeeDetails, timeOffRequests } = useApp();
 
   const employee = employees.find((e) => e.id === selectedResourceId);
   const [activeTab, setActiveTab] = useState<'overview' | 'private' | 'contract' | 'leave' | 'skills'>('overview');
@@ -58,6 +58,8 @@ export const EmployeeDetail: React.FC = () => {
       </div>
     );
   }
+
+  const employeeLeaveRequests = timeOffRequests.filter((request) => request.employeeId === employee.id);
 
   const canViewPrivateInfo = ['Owner', 'Administrator', 'HR Manager', 'HR Officer'].includes(user.role);
   const canEditPhoto = ['Owner', 'Administrator', 'HR Manager'].includes(user.role);
@@ -516,23 +518,23 @@ export const EmployeeDetail: React.FC = () => {
         {/* TAB 4: LEAVE BALANCES */}
         {activeTab === 'leave' && (
           <div className="space-y-4 text-xs text-slate-600 dark:text-slate-300">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="p-4 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 text-center space-y-1">
-                <span className="text-[10px] text-purple-600 dark:text-purple-400 font-semibold uppercase tracking-wider">Annual Leave</span>
-                <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">21</div>
-                <span className="text-[11px] text-slate-500">Days Annual Allocation</span>
+            <h4 className="font-semibold text-slate-900 dark:text-slate-100">Recorded leave requests</h4>
+            {employeeLeaveRequests.length > 0 ? (
+              <div className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
+                {employeeLeaveRequests.map((request) => (
+                  <div key={request.id} className="flex flex-col gap-2 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+                    <div><p className="font-medium text-slate-900 dark:text-slate-100">{request.leaveType}</p><p className="mt-1 text-[11px] text-slate-500">{request.startDate} to {request.endDate} · {request.totalDays} day{request.totalDays === 1 ? '' : 's'}</p></div>
+                    <StatusBadge status={request.status} />
+                  </div>
+                ))}
               </div>
-              <div className="p-4 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 text-center space-y-1">
-                <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold uppercase tracking-wider">Sick Leave</span>
-                <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">10</div>
-                <span className="text-[11px] text-slate-500">Days Sick Allocation</span>
+            ) : (
+              <div className="rounded-xl border border-dashed border-slate-300 px-5 py-8 text-center dark:border-slate-700">
+                <Calendar className="mx-auto h-5 w-5 text-slate-400" />
+                <p className="mt-3 font-medium text-slate-900 dark:text-slate-100">No leave requests recorded</p>
+                <p className="mt-1 text-[11px] text-slate-500">Leave allocations are not inferred when no balance source is available.</p>
               </div>
-              <div className="p-4 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 text-center space-y-1">
-                <span className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold uppercase tracking-wider">Personal Days</span>
-                <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">3</div>
-                <span className="text-[11px] text-slate-500">Days Personal Allocation</span>
-              </div>
-            </div>
+            )}
           </div>
         )}
 

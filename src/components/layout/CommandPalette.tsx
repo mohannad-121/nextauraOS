@@ -19,9 +19,17 @@ import {
   ClipboardList,
   Share2,
   LayoutGrid,
+  BadgeDollarSign,
 } from 'lucide-react';
 import type { AppView } from '../../context/AppContext';
 import { useApp } from '../../context/AppContext';
+import { NextAuraAIIcon } from '../common/NextAuraAIIcon';
+
+const serviceByApp: Partial<Record<AppView, string>> = {
+  invoicing: 'invoicing', accounting: 'accounting', expenses: 'expenses', sign: 'sign', equity: 'equity', esg: 'esg',
+  employees: 'employees', attendance: 'attendance', recruitment: 'recruitment', 'time-off': 'time_off', appraisals: 'appraisals', fleet: 'fleet', payroll: 'payroll',
+  email: 'email_marketing', sms: 'sms_marketing', surveys: 'surveys', social: 'social_marketing',
+};
 
 export const CommandPalette: React.FC = () => {
   const {
@@ -31,6 +39,7 @@ export const CommandPalette: React.FC = () => {
     employees,
     candidates,
     emailCampaigns,
+    activeServices,
   } = useApp();
 
   const [query, setQuery] = useState('');
@@ -38,16 +47,16 @@ export const CommandPalette: React.FC = () => {
   if (!isCommandPaletteOpen) return null;
 
   const quickNav: { label: string; app: AppView; sub?: string; icon: any; color: string }[] = [
-    { label: 'NextAura Master Launchpad', app: 'launchpad', icon: LayoutGrid, color: 'text-cyan-400' },
-    { label: 'Human Resources Hub', app: 'hr', icon: Users, color: 'text-orange-400' },
-    { label: 'Marketing Category Hub', app: 'marketing', icon: Mail, color: 'text-rose-400' },
+    { label: 'NextAura AI', app: 'ai', icon: NextAuraAIIcon, color: '' },
+    { label: 'Apps', app: 'launchpad', icon: LayoutGrid, color: 'text-blue-700' },
+    { label: 'Pricing and plans', app: 'pricing', icon: BadgeDollarSign, color: 'text-emerald-700' },
     { label: 'Employees Directory', app: 'employees', sub: 'overview', icon: Users, color: 'text-orange-400' },
     { label: 'Live Attendance Board', app: 'attendance', sub: 'overview', icon: Clock, color: 'text-cyan-400' },
-    { label: 'Recruitment & ATS Pipeline', app: 'recruitment', sub: 'overview', icon: UserPlus, color: 'text-pink-400' },
-    { label: 'Time Off & Leave Requests', app: 'time-off', sub: 'overview', icon: CalendarIcon, color: 'text-purple-400' },
+    { label: 'Recruitment & ATS Pipeline', app: 'recruitment', sub: 'kanban', icon: UserPlus, color: 'text-pink-400' },
+    { label: 'Time Off & Leave Requests', app: 'time-off', sub: 'requests', icon: CalendarIcon, color: 'text-purple-400' },
     { label: 'Appraisals & Performance', app: 'appraisals', sub: 'overview', icon: Award, color: 'text-yellow-400' },
     { label: 'Fleet Vehicle Directory', app: 'fleet', sub: 'overview', icon: Car, color: 'text-blue-400' },
-    { label: 'Payroll Processing Control', app: 'payroll', sub: 'overview', icon: Wallet, color: 'text-emerald-400' },
+    { label: 'Payroll Runs', app: 'payroll', sub: 'runs', icon: Wallet, color: 'text-emerald-400' },
     { label: 'Email Marketing Campaigns', app: 'email', sub: 'overview', icon: Mail, color: 'text-rose-400' },
     { label: 'SMS Marketing Broadcasts', app: 'sms', sub: 'overview', icon: MessageSquare, color: 'text-indigo-400' },
     { label: 'Surveys & Form Builder', app: 'surveys', sub: 'overview', icon: ClipboardList, color: 'text-amber-400' },
@@ -55,21 +64,25 @@ export const CommandPalette: React.FC = () => {
     { label: 'Invoicing & Invoices List', app: 'invoicing', sub: 'overview', icon: FileText, color: 'text-azure-400' },
     { label: 'Accounting General Ledger', app: 'accounting', sub: 'ledger', icon: CreditCard, color: 'text-indigo-400' },
     { label: 'E-Sign Agreements', app: 'sign', sub: 'overview', icon: FileSignature, color: 'text-teal-400' },
-    { label: 'Cap Table & Equity', app: 'equity', sub: 'overview', icon: PieChart, color: 'text-amber-400' },
+    { label: 'Cap Table & Equity', app: 'equity', sub: 'cap-table', icon: PieChart, color: 'text-amber-400' },
     { label: 'ESG Carbon Calculator', app: 'esg', sub: 'carbon', icon: Leaf, color: 'text-emerald-400' },
   ];
 
-  const filteredEmployees = employees.filter(
+  const filteredEmployees = (activeServices.includes('employees') ? employees : []).filter(
     (e) => e.name.toLowerCase().includes(query.toLowerCase()) || e.jobTitle.toLowerCase().includes(query.toLowerCase())
   );
 
-  const filteredCandidates = candidates.filter(
+  const filteredCandidates = (activeServices.includes('recruitment') ? candidates : []).filter(
     (c) => c.name.toLowerCase().includes(query.toLowerCase()) || c.appliedPositionTitle.toLowerCase().includes(query.toLowerCase())
   );
 
-  const filteredCampaigns = emailCampaigns.filter(
+  const filteredCampaigns = (activeServices.includes('email_marketing') ? emailCampaigns : []).filter(
     (ec) => ec.name.toLowerCase().includes(query.toLowerCase())
   );
+  const filteredQuickNav = quickNav.filter((item) => {
+    const requiredService = serviceByApp[item.app];
+    return (!requiredService || activeServices.includes(requiredService)) && item.label.toLowerCase().includes(query.toLowerCase());
+  });
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 sm:pt-24 px-4 bg-slate-900/25 dark:bg-slate-950/70 backdrop-blur-[2px]">
@@ -187,7 +200,7 @@ export const CommandPalette: React.FC = () => {
               Apps and tools
             </div>
             <div className="space-y-1">
-              {quickNav.map((item) => {
+              {filteredQuickNav.map((item) => {
                 const Icon = item.icon;
                 return (
                   <button

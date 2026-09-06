@@ -1,32 +1,41 @@
-# React + TypeScript + Vite
+# NextAura
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+NextAura is a multi-tenant business application suite built with React, TypeScript, Vite, and Supabase.
 
-Currently, two official plugins are available:
+## NextAura AI
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+The `nextaura-ai` Supabase Edge Function is the only AI provider boundary. It verifies the signed-in user, confirms active organization membership, queries business data through a user-scoped Supabase client so RLS remains active, applies an additional role-aware data policy, and calls the OpenAI Responses API with response storage disabled.
 
-## React Compiler
+Required Edge Function secrets:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```text
+OPENAI_API_KEY=...
+NEXTAURA_AI_MODEL=gpt-5.6-luna
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+`NEXTAURA_AI_MODEL` is optional. The provider is intentionally unavailable until `OPENAI_API_KEY` is configured server-side. Never add an AI provider key to a `VITE_*` variable.
+
+Deploy after authenticating the Supabase CLI against the intended project:
+
+```bash
+supabase secrets set OPENAI_API_KEY=... NEXTAURA_AI_MODEL=gpt-5.6-luna
+supabase functions deploy nextaura-ai
+```
+
+The public pricing page is available at `/pricing`; authenticated users can also open Pricing from the application sidebar or Settings → Billing & plans.
+
+## Frontend development
+
+Copy `.env.example` to `.env.local`, supply the browser-safe Supabase project values, then run:
+
+```bash
+npm install
+npm run dev
+```
+
+Quality gates:
+
+```bash
+npm run lint
+npm run build
+```

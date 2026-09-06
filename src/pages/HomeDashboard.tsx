@@ -3,12 +3,14 @@ import {
   ArrowRight, Plus, CheckCircle2, AlertCircle, FileSignature, CreditCard, Users, Calendar,
   Wallet, Mail, Building2, Clock, FolderKanban, BarChart3, LayoutGrid, Activity, UserPlus,
   MessageSquare, ClipboardList, Share2, Award, Car, Leaf,
+  Sparkles,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { getServiceCustomIcon } from '../utils/serviceIconMapper';
 import { formatDate, formatCurrency } from '../utils/formatters';
 import { Button } from '../components/common/Button';
 import { SectionHeader, Surface } from '../components/common/WorkspacePrimitives';
+import { NextAuraAIIcon } from '../components/common/NextAuraAIIcon';
 
 export const HomeDashboard: React.FC = () => {
   const {
@@ -51,7 +53,17 @@ export const HomeDashboard: React.FC = () => {
     { key: 'documents', app: 'documents', category: 'platform', title: 'Documents', desc: 'Secure files and search', icon: FolderKanban },
     { key: 'analytics', app: 'analytics', category: 'platform', title: 'Analytics', desc: 'Operational intelligence', icon: BarChart3 },
   ];
-  const activeApps = allApps.filter((item) => activeServices.includes(item.key));
+  const activeApps = [
+    { key: 'nextaura-ai', app: 'ai', category: 'platform', title: 'NextAura AI', desc: 'Ask about work and NextAura', icon: Sparkles },
+    ...allApps.filter((item) => activeServices.includes(item.key)),
+  ];
+  const recordsFirstSubview: Partial<Record<string, string>> = {
+    accounting: 'ledger',
+    equity: 'cap-table',
+    recruitment: 'kanban',
+    'time-off': 'requests',
+    payroll: 'runs',
+  };
 
   const actionRow = (key: string, icon: React.ReactNode, title: string, detail: string, label: string, onClick: () => void) => (
     <div key={key} className="flex flex-col gap-3 border-b border-slate-100 py-4 last:border-0 last:pb-0 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
@@ -91,9 +103,10 @@ export const HomeDashboard: React.FC = () => {
       <section className="space-y-4">
         <SectionHeader title="Quick actions" description="Start a common task without leaving your workspace." />
         <Surface padding="sm" className="flex flex-wrap gap-2.5">
+          <Button icon={<NextAuraAIIcon className="h-4 w-4" />} onClick={() => navigate('ai')}>Ask NextAura AI</Button>
           {activeServices.includes('invoicing') && <Button icon={<Plus className="h-4 w-4" />} onClick={() => navigate('invoicing', 'new-invoice')}>Create invoice</Button>}
           {activeServices.includes('employees') && <Button variant="secondary" icon={<UserPlus className="h-4 w-4" />} onClick={() => navigate('employees')}>Add employee</Button>}
-          {activeServices.includes('payroll') && <Button variant="secondary" icon={<Wallet className="h-4 w-4" />} onClick={() => navigate('payroll')}>Create payroll run</Button>}
+          {activeServices.includes('payroll') && <Button variant="secondary" icon={<Wallet className="h-4 w-4" />} onClick={() => navigate('payroll', 'runs')}>Open payroll runs</Button>}
           {activeServices.includes('email_marketing') && <Button variant="secondary" icon={<Mail className="h-4 w-4" />} onClick={() => navigate('email', 'new')}>New campaign</Button>}
           <Button variant="ghost" icon={<Plus className="h-4 w-4" />} onClick={() => navigate('settings', 'services')}>Add services</Button>
         </Surface>
@@ -106,7 +119,7 @@ export const HomeDashboard: React.FC = () => {
           action={<button type="button" onClick={() => navigate('settings', 'services')} className="flex items-center gap-1.5 text-xs font-semibold text-blue-700 hover:text-blue-800 dark:text-blue-300">Manage apps <ArrowRight className="h-3.5 w-3.5" /></button>}
         />
         {activeApps.length > 0 ? (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-px overflow-hidden border border-slate-200 bg-slate-200 sm:grid-cols-2 xl:grid-cols-4 dark:border-slate-700 dark:bg-slate-700">
             {activeApps.map((item) => {
               const Icon = item.icon;
               const customIcon = getServiceCustomIcon(item.category, item.title, item.key);
@@ -114,11 +127,11 @@ export const HomeDashboard: React.FC = () => {
                 <button
                   type="button"
                   key={item.key}
-                  onClick={() => navigate(item.app as never, 'overview')}
-                  className="group flex min-h-[118px] items-start gap-3.5 rounded-2xl border border-slate-200/80 bg-white p-4 text-start shadow-[0_1px_2px_rgba(26,35,30,.02)] transition-all hover:-translate-y-px hover:border-slate-300 hover:shadow-[0_10px_26px_rgba(26,35,30,.05)] dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700"
+                  onClick={() => navigate(item.app as never, recordsFirstSubview[item.app] || 'overview')}
+                  className="group flex min-h-[104px] items-start gap-3.5 bg-white p-4 text-start transition-colors hover:bg-[#FAFAF8] dark:bg-slate-900 dark:hover:bg-slate-800"
                 >
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#F5F7F3] text-blue-700 ring-1 ring-inset ring-slate-200/60 transition-colors group-hover:bg-blue-50 dark:bg-slate-800 dark:text-blue-300 dark:ring-slate-700">
-                    {customIcon ? <img src={customIcon} alt="" className="h-5 w-5 object-contain" /> : <Icon className="h-[18px] w-[18px]" aria-hidden="true" />}
+                    {item.key === 'nextaura-ai' ? <NextAuraAIIcon className="h-7 w-7" /> : customIcon ? <img src={customIcon} alt="" className="h-5 w-5 object-contain" /> : <Icon className="h-[18px] w-[18px]" aria-hidden="true" />}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="flex items-center justify-between gap-2 font-semibold text-slate-900 dark:text-slate-100">{item.title}<ArrowRight className="h-4 w-4 shrink-0 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-blue-600" /></span>
