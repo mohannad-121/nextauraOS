@@ -175,13 +175,15 @@ export const employeeService = {
       avatar: row.avatar || '',
       jobTitle: row.job_title,
       department: row.department,
+      managerEmployeeId: row.manager_employee_id,
+      managerId: row.manager_employee_id,
+      managerName: row.manager_name || '',
       workLocation: row.work_location,
       startDate: row.start_date,
       employmentType: row.employment_type,
       status: row.status,
       baseSalary: Number(row.base_salary) || 0,
       payFrequency: row.pay_frequency || 'Monthly',
-      managerName: row.manager_name || '',
       skills: row.skills || [],
       onboardingProgress: 100,
     }));
@@ -202,13 +204,14 @@ export const employeeService = {
         avatar: emp.avatar || null,
         job_title: emp.jobTitle,
         department: emp.department,
+        manager_employee_id: emp.managerEmployeeId || emp.managerId || null,
+        manager_name: emp.managerName || null,
         work_location: emp.workLocation || 'HQ',
         start_date: emp.startDate,
         employment_type: emp.employmentType,
         status: emp.status,
         base_salary: emp.baseSalary,
         pay_frequency: emp.payFrequency,
-        manager_name: emp.managerName || null,
       });
 
       if (error) {
@@ -234,6 +237,10 @@ export const employeeService = {
     if (updates.avatar !== undefined) dbUpdates.avatar = updates.avatar;
     if (updates.jobTitle) dbUpdates.job_title = updates.jobTitle;
     if (updates.department) dbUpdates.department = updates.department;
+    if (updates.managerEmployeeId !== undefined) dbUpdates.manager_employee_id = updates.managerEmployeeId || null;
+    if (updates.managerName !== undefined) dbUpdates.manager_name = updates.managerName || null;
+    if (updates.employmentType) dbUpdates.employment_type = updates.employmentType;
+    if (updates.payFrequency) dbUpdates.pay_frequency = updates.payFrequency;
     if (updates.status) dbUpdates.status = updates.status;
     if (updates.baseSalary !== undefined) dbUpdates.base_salary = updates.baseSalary;
 

@@ -15,6 +15,7 @@ import type { CandidateStage, Candidate } from '../../types';
 
 export const RecruitmentATS: React.FC = () => {
   const {
+    activeSubView,
     candidates,
     jobOpenings,
     interviews,
@@ -29,6 +30,16 @@ export const RecruitmentATS: React.FC = () => {
   } = useApp();
 
   const [activeTab, setActiveTab] = useState<'kanban' | 'jobs' | 'interviews'>('kanban');
+
+  React.useEffect(() => {
+    if (activeSubView === 'jobs') {
+      setActiveTab('jobs');
+    } else if (activeSubView === 'interviews') {
+      setActiveTab('interviews');
+    } else {
+      setActiveTab('kanban');
+    }
+  }, [activeSubView]);
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null);
 
   // Modals

@@ -6,10 +6,19 @@ import { StatCard } from '../../components/common/StatCard';
 import { Modal } from '../../components/common/Modal';
 
 export const EmailMarketingApp: React.FC = () => {
-  const { emailCampaigns, emailTemplates, createEmailCampaign, contacts } = useApp();
+  const { activeSubView, emailCampaigns, emailTemplates, createEmailCampaign, contacts } = useApp();
   const [activeTab, setActiveTab] = useState<'campaigns' | 'templates'>('campaigns');
-
   const [isModalOpen, setModalOpen] = useState(false);
+
+  React.useEffect(() => {
+    if (activeSubView === 'new') {
+      setModalOpen(true);
+    } else if (activeSubView === 'templates') {
+      setActiveTab('templates');
+    } else {
+      setActiveTab('campaigns');
+    }
+  }, [activeSubView]);
   const [name, setName] = useState('');
   const [subject, setSubject] = useState('');
   const [targetSegment, setTargetSegment] = useState('All Customers');

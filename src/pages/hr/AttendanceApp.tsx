@@ -12,6 +12,7 @@ import { Avatar } from '../../components/common/Avatar';
 
 export const AttendanceApp: React.FC = () => {
   const {
+    activeSubView,
     attendanceRecords,
     clockInAttendance,
     startBreakAttendance,
@@ -23,6 +24,14 @@ export const AttendanceApp: React.FC = () => {
   const [isKioskMode, setIsKioskMode] = useState(false);
   const [pinCode, setPinCode] = useState('');
   const [kioskStatusMessage, setKioskStatusMessage] = useState('');
+
+  useEffect(() => {
+    if (activeSubView === 'kiosk') {
+      setIsKioskMode(true);
+    } else {
+      setIsKioskMode(false);
+    }
+  }, [activeSubView]);
 
   // Live Clock State
   const [secondsWorked, setSecondsWorked] = useState(13338);

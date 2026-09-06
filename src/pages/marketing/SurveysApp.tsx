@@ -6,8 +6,14 @@ import { StatCard } from '../../components/common/StatCard';
 import { Modal } from '../../components/common/Modal';
 
 export const SurveysApp: React.FC = () => {
-  const { surveys, createSurvey, submitSurveyResponse } = useApp();
+  const { activeSubView, surveys, createSurvey, submitSurveyResponse } = useApp();
   const [isModalOpen, setModalOpen] = useState(false);
+
+  React.useEffect(() => {
+    if (activeSubView === 'new') {
+      setModalOpen(true);
+    }
+  }, [activeSubView]);
 
   const [title, setTitle] = useState('');
   const [category, setCategory] = useState<'NPS' | 'CSAT' | 'Feedback' | 'Market Research'>('CSAT');

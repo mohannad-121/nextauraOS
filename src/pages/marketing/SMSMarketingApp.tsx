@@ -6,8 +6,14 @@ import { StatCard } from '../../components/common/StatCard';
 import { Modal } from '../../components/common/Modal';
 
 export const SMSMarketingApp: React.FC = () => {
-  const { smsCampaigns, createSMSCampaign, contacts } = useApp();
+  const { activeSubView, smsCampaigns, createSMSCampaign, contacts } = useApp();
   const [isModalOpen, setModalOpen] = useState(false);
+
+  React.useEffect(() => {
+    if (activeSubView === 'new') {
+      setModalOpen(true);
+    }
+  }, [activeSubView]);
 
   const [name, setName] = useState('');
   const [message, setMessage] = useState('Flash Sale: Get 25% off NextAura Enterprise licenses this week. Use code NEXTAURA25 at checkout: https://nextaura.ai/sale');

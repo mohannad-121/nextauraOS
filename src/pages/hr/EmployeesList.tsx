@@ -20,10 +20,20 @@ import { employeeService } from '../../services/employeeService';
 import type { EmploymentType } from '../../types';
 
 export const EmployeesList: React.FC = () => {
-  const { navigate, employees, createEmployee, departments, createDepartment, currentOrg, user } = useApp();
-  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'orgChart'>('grid');
+  const { navigate, employees, createEmployee, departments, createDepartment, currentOrg, user, activeSubView } = useApp();
+  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'orgChart'>(
+    activeSubView === 'org-chart' ? 'orgChart' : 'grid'
+  );
   const [search, setSearch] = useState('');
   const [selectedDept, setSelectedDept] = useState('all');
+
+  React.useEffect(() => {
+    if (activeSubView === 'org-chart') {
+      setViewMode('orgChart');
+    } else if (activeSubView === 'overview') {
+      setViewMode('grid');
+    }
+  }, [activeSubView]);
 
   const [isCreateModalOpen, setCreateModalOpen] = useState(false);
   const [isDeptModalOpen, setDeptModalOpen] = useState(false);
@@ -44,6 +54,7 @@ export const EmployeesList: React.FC = () => {
   const [workLocation, setWorkLocation] = useState('HQ');
   const [employmentType, setEmploymentType] = useState<EmploymentType>('Full-time');
   const [baseSalary, setBaseSalary] = useState('');
+  const [managerEmployeeId, setManagerEmployeeId] = useState('');
 
   // Profile Photo Upload State
   const [selectedImageFile, setSelectedImageFile] = useState<File | null>(null);
@@ -148,6 +159,7 @@ export const EmployeesList: React.FC = () => {
     setIsSubmitting(true);
 
     try {
+      const selectedMgr = employees.find((e) => e.id === managerEmployeeId);
       const newEmp = await createEmployee({
         name: name.trim(),
         email: email.trim(),
@@ -161,6 +173,8 @@ export const EmployeesList: React.FC = () => {
         status: 'Active',
         baseSalary: Number(baseSalary) || 0,
         payFrequency: 'Monthly',
+        managerEmployeeId: managerEmployeeId || undefined,
+        managerName: selectedMgr?.name || undefined,
         skills: [],
       });
 
@@ -392,58 +406,135 @@ export const EmployeesList: React.FC = () => {
         </div>
       )}
 
-      {/* VIEW 3: INTERACTIVE ORG CHART VIEW */}
+      {/* VIEW 3: REAL INTERACTIVE ORG CHART VIEW */}
       {viewMode === 'orgChart' && (
         <div className="p-8 rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl space-y-8 overflow-x-auto">
           <div className="text-center space-y-1">
-            <h3 className="text-base font-bold text-slate-100 font-heading">Interactive Company Hierarchy</h3>
-            <p className="text-xs text-slate-400">Click any profile card to inspect employee record.</p>
+            <h3 className="text-base font-bold text-slate-100 font-heading">Tenant Organization Hierarchy</h3>
+            <p className="text-xs text-slate-400">Real employee reporting relationships and department groupings.</p>
           </div>
 
           {employees.length === 0 ? (
             <div className="p-8 text-center text-slate-400 text-xs">
-              No employees added yet to display in the company org chart.
+              No employees registered yet to render the organization chart.
             </div>
-          ) : (
-            <>
-              {/* Level 1: Leadership / Executive */}
-              <div className="flex justify-center">
-                <div
-                  onClick={() => navigate('employees', 'detail', employees[0].id)}
-                  className="p-4 rounded-2xl bg-gradient-to-b from-orange-950/80 to-slate-950 border border-orange-500/40 text-center space-y-2 cursor-pointer shadow-xl hover:scale-105 transition-transform w-64"
-                >
-                  <Avatar src={employees[0].avatar} name={employees[0].name} className="w-12 h-12 rounded-2xl mx-auto ring-2 ring-orange-400" />
-                  <div>
-                    <div className="font-bold text-slate-100 text-xs">{employees[0].name}</div>
-                    <div className="text-[11px] text-orange-400 font-semibold">{employees[0].jobTitle}</div>
-                  </div>
-                </div>
-              </div>
+          ) : (() => {
+            const hasManagerRelationships = employees.some(
+              (e) => e.managerEmployeeId && employees.some((m) => m.id === e.managerEmployeeId)
+            );
 
-              {/* Line Down */}
-              {employees.length > 1 && <div className="w-0.5 h-6 bg-slate-700 mx-auto" />}
+            if (hasManagerRelationships) {
+              const rootEmployees = employees.filter(
+                (e) => !e.managerEmployeeId || !employees.some((m) => m.id === e.managerEmployeeId)
+              );
 
-              {/* Level 2 */}
-              {employees.length > 1 && (
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-                  {employees.slice(1, 4).map((emp) => (
+              const renderTree = (emp: any) => {
+                const directReports = employees.filter((e) => e.managerEmployeeId === emp.id);
+                return (
+                  <div key={emp.id} className="flex flex-col items-center space-y-3">
                     <div
-                      key={emp.id}
                       onClick={() => navigate('employees', 'detail', emp.id)}
-                      className="p-4 rounded-2xl bg-slate-950 border border-slate-800 text-center space-y-2 cursor-pointer hover:border-orange-500/40 transition-colors"
+                      className="p-4 rounded-2xl bg-slate-950 border border-orange-500/30 hover:border-orange-500 text-center space-y-2 cursor-pointer shadow-xl hover:scale-105 transition-all w-56"
                     >
-                      <Avatar src={emp.avatar} name={emp.name} className="w-10 h-10 rounded-xl mx-auto" />
+                      <Avatar src={emp.avatar} name={emp.name} className="w-12 h-12 rounded-2xl mx-auto ring-2 ring-orange-500/40" />
                       <div>
-                        <div className="font-bold text-slate-100 text-xs">{emp.name}</div>
-                        <div className="text-[11px] text-cyan-400 font-semibold">{emp.jobTitle}</div>
-                        <div className="text-[10px] text-slate-500">{emp.department}</div>
+                        <div className="font-bold text-slate-100 text-xs truncate">{emp.name}</div>
+                        <div className="text-[11px] text-orange-400 font-semibold truncate">{emp.jobTitle}</div>
+                        <div className="text-[10px] text-slate-500 font-mono mt-0.5">{emp.department}</div>
                       </div>
                     </div>
-                  ))}
+
+                    {directReports.length > 0 && (
+                      <>
+                        <div className="w-0.5 h-6 bg-slate-700" />
+                        <div className="flex flex-wrap justify-center gap-6 pt-2 border-t border-slate-800">
+                          {directReports.map((report) => renderTree(report))}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                );
+              };
+
+              return (
+                <div className="space-y-8">
+                  <div className="flex flex-wrap justify-center gap-8">
+                    {rootEmployees.map((root) => renderTree(root))}
+                  </div>
                 </div>
-              )}
-            </>
-          )}
+              );
+            }
+
+            // Fallback when no direct reporting hierarchy is configured: Department grouping
+            return (
+              <div className="space-y-6">
+                <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 text-center space-y-1">
+                  <span className="px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-bold">
+                    No Direct Reporting Hierarchy Configured Yet
+                  </span>
+                  <p className="text-xs text-slate-400">
+                    Employees are grouped by department. Assign reporting managers in employee profiles to view tree relationships.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 gap-6">
+                  {departments.length > 0
+                    ? departments.map((dept) => {
+                        const deptEmps = employees.filter((e) => e.department === dept.name);
+                        if (deptEmps.length === 0) return null;
+
+                        return (
+                          <div key={dept.id} className="p-6 rounded-2xl bg-slate-950 border border-slate-800 space-y-4">
+                            <div className="flex items-center justify-between border-b border-slate-800/80 pb-3">
+                              <h4 className="font-bold text-orange-400 text-xs uppercase flex items-center gap-2">
+                                <Building2 className="w-4 h-4 text-orange-400" />
+                                {dept.name} ({deptEmps.length} Employees)
+                              </h4>
+                              {dept.managerName && (
+                                <span className="text-[11px] text-slate-400">Manager: {dept.managerName}</span>
+                              )}
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                              {deptEmps.map((emp) => (
+                                <div
+                                  key={emp.id}
+                                  onClick={() => navigate('employees', 'detail', emp.id)}
+                                  className="p-4 rounded-xl bg-slate-900 border border-slate-800 hover:border-orange-500/40 transition-all cursor-pointer flex items-center gap-3"
+                                >
+                                  <Avatar src={emp.avatar} name={emp.name} className="w-10 h-10 rounded-xl shrink-0" />
+                                  <div className="truncate">
+                                    <div className="font-bold text-slate-100 text-xs truncate">{emp.name}</div>
+                                    <div className="text-[11px] text-slate-400 truncate">{emp.jobTitle}</div>
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        );
+                      })
+                    : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                        {employees.map((emp) => (
+                          <div
+                            key={emp.id}
+                            onClick={() => navigate('employees', 'detail', emp.id)}
+                            className="p-4 rounded-xl bg-slate-950 border border-slate-800 hover:border-orange-500/40 transition-all cursor-pointer flex items-center gap-3"
+                          >
+                            <Avatar src={emp.avatar} name={emp.name} className="w-10 h-10 rounded-xl shrink-0" />
+                            <div className="truncate">
+                              <div className="font-bold text-slate-100 text-xs truncate">{emp.name}</div>
+                              <div className="text-[11px] text-slate-400 truncate">{emp.jobTitle}</div>
+                              <div className="text-[10px] text-slate-500 font-mono">{emp.department || 'General'}</div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
 
@@ -602,6 +693,22 @@ export const EmployeesList: React.FC = () => {
                   className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-orange-400 font-bold focus:border-orange-500 outline-none"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-slate-400 font-medium mb-1">Reporting Manager (Optional)</label>
+              <select
+                value={managerEmployeeId}
+                onChange={(e) => setManagerEmployeeId(e.target.value)}
+                className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 focus:border-orange-500 outline-none"
+              >
+                <option value="">No Direct Manager (Top-level / Executive)</option>
+                {employees.map((emp) => (
+                  <option key={emp.id} value={emp.id}>
+                    {emp.name} ({emp.jobTitle})
+                  </option>
+                ))}
+              </select>
             </div>
 
             {errorMessage && (

@@ -235,8 +235,10 @@ interface AppContextType {
   vehicleMaintenance: VehicleMaintenance[];
   addVehicleMaintenance: (m: Omit<VehicleMaintenance, 'id'>) => void;
   payrollRuns: PayrollRun[];
-  createPayrollRun: (run: Omit<PayrollRun, 'id'>) => void;
-  approvePayrollRun: (runId: string) => void;
+  createPayrollRun: (run: Omit<PayrollRun, 'id'>, payslipsData?: Omit<Payslip, 'id' | 'payrollRunId'>[]) => Promise<PayrollRun>;
+  approvePayrollRun: (runId: string) => Promise<void>;
+  deletePayrollRun: (runId: string) => Promise<void>;
+  fetchPayslipsForRun: (runId: string) => Promise<Payslip[]>;
   payslips: Payslip[];
 
   // Marketing Collections
@@ -986,22 +988,33 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  const createPayrollRun = (runData: Omit<PayrollRun, 'id'>) => {
-    payrollService.createPayrollRun(currentOrg.id, runData).then((newRun) => {
-      setPayrollRuns((prev) => [newRun, ...prev]);
-      addAuditLog('CREATE_PAYROLL_RUN', 'Payroll', `Generated payroll run for ${newRun.periodName}`);
-    });
+  const createPayrollRun = async (runData: Omit<PayrollRun, 'id'>, payslipsData?: Omit<Payslip, 'id' | 'payrollRunId'>[]) => {
+    const { run } = await payrollService.createPayrollRun(currentOrg.id, runData, payslipsData || []);
+    setPayrollRuns((prev) => [run, ...prev]);
+    addAuditLog('CREATE_PAYROLL_RUN', 'Payroll', `Generated payroll run for ${run.periodName}`);
+    return run;
   };
 
-  const approvePayrollRun = (runId: string) => {
+  const deletePayrollRun = async (runId: string) => {
+    await payrollService.deletePayrollRun(currentOrg.id, runId);
+    setPayrollRuns((prev) => prev.filter((r) => r.id !== runId));
+    addAuditLog('DELETE_PAYROLL_RUN', 'Payroll', `Deleted payroll run ${runId}`);
+  };
+
+  const fetchPayslipsForRun = async (runId: string) => {
+    return await payrollService.fetchPayslipsForRun(currentOrg.id, runId);
+  };
+
+  const approvePayrollRun = async (runId: string) => {
     const run = payrollRuns.find((r) => r.id === runId);
     if (!run) return;
 
-    payrollService.approvePayrollRun(currentOrg.id, runId, run).then((postedJournal) => {
-      setPayrollRuns((prev) => prev.map((r) => (r.id === runId ? { ...r, status: 'Paid' } : r)));
+    const postedJournal = await payrollService.approvePayrollRun(currentOrg.id, runId, run);
+    setPayrollRuns((prev) => prev.map((r) => (r.id === runId ? { ...r, status: 'Paid' } : r)));
+    if (postedJournal) {
       setJournalEntries((prev) => [postedJournal, ...prev]);
-      addAuditLog('APPROVE_PAYROLL', 'Payroll', `Approved & posted General Ledger payroll journal ${postedJournal.entryNumber}`);
-    });
+    }
+    addAuditLog('APPROVE_PAYROLL', 'Payroll', `Approved & posted General Ledger payroll journal ${runId}`);
   };
 
   // Marketing Actions
@@ -1172,6 +1185,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         payrollRuns,
         createPayrollRun,
         approvePayrollRun,
+        deletePayrollRun,
+        fetchPayslipsForRun,
         payslips,
         // Marketing
         emailCampaigns,

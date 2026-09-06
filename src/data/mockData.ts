@@ -462,8 +462,8 @@ export const initialPayrollRuns: PayrollRun[] = [
 ];
 
 export const initialPayslips: Payslip[] = [
-  { id: 'ps-1', payrollRunId: 'payrun-1', employeeId: 'emp-3', employeeName: 'Sarah Chen', employeeRole: 'VP of Finance', department: 'Finance', baseSalary: 12500, allowances: [{ name: 'Housing & Travel', amount: 1500 }], overtimePay: 0, bonusPay: 1000, grossPay: 15000, taxDeduction: 2850, insuranceDeduction: 650, netPay: 11500 },
-  { id: 'ps-2', payrollRunId: 'payrun-1', employeeId: 'emp-4', employeeName: 'Alex Rivera', employeeRole: 'Senior Lead Accountant', department: 'Finance', baseSalary: 8500, allowances: [{ name: 'Transport', amount: 500 }], overtimePay: 350, bonusPay: 0, grossPay: 9350, taxDeduction: 1680, insuranceDeduction: 420, netPay: 7250 },
+  { id: 'ps-1', payrollRunId: 'payrun-1', employeeId: 'emp-3', employeeName: 'Sarah Chen', employeeRole: 'VP of Finance', department: 'Finance', baseSalary: 12500, allowancesTotal: 1500, bonusPay: 1000, taxDeduction: 2850, insuranceDeduction: 650, otherDeductions: 0, netPay: 11500, status: 'Paid' },
+  { id: 'ps-2', payrollRunId: 'payrun-1', employeeId: 'emp-4', employeeName: 'Alex Rivera', employeeRole: 'Senior Lead Accountant', department: 'Finance', baseSalary: 8500, allowancesTotal: 500, bonusPay: 0, taxDeduction: 1680, insuranceDeduction: 420, otherDeductions: 0, netPay: 7250, status: 'Paid' },
 ];
 
 // ==========================================

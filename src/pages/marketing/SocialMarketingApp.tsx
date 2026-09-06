@@ -6,8 +6,14 @@ import { StatCard } from '../../components/common/StatCard';
 import { Modal } from '../../components/common/Modal';
 
 export const SocialMarketingApp: React.FC = () => {
-  const { socialAccounts, socialPosts, createSocialPost } = useApp();
+  const { activeSubView, socialAccounts, socialPosts, createSocialPost } = useApp();
   const [isModalOpen, setModalOpen] = useState(false);
+
+  React.useEffect(() => {
+    if (activeSubView === 'new') {
+      setModalOpen(true);
+    }
+  }, [activeSubView]);
 
   const [content, setContent] = useState('Supercharged to announce NextAura! Built for fast-growing enterprises managing Finance, HR & Marketing in one system. Check it out: https://nextaura.ai');
   const [scheduledFor, setScheduledFor] = useState('2026-09-10 14:00');

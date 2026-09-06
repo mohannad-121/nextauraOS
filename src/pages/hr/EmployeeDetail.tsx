@@ -23,6 +23,14 @@ export const EmployeeDetail: React.FC = () => {
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [photoError, setPhotoError] = useState<string | null>(null);
 
+  // Contract & Compensation editing state
+  const [isEditingContract, setIsEditingContract] = useState(false);
+  const [editBaseSalary, setEditBaseSalary] = useState(0);
+  const [editPayFrequency, setEditPayFrequency] = useState<'Weekly' | 'Monthly' | 'Bi-Weekly'>('Monthly');
+  const [editEmploymentType, setEditEmploymentType] = useState<any>('Full-time');
+  const [editManagerId, setEditManagerId] = useState('');
+  const [isSavingContract, setIsSavingContract] = useState(false);
+
   // Guard against missing or deleted employee record - prevents blank screen rendering crash!
   if (!employee) {
     return (
@@ -359,22 +367,138 @@ export const EmployeeDetail: React.FC = () => {
         {/* TAB 3: CONTRACT */}
         {activeTab === 'contract' && (
           <div className="space-y-4 text-xs text-slate-300">
-            <div className="p-6 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
-              <h4 className="font-bold text-slate-100 uppercase text-[10px]">Employment Agreement</h4>
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <span className="text-slate-500 block">Employment Type</span>
-                  <span className="font-bold text-orange-400">{employee.employmentType}</span>
-                </div>
-                <div>
-                  <span className="text-slate-500 block">Base Monthly Salary</span>
-                  <span className="font-mono font-bold text-slate-100">${(employee.baseSalary || 0).toLocaleString()}</span>
-                </div>
-                <div>
-                  <span className="text-slate-500 block">Pay Schedule</span>
-                  <span className="font-bold text-slate-200">{employee.payFrequency || 'Monthly'}</span>
-                </div>
+            <div className="p-6 rounded-2xl bg-slate-950 border border-slate-800 space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h4 className="font-bold text-slate-100 uppercase text-[10px]">Employment & Compensation Details</h4>
+                {['Owner', 'Administrator', 'HR Manager'].includes(user.role) && !isEditingContract && (
+                  <button
+                    onClick={() => {
+                      setEditBaseSalary(employee.baseSalary || 0);
+                      setEditPayFrequency(employee.payFrequency || 'Monthly');
+                      setEditEmploymentType(employee.employmentType || 'Full-time');
+                      setEditManagerId(employee.managerEmployeeId || '');
+                      setIsEditingContract(true);
+                    }}
+                    className="px-3 py-1 rounded-lg bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 font-bold text-xs"
+                  >
+                    Edit Compensation & Manager
+                  </button>
+                )}
               </div>
+
+              {!isEditingContract ? (
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <div>
+                    <span className="text-slate-500 block">Employment Type</span>
+                    <span className="font-bold text-orange-400">{employee.employmentType}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block">Base Monthly Salary</span>
+                    <span className="font-mono font-bold text-slate-100">${(employee.baseSalary || 0).toLocaleString()}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block">Pay Schedule</span>
+                    <span className="font-bold text-slate-200">{employee.payFrequency || 'Monthly'}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 block">Direct Manager</span>
+                    <span className="font-bold text-slate-200">{employee.managerName || 'No Direct Manager (Top-level)'}</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-4 pt-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-slate-400 font-medium mb-1">Base Monthly Salary ($)</label>
+                      <input
+                        type="number"
+                        value={editBaseSalary}
+                        onChange={(e) => setEditBaseSalary(Number(e.target.value))}
+                        className="w-full px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-700 text-orange-400 font-bold focus:border-orange-500 outline-none"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 font-medium mb-1">Pay Schedule</label>
+                      <select
+                        value={editPayFrequency}
+                        onChange={(e) => setEditPayFrequency(e.target.value as 'Weekly' | 'Monthly' | 'Bi-Weekly')}
+                        className="w-full px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-200 focus:border-orange-500 outline-none"
+                      >
+                        <option value="Monthly">Monthly</option>
+                        <option value="Bi-Weekly">Bi-Weekly</option>
+                        <option value="Weekly">Weekly</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 font-medium mb-1">Employment Type</label>
+                      <select
+                        value={editEmploymentType}
+                        onChange={(e) => setEditEmploymentType(e.target.value)}
+                        className="w-full px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-200 focus:border-orange-500 outline-none"
+                      >
+                        <option value="Full-time">Full-time</option>
+                        <option value="Part-time">Part-time</option>
+                        <option value="Contractor">Contractor</option>
+                        <option value="Intern">Intern</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-slate-400 font-medium mb-1">Reporting Manager</label>
+                      <select
+                        value={editManagerId}
+                        onChange={(e) => setEditManagerId(e.target.value)}
+                        className="w-full px-3.5 py-2 rounded-xl bg-slate-900 border border-slate-700 text-slate-200 focus:border-orange-500 outline-none"
+                      >
+                        <option value="">No Direct Manager (Top-level)</option>
+                        {employees
+                          .filter((e) => e.id !== employee.id)
+                          .map((e) => (
+                            <option key={e.id} value={e.id}>
+                              {e.name} ({e.jobTitle})
+                            </option>
+                          ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-3 border-t border-slate-800">
+                    <button
+                      onClick={() => setIsEditingContract(false)}
+                      disabled={isSavingContract}
+                      className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 font-semibold text-xs hover:bg-slate-700"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (!currentOrg?.id) return;
+                        setIsSavingContract(true);
+                        try {
+                          const selectedMgr = employees.find((e) => e.id === editManagerId);
+                          const updates = {
+                            baseSalary: Number(editBaseSalary),
+                            payFrequency: editPayFrequency,
+                            employmentType: editEmploymentType,
+                            managerEmployeeId: editManagerId || undefined,
+                            managerName: selectedMgr?.name || undefined,
+                          };
+                          await employeeService.updateEmployeeDetails(currentOrg.id, employee.id, updates);
+                          updateEmployeeDetails(employee.id, updates);
+                          setIsEditingContract(false);
+                        } catch (err: any) {
+                          console.error('Failed updating compensation:', err);
+                        } finally {
+                          setIsSavingContract(false);
+                        }
+                      }}
+                      disabled={isSavingContract}
+                      className="px-5 py-2 rounded-xl bg-orange-500 text-slate-950 font-bold text-xs shadow-lg shadow-orange-500/20 hover:bg-orange-400 disabled:opacity-50"
+                    >
+                      {isSavingContract ? 'Saving...' : 'Save Compensation & Manager'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}

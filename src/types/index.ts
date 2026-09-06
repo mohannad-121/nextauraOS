@@ -358,6 +358,7 @@ export interface Employee {
   avatar: string;
   jobTitle: string;
   department: string;
+  managerEmployeeId?: string;
   managerId?: string;
   managerName?: string;
   workLocation: string;
@@ -597,8 +598,10 @@ export interface VehicleMaintenance {
 export interface PayrollRun {
   id: string;
   periodName: string;
-  month: string;
-  year: number;
+  periodStart?: string;
+  periodEnd?: string;
+  month?: string;
+  year?: number;
   status: 'Draft' | 'Calculation' | 'Review' | 'Approved' | 'Processing' | 'Paid';
   employeeCount: number;
   grossPayTotal: number;
@@ -606,6 +609,7 @@ export interface PayrollRun {
   employerCostsTotal: number;
   netPayTotal: number;
   payDate: string;
+  createdAt?: string;
 }
 
 export interface Payslip {
@@ -613,16 +617,17 @@ export interface Payslip {
   payrollRunId: string;
   employeeId: string;
   employeeName: string;
-  employeeRole: string;
+  employeeRole?: string;
   department: string;
   baseSalary: number;
-  allowances: { name: string; amount: number }[];
-  overtimePay: number;
+  allowancesTotal: number;
   bonusPay: number;
-  grossPay: number;
   taxDeduction: number;
   insuranceDeduction: number;
+  otherDeductions: number;
   netPay: number;
+  status?: string;
+  createdAt?: string;
 }
 
 // ==========================================
