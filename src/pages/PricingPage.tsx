@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { ArrowLeft, ArrowRight, Check, ExternalLink, Sparkles } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { billingService } from '../services/billingService';
+import { type BillingCycle, type PlanKey } from '../config/pricingConfig';
 
-type BillingCycle = 'monthly' | 'yearly';
 type PlanName = 'One App Free' | 'Standard' | 'Custom';
 
 interface Plan {
@@ -59,13 +60,30 @@ interface PricingContentProps {
   onChooseServices: () => void;
 }
 
-const PricingContent: React.FC<PricingContentProps> = ({ isPublic = false, onOpenWorkspace, onChooseServices }) => {
+const PricingContent: React.FC<PricingContentProps & { organizationId?: string }> = ({ isPublic = false, onOpenWorkspace, onChooseServices, organizationId }) => {
   const [billingCycle, setBillingCycle] = useState<BillingCycle>('yearly');
   const [selectedPlan, setSelectedPlan] = useState<PlanName | null>(null);
+  const [seatCount, setSeatCount] = useState(5);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const selectedPlanData = plans.find((plan) => plan.name === selectedPlan);
+  const monthlyEquivalent = Number(selectedPlanData ? (billingCycle === 'yearly' ? selectedPlanData.yearly : selectedPlanData.monthly) : 0);
+  const totalDue = billingCycle === 'yearly' ? monthlyEquivalent * seatCount * 12 : monthlyEquivalent * seatCount;
 
   const choosePlan = (plan: Plan) => {
     setSelectedPlan(plan.name);
     requestAnimationFrame(() => document.getElementById('plan-next-step')?.scrollIntoView({ behavior: 'smooth', block: 'center' }));
+  };
+
+  const completeSelection = async () => {
+    if (!selectedPlan || !organizationId) return onOpenWorkspace();
+    const key = selectedPlan === 'One App Free' ? 'one_app_free' : selectedPlan.toLowerCase() as PlanKey;
+    setBusy(true); setError('');
+    try {
+      if (key === 'one_app_free') { await billingService.activateFreePlan(organizationId, seatCount); onChooseServices(); }
+      else { const result = await billingService.createCheckout(organizationId, key, billingCycle, seatCount); if (result.url) window.location.assign(result.url); }
+    } catch (err: any) { setError(err.message || 'Unable to start billing.'); }
+    finally { setBusy(false); }
   };
 
   return (
@@ -145,30 +163,31 @@ const PricingContent: React.FC<PricingContentProps> = ({ isPublic = false, onOpe
           <div>
             <p className="flex items-center gap-2 text-sm font-semibold text-slate-900"><Sparkles className="h-4 w-4 text-blue-700" aria-hidden="true" />{selectedPlan} selected</p>
             <p className="mt-1.5 max-w-2xl text-sm leading-6 text-slate-600">
-              {selectedPlan === 'One App Free'
-                ? 'Continue to your workspace to choose the app your team wants to use.'
-                : 'Checkout is not connected yet. Your selection has not been charged or saved; continue to the workspace to review services and the next billing step.'}
+              {selectedPlan === 'One App Free' ? 'Activate one app for your workspace. You can change your plan later.' : 'Secure Stripe Checkout will open with your selected seat quantity.'}
             </p>
+            {!isPublic && <label className="mt-4 block text-sm font-medium text-slate-700">Seats<input type="number" min={1} max={10000} value={seatCount} onChange={(e) => setSeatCount(Math.max(1, Number(e.target.value) || 1))} className="mt-1.5 block w-40 border border-slate-300 px-3 py-2 text-sm" /></label>}
+            {!isPublic && selectedPlanData && <p className="mt-3 text-sm font-semibold text-slate-900">Estimated {billingCycle === 'yearly' ? 'annual' : 'monthly'} total: ${totalDue.toFixed(2)} <span className="font-normal text-slate-500">({seatCount} seats)</span></p>}
+            {!isPublic && error && <p className="mt-3 text-sm text-rose-600">{error}</p>}
           </div>
-          <button type="button" onClick={selectedPlan === 'One App Free' ? onChooseServices : onOpenWorkspace} className="mt-5 inline-flex shrink-0 items-center gap-2 bg-blue-700 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 sm:mt-0">
-            {isPublic ? 'Open NextAura' : selectedPlan === 'One App Free' ? 'Choose an app' : 'Review services'}
+          <button type="button" onClick={completeSelection} disabled={busy} className="mt-5 inline-flex shrink-0 items-center gap-2 bg-blue-700 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-800 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 sm:mt-0">
+            {isPublic ? 'Open NextAura' : busy ? 'Opening…' : selectedPlan === 'One App Free' ? 'Activate free plan' : 'Continue to secure checkout'}
             <ArrowRight className="h-4 w-4 rtl:rotate-180" aria-hidden="true" />
           </button>
         </section>
       )}
 
       <p className="mt-8 text-center text-xs leading-5 text-slate-500">
-        Plan selection is informational until billing is connected. No payment details are collected on this page.
+        Paid plans use Stripe-hosted Checkout. Payment details never pass through NextAura.
       </p>
     </div>
   );
 };
 
 export const PricingPage: React.FC = () => {
-  const { navigate } = useApp();
+  const { navigate, currentOrg } = useApp();
   return (
     <div className="-mx-4 -my-5 min-h-[calc(100vh-4rem)] bg-white px-4 py-10 text-slate-900 sm:-mx-6 sm:-my-7 sm:px-6 sm:py-12 xl:-mx-10 xl:-my-9 xl:px-10">
-      <PricingContent onOpenWorkspace={() => navigate('settings', 'services')} onChooseServices={() => navigate('settings', 'services')} />
+      <PricingContent organizationId={currentOrg.id} onOpenWorkspace={() => navigate('settings', 'services')} onChooseServices={() => navigate('settings', 'services')} />
     </div>
   );
 };

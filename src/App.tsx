@@ -55,6 +55,7 @@ import { CustomerServicesPage } from './pages/settings/CustomerServicesPage';
 import { AdminServiceRequests } from './pages/admin/AdminServiceRequests';
 import { AuthScreens } from './pages/auth/AuthScreens';
 import { PricingPage, PublicPricingPage } from './pages/PricingPage';
+import { BillingSuccessPage } from './pages/billing/BillingSuccessPage';
 
 const NextAuraAI = React.lazy(() => import('./pages/ai/NextAuraAI').then((module) => ({ default: module.NextAuraAI })));
 
@@ -62,6 +63,7 @@ const AppContent: React.FC = () => {
   const { activeApp, activeSubView, signDocuments, navigate, currentOrg, user } = useApp();
 
   const renderCurrentView = () => {
+    if (window.location.pathname.replace(/\/$/, '') === '/billing/success') return <BillingSuccessPage />;
     switch (activeApp) {
       case 'launchpad':
         return <FinanceLaunchpad />;

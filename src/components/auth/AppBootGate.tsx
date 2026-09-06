@@ -5,6 +5,7 @@ import { useApp } from '../../context/AppContext';
 import { AuthScreens } from '../../pages/auth/AuthScreens';
 import { VerificationScreen } from '../../pages/auth/VerificationScreen';
 import { ServiceSelectionScreen } from '../../pages/onboarding/ServiceSelectionScreen';
+import { SeatCountScreen } from '../../pages/onboarding/SeatCountScreen';
 import { AppShell } from '../layout/AppShell';
 import { organizationService } from '../../services/organizationService';
 import { verificationService } from '../../services/verificationService';
@@ -15,6 +16,7 @@ export type BootState =
   | 'loading'
   | 'unauthenticated'
   | 'emailVerificationRequired'
+  | 'seatCountRequired'
   | 'serviceSelectionRequired'
   | 'ready'
   | 'bootstrapError';
@@ -144,7 +146,7 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
         // Profile read with explicit error inspection
         const { data: profile, error: profileErr } = await supabase
           .from('profiles')
-          .select('initial_service_selection_completed')
+          .select('initial_service_selection_completed, seat_count_configured')
           .eq('id', userId)
           .single();
 
@@ -155,7 +157,13 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
           return;
         }
 
-        if (!profile || !profile.initial_service_selection_completed) {
+        if (!profile || !profile.seat_count_configured) {
+          lastEvaluatedSessionRef.current = sessionId;
+          updateBootState('seatCountRequired');
+          return;
+        }
+
+        if (!profile.initial_service_selection_completed) {
           lastEvaluatedSessionRef.current = sessionId;
           updateBootState('serviceSelectionRequired');
           return;
@@ -338,6 +346,14 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
               supabase.auth.getSession().then(({ data }) => evaluateAuthState(data?.session, true));
             }
           }}
+        />
+      );
+
+    case 'seatCountRequired':
+      return (
+        <SeatCountScreen
+          organizationId={activeOrgId || currentOrg?.id || ''}
+          onCompleted={handleServiceSelectionCompleted}
         />
       );
 

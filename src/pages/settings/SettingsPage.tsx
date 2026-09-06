@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { BadgeDollarSign, Building2, FileClock, ShieldCheck, UserRound } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { PageHeader } from '../../components/common/PageHeader';
@@ -6,12 +6,18 @@ import { Avatar } from '../../components/common/Avatar';
 import { Button } from '../../components/common/Button';
 import { Surface } from '../../components/common/WorkspacePrimitives';
 import { formatDate } from '../../utils/formatters';
+import { billingService, type OrganizationSubscription } from '../../services/billingService';
 
 type SettingsTab = 'company' | 'team' | 'billing' | 'audit';
 
 export const SettingsPage: React.FC = () => {
   const { currentOrg, user, auditLogs, navigate } = useApp();
   const [activeTab, setActiveTab] = useState<SettingsTab>('company');
+  const [subscription, setSubscription] = useState<OrganizationSubscription | null>(null);
+  const [seatCount, setSeatCount] = useState(1); const [billingBusy, setBillingBusy] = useState(false); const [billingError, setBillingError] = useState('');
+  useEffect(() => { billingService.getSubscription(currentOrg.id).then((value) => { setSubscription(value); if (value) setSeatCount(value.seat_count); }).catch((err) => setBillingError(err.message)); }, [currentOrg.id]);
+  const updateSeats = async () => { setBillingBusy(true); setBillingError(''); try { await billingService.updateSeats(currentOrg.id, seatCount); setSubscription(await billingService.getSubscription(currentOrg.id)); } catch (err: any) { setBillingError(err.message); } finally { setBillingBusy(false); } };
+  const openPortal = async () => { setBillingBusy(true); setBillingError(''); try { const result = await billingService.openPortal(currentOrg.id); if (result.url) window.location.assign(result.url); } catch (err: any) { setBillingError(err.message); } finally { setBillingBusy(false); } };
   const tabs: Array<{ id: SettingsTab; label: string }> = [
     { id: 'company', label: 'Company' },
     { id: 'team', label: 'Team & permissions' },
@@ -86,10 +92,11 @@ export const SettingsPage: React.FC = () => {
             <div className="flex flex-col gap-6 px-6 py-7 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-start gap-4">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-50 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-300"><BadgeDollarSign className="h-5 w-5" /></span>
-                <div className="max-w-xl"><h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">Plans and billing</h2><p className="mt-1.5 text-sm leading-6 text-slate-600 dark:text-slate-400">Compare One App Free, Standard, and Custom. Billing persistence and checkout are not connected yet, so no plan is inferred for this workspace.</p></div>
+                <div className="max-w-xl"><h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">Plans and billing</h2><p className="mt-1.5 text-sm leading-6 text-slate-600 dark:text-slate-400">{subscription ? `${subscription.plan === 'one_app_free' ? 'One App Free' : subscription.plan} · ${subscription.status} · ${subscription.seat_count} seats` : 'No billing plan is active yet.'}</p></div>
               </div>
-              <Button className="shrink-0" onClick={() => navigate('pricing')}>View pricing</Button>
+              <div className="flex shrink-0 flex-wrap gap-2"><Button onClick={() => navigate('pricing')}>View pricing</Button>{subscription?.stripe_customer_id && <Button variant="secondary" disabled={billingBusy} onClick={openPortal}>Manage billing</Button>}</div>
             </div>
+            <div className="border-t border-slate-200 px-6 py-6 dark:border-slate-700"><label className="block max-w-xs text-sm font-medium">Seat quantity<input type="number" min={1} max={10000} value={seatCount} onChange={(e) => setSeatCount(Math.max(1, Number(e.target.value) || 1))} className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-950" /></label><Button className="mt-3" disabled={billingBusy || !subscription} onClick={updateSeats}>Save seat quantity</Button>{billingError && <p className="mt-3 text-sm text-rose-600">{billingError}</p>}</div>
           </Surface>
         )}
 
