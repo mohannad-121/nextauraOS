@@ -26,9 +26,9 @@ export const CustomersList: React.FC = () => {
     try {
       await createCustomer({
         name: name.trim(),
-        company: company.trim() || 'Enterprise Client',
+        company: company.trim(),
         email: email.trim(),
-        phone: phone.trim() || '+1 415 555 0199',
+        phone: phone.trim(),
       });
       setName('');
       setCompany('');

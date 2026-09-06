@@ -31,7 +31,7 @@ export const employeeService = {
       baseSalary: Number(row.base_salary),
       payFrequency: row.pay_frequency,
       managerName: row.manager_name,
-      skills: [{ name: 'Enterprise SaaS', level: 'Expert' }],
+      skills: row.skills || [],
       onboardingProgress: 100,
     }));
   },
@@ -111,14 +111,14 @@ export const employeeService = {
       employeeAvatar: row.employee_avatar || '',
       department: row.department || 'General',
       date: row.date,
-      checkIn: row.clock_in || '09:00 AM',
+      checkIn: row.clock_in || '',
       checkOut: row.clock_out,
       breakDurationMins: row.break_duration_mins || 0,
-      workedHours: Number(row.total_hours) || 8,
+      workedHours: Number(row.total_hours) || 0,
       expectedHours: 8,
       overtimeHours: Number(row.overtime_hours) || 0,
       status: row.status || 'Working',
-      locationType: 'Office',
+      locationType: row.location_type || 'Office',
     }));
   },
 

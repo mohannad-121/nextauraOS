@@ -83,10 +83,15 @@ export const InvoiceBuilder: React.FC = () => {
       let targetCustEmail = activeCustomerEmail;
 
       if (isNewCustomerMode || !targetCustId) {
+        if (!customCustomerName.trim() || !customCustomerEmail.trim()) {
+          setErrorMsg('Customer name and email address are required.');
+          setIsSubmitting(false);
+          return;
+        }
         const newCust = await createCustomer({
-          name: customCustomerName || 'New Client',
-          email: customCustomerEmail || 'client@company.com',
-          company: customCustomerCompany || customCustomerName || 'Client Enterprise',
+          name: customCustomerName.trim(),
+          email: customCustomerEmail.trim(),
+          company: customCustomerCompany.trim(),
         });
         targetCustId = newCust.id;
         targetCustName = newCust.name;

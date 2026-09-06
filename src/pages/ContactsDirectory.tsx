@@ -28,9 +28,9 @@ export const ContactsDirectory: React.FC = () => {
       await createContact({
         name: name.trim(),
         email: email.trim(),
-        phone: phone.trim() || '+1 415 555 0100',
-        company: company.trim() || 'Enterprise Counterparty',
-        companyName: company.trim() || 'Enterprise Counterparty',
+        phone: phone.trim(),
+        company: company.trim(),
+        companyName: company.trim(),
         type: roleType,
         roles: [roleType as any],
       });
@@ -91,7 +91,9 @@ export const ContactsDirectory: React.FC = () => {
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-slate-100 font-heading">{cnt.name}</h3>
-                  <div className="text-[11px] text-slate-400">{cnt.companyName || cnt.company || 'Enterprise Counterparty'}</div>
+                  { (cnt.companyName || cnt.company) && (
+                    <div className="text-[11px] text-slate-400">{cnt.companyName || cnt.company}</div>
+                  )}
                 </div>
               </div>
 

@@ -15,16 +15,16 @@ export const marketingService = {
       id: c.id,
       name: c.name,
       subject: c.subject,
-      senderName: c.sender_name || 'NextAura Team',
-      senderEmail: c.sender_email || 'marketing@nextaura.ai',
-      status: c.status || 'Scheduled',
-      targetSegment: c.target_segment || 'All Subscribers',
-      recipientCount: c.recipient_count || 1000,
-      sentCount: c.recipient_count || 1000,
-      deliveryRate: Number(c.delivery_rate) || 99.5,
-      openRate: Number(c.open_rate) || 42.0,
-      clickRate: Number(c.click_rate) || 18.0,
-      unsubscribeRate: Number(c.unsubscribe_rate) || 0.1,
+      senderName: c.sender_name || '',
+      senderEmail: c.sender_email || '',
+      status: c.status || 'Draft',
+      targetSegment: c.target_segment || '',
+      recipientCount: c.recipient_count || 0,
+      sentCount: c.recipient_count || 0,
+      deliveryRate: Number(c.delivery_rate) || 0,
+      openRate: Number(c.open_rate) || 0,
+      clickRate: Number(c.click_rate) || 0,
+      unsubscribeRate: Number(c.unsubscribe_rate) || 0,
     }));
   },
 
@@ -36,11 +36,11 @@ export const marketingService = {
     const fullCamp: EmailCampaign = {
       ...camp,
       id,
-      sentCount: camp.recipientCount || 24500,
-      deliveryRate: 99.8,
-      openRate: 42.5,
-      clickRate: 18.6,
-      unsubscribeRate: 0.1,
+      sentCount: camp.recipientCount || 0,
+      deliveryRate: 0,
+      openRate: 0,
+      clickRate: 0,
+      unsubscribeRate: 0,
     };
 
     if (isSupabaseConfigured()) {
@@ -54,10 +54,10 @@ export const marketingService = {
         status: camp.status,
         target_segment: camp.targetSegment,
         recipient_count: camp.recipientCount,
-        delivery_rate: fullCamp.deliveryRate,
-        open_rate: fullCamp.openRate,
-        click_rate: fullCamp.clickRate,
-        unsubscribe_rate: fullCamp.unsubscribeRate,
+        delivery_rate: 0,
+        open_rate: 0,
+        click_rate: 0,
+        unsubscribe_rate: 0,
       });
     }
 
@@ -77,12 +77,12 @@ export const marketingService = {
       id: s.id,
       name: s.name,
       message: s.message,
-      status: s.status || 'Scheduled',
-      targetSegment: s.target_audience || 'VIP Clients',
-      recipientCount: s.recipient_count || 500,
-      sentCount: s.recipient_count || 500,
-      deliveryRate: Number(s.delivery_rate) || 98.9,
-      clickRate: 14.2,
+      status: s.status || 'Draft',
+      targetSegment: s.target_audience || '',
+      recipientCount: s.recipient_count || 0,
+      sentCount: s.recipient_count || 0,
+      deliveryRate: Number(s.delivery_rate) || 0,
+      clickRate: 0,
     }));
   },
 
@@ -91,9 +91,9 @@ export const marketingService = {
     const fullSMS: SMSCampaign = {
       ...sms,
       id,
-      sentCount: sms.recipientCount || 4200,
-      deliveryRate: 99.1,
-      clickRate: 14.2,
+      sentCount: sms.recipientCount || 0,
+      deliveryRate: 0,
+      clickRate: 0,
     };
 
     if (isSupabaseConfigured()) {
@@ -102,9 +102,9 @@ export const marketingService = {
         organization_id: orgId,
         name: sms.name,
         message: sms.message,
-        target_audience: sms.targetSegment || 'VIP Clients',
+        target_audience: sms.targetSegment || '',
         recipient_count: sms.recipientCount,
-        delivery_rate: 99.1,
+        delivery_rate: 0,
         status: sms.status,
       });
     }
@@ -126,10 +126,10 @@ export const marketingService = {
       title: s.title,
       category: s.category || 'CSAT',
       status: s.status || 'Active',
-      questionsCount: s.questions_count || 4,
+      questionsCount: s.questions_count || 0,
       responsesCount: s.responses_count || 0,
-      completionRate: Number(s.completion_rate) || 100,
-      avgScore: Number(s.avg_score) || 5.0,
+      completionRate: Number(s.completion_rate) || 0,
+      avgScore: Number(s.avg_score) || 0,
     }));
   },
 
@@ -139,8 +139,8 @@ export const marketingService = {
       ...surv,
       id,
       responsesCount: 0,
-      completionRate: 100,
-      avgScore: 5.0,
+      completionRate: 0,
+      avgScore: 0,
     };
 
     if (isSupabaseConfigured()) {
@@ -152,8 +152,8 @@ export const marketingService = {
         status: surv.status,
         questions_count: surv.questionsCount,
         responses_count: 0,
-        completion_rate: 100,
-        avg_score: 5.0,
+        completion_rate: 0,
+        avg_score: 0,
       });
     }
 
@@ -172,8 +172,8 @@ export const marketingService = {
     return (data || []).map((p) => ({
       id: p.id,
       content: p.content,
-      platforms: p.platforms || ['LinkedIn'],
-      status: p.status || 'Scheduled',
+      platforms: p.platforms || [],
+      status: p.status || 'Draft',
       scheduledFor: p.scheduled_for,
       engagement: {
         likes: p.likes || 0,
