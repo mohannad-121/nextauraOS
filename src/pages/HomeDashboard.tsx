@@ -1,404 +1,357 @@
-import React, { useState, useMemo } from 'react';
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer,
-} from 'recharts';
+import React, { useMemo } from 'react';
 import {
   Sparkles,
-  TrendingUp,
-  ArrowUpRight,
-  CreditCard,
-  FileSignature,
-  PieChart,
-  DollarSign,
-  AlertTriangle,
+  ArrowRight,
+  Plus,
   CheckCircle2,
+  AlertCircle,
+  FileSignature,
+  CreditCard,
+  Users,
+  Calendar,
+  Wallet,
+  Mail,
   Building2,
+  Clock,
+  FolderKanban,
+  BarChart3,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { StatCard } from '../components/common/StatCard';
-import { PageHeader } from '../components/common/PageHeader';
 import { getServiceCustomIcon } from '../utils/serviceIconMapper';
+import { formatDate, formatCurrency } from '../utils/formatters';
 
 export const HomeDashboard: React.FC = () => {
-  const { navigate, user, currentOrg, invoices, expenses, signDocuments, shareholders, esgMetrics } = useApp();
-  const [timeRange, setTimeRange] = useState('30d');
+  const {
+    navigate,
+    user,
+    currentOrg,
+    activeServices,
+    invoices,
+    expenses,
+    signDocuments,
+    employees,
+    timeOffRequests,
+    auditLogs,
+  } = useApp();
 
-  const totalRevenue = invoices.filter((i) => i.status === 'Paid').reduce((acc, i) => acc + i.total, 0);
-  const totalExpenses = expenses.reduce((acc, e) => acc + e.amount, 0);
-  const netProfit = totalRevenue - totalExpenses;
-  const cashBalance = totalRevenue;
+  const greetingTime = useMemo(() => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 18) return 'Good afternoon';
+    return 'Good evening';
+  }, []);
 
-  const pendingApprovals = expenses.filter((e) => e.status === 'Manager Review');
-  const openDocs = signDocuments.filter((d) => d.status === 'Sent' || d.status === 'Partially Signed');
-  const esgScore = esgMetrics.length > 0 ? (esgMetrics[0].currentValue || 0) : 0;
+  // Needs Attention Items (Filtered strictly from real tenant state)
+  const pendingTimeOff = useMemo(() => timeOffRequests.filter((r) => r.status === 'Pending'), [timeOffRequests]);
+  const pendingExpenses = useMemo(() => expenses.filter((e) => e.status === 'Submitted'), [expenses]);
+  const pendingSignatures = useMemo(() => signDocuments.filter((d) => d.status === 'Sent' || d.status === 'Partially Signed'), [signDocuments]);
+  const overdueInvoices = useMemo(() => invoices.filter((i) => i.status === 'Overdue'), [invoices]);
 
-  // Custom PNG Service Icons
-  const expensesIcon = getServiceCustomIcon('expenses');
-  const signIcon = getServiceCustomIcon('sign');
-  const equityIcon = getServiceCustomIcon('equity');
+  const totalNeedsAttentionCount =
+    pendingTimeOff.length + pendingExpenses.length + pendingSignatures.length + overdueInvoices.length;
 
-  // Dynamic cash flow chart derived strictly from real invoices & expenses
-  const cashFlowChartData = useMemo(() => {
-    if (invoices.length === 0 && expenses.length === 0) return [];
-    
-    const monthlyMap: Record<string, { month: string; cashIn: number; cashOut: number }> = {};
-    
-    invoices.forEach((inv) => {
-      if (inv.status === 'Paid' && inv.issueDate) {
-        const month = new Date(inv.issueDate).toLocaleString('default', { month: 'short' });
-        if (!monthlyMap[month]) monthlyMap[month] = { month, cashIn: 0, cashOut: 0 };
-        monthlyMap[month].cashIn += inv.total;
-      }
-    });
+  // Active Applications definition
+  const allAppTiles = [
+    { key: 'invoicing', app: 'invoicing', category: 'finance', title: 'Invoicing', desc: 'Create and track client invoices and payments', icon: CreditCard },
+    { key: 'accounting', app: 'accounting', category: 'finance', title: 'Accounting', desc: 'General ledger, journal entries & reports', icon: Building2 },
+    { key: 'expenses', app: 'expenses', category: 'finance', title: 'Expenses & Cards', desc: 'Employee expense claims & corporate cards', icon: CreditCard },
+    { key: 'sign', app: 'sign', category: 'finance', title: 'Sign', desc: 'E-signature document preparation & signing', icon: FileSignature },
+    { key: 'equity', app: 'equity', category: 'finance', title: 'Equity & Cap Table', desc: 'Shareholders, stock options & valuation', icon: BarChart3 },
+    { key: 'esg', app: 'esg', category: 'finance', title: 'ESG & Carbon', desc: 'Sustainability metrics & carbon tracking', icon: BarChart3 },
+    { key: 'employees', app: 'employees', category: 'hr', title: 'Employees', desc: 'Employee directory & organization chart', icon: Users },
+    { key: 'attendance', app: 'attendance', category: 'hr', title: 'Attendance', desc: 'Time tracking & presence board', icon: Clock },
+    { key: 'recruitment', app: 'recruitment', category: 'hr', title: 'Recruitment (ATS)', desc: 'Job openings & candidate pipeline', icon: Users },
+    { key: 'time_off', app: 'time-off', category: 'hr', title: 'Time Off & Leave', desc: 'Leave requests & calendar tracking', icon: Calendar },
+    { key: 'payroll', app: 'payroll', category: 'hr', title: 'Payroll Processing', desc: 'Compensation runs & payslip generation', icon: Wallet },
+    { key: 'email_marketing', app: 'email', category: 'marketing', title: 'Email Marketing', desc: 'Broadband email campaigns & templates', icon: Mail },
+    { key: 'contacts', app: 'contacts', category: 'platform', title: 'Contacts CRM', desc: 'Client, vendor & partner directory', icon: Users },
+    { key: 'documents', app: 'documents', category: 'platform', title: 'Document Vault', desc: 'Enterprise file storage & category search', icon: FolderKanban },
+    { key: 'analytics', app: 'analytics', category: 'platform', title: 'Analytics Center', desc: 'Executive intelligence & operational metrics', icon: BarChart3 },
+  ];
 
-    expenses.forEach((exp) => {
-      if (exp.date) {
-        const month = new Date(exp.date).toLocaleString('default', { month: 'short' });
-        if (!monthlyMap[month]) monthlyMap[month] = { month, cashIn: 0, cashOut: 0 };
-        monthlyMap[month].cashOut += exp.amount;
-      }
-    });
-
-    return Object.values(monthlyMap);
-  }, [invoices, expenses]);
-
-  // AI insights derived strictly from real tenant data
-  const realInsights = useMemo(() => {
-    const insights = [];
-    const paidInvoices = invoices.filter((i) => i.status === 'Paid');
-    const overdueInvoices = invoices.filter((i) => i.status === 'Overdue');
-    
-    if (paidInvoices.length > 0) {
-      insights.push({
-        title: `Collected Revenue: $${totalRevenue.toLocaleString()}`,
-        desc: `${paidInvoices.length} paid invoices processed for ${currentOrg.name}.`,
-        icon: TrendingUp,
-        borderColor: 'border-cyan-500/20',
-        bgColor: 'bg-cyan-500/10',
-        textColor: 'text-cyan-400',
-      });
-    }
-
-    if (overdueInvoices.length > 0) {
-      const totalOverdue = overdueInvoices.reduce((sum, i) => sum + i.amountDue, 0);
-      insights.push({
-        title: `${overdueInvoices.length} Overdue Invoices`,
-        desc: `$${totalOverdue.toLocaleString()} pending collection across overdue billing items.`,
-        icon: AlertTriangle,
-        borderColor: 'border-rose-500/20',
-        bgColor: 'bg-rose-500/10',
-        textColor: 'text-rose-400',
-      });
-    }
-
-    if (expenses.length > 0) {
-      insights.push({
-        title: `Logged Expenses: $${totalExpenses.toLocaleString()}`,
-        desc: `${expenses.length} corporate expenses recorded in current cycle.`,
-        icon: CheckCircle2,
-        borderColor: 'border-emerald-500/20',
-        bgColor: 'bg-emerald-500/10',
-        textColor: 'text-emerald-400',
-      });
-    }
-
-    return insights;
-  }, [invoices, expenses, totalRevenue, totalExpenses, currentOrg]);
+  const activeAppTiles = allAppTiles.filter((tile) => activeServices.includes(tile.key));
 
   return (
-    <div className="space-y-8">
-      {/* Top Welcome Header */}
-      <PageHeader
-        title={`Good ${new Date().getHours() < 12 ? 'morning' : 'afternoon'}, ${user.name}`}
-        subtitle={`Here is your real-time financial position and executive workspace overview.`}
-        actions={
-          <div className="flex items-center gap-1.5 p-1 bg-slate-900 border border-slate-800 rounded-xl">
-            {['today', '7d', '30d', 'quarter', 'year'].map((range) => (
-              <button
-                key={range}
-                onClick={() => setTimeRange(range)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-colors ${
-                  timeRange === range
-                    ? 'bg-cyan-500 text-slate-950 shadow-md'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                {range}
-              </button>
-            ))}
+    <div className="space-y-8 animate-in fade-in duration-200">
+      
+      {/* A. Workspace Greeting & Context Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 sm:p-8 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-xs font-semibold text-blue-700 dark:text-blue-400 uppercase tracking-wider">
+            <Sparkles className="w-3.5 h-3.5" />
+            <span>{currentOrg.name} Workspace</span>
           </div>
-        }
-      />
-
-      {/* Row 1: Top Financial KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <StatCard
-          title="Cash Balance"
-          value={cashBalance}
-          isCurrency
-          change={0}
-          icon={DollarSign}
-          accentColor="cyan"
-          onClick={() => navigate('accounting', 'reconciliation')}
-        />
-        <StatCard
-          title="Monthly Revenue"
-          value={totalRevenue}
-          isCurrency
-          change={0}
-          icon={TrendingUp}
-          accentColor="azure"
-          onClick={() => navigate('invoicing', 'overview')}
-        />
-        <StatCard
-          title="Monthly Expenses"
-          value={totalExpenses}
-          isCurrency
-          change={0}
-          comparisonText="actual expenditure"
-          icon={CreditCard}
-          accentColor="indigo"
-          onClick={() => navigate('expenses', 'overview')}
-        />
-        <StatCard
-          title="Net Operating Profit"
-          value={netProfit}
-          isCurrency
-          change={0}
-          icon={Sparkles}
-          accentColor="emerald"
-          onClick={() => navigate('accounting', 'reports')}
-        />
-      </div>
-
-      {/* Row 2: Cash Flow Chart + AI Finance Insights */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Main Cash Flow Chart */}
-        <div className="lg:col-span-2 p-6 rounded-3xl bg-slate-900/90 border border-slate-800/90 shadow-xl space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h3 className="text-base font-bold text-slate-100 font-heading">Cash Flow Movement</h3>
-              <p className="text-xs text-slate-400">Cash in vs Cash out over time</p>
-            </div>
-            <div className="flex items-center gap-4 text-xs font-medium">
-              <span className="flex items-center gap-1.5 text-cyan-400">
-                <span className="w-2.5 h-2.5 rounded-full bg-cyan-400" />
-                Cash In
-              </span>
-              <span className="flex items-center gap-1.5 text-indigo-400">
-                <span className="w-2.5 h-2.5 rounded-full bg-indigo-400" />
-                Cash Out
-              </span>
-            </div>
-          </div>
-
-          <div className="h-72 w-full pt-4">
-            {cashFlowChartData.length > 0 ? (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={cashFlowChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorCashIn" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#38bdf8" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#38bdf8" stopOpacity={0} />
-                    </linearGradient>
-                    <linearGradient id="colorCashOut" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#818cf8" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#818cf8" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                  <XAxis dataKey="month" stroke="#64748b" fontSize={11} tickLine={false} />
-                  <YAxis stroke="#64748b" fontSize={11} tickLine={false} tickFormatter={(v) => `$${v / 1000}k`} />
-                  <Tooltip
-                    contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px' }}
-                    formatter={(value: any) => [`$${Number(value).toLocaleString()}`, '']}
-                  />
-                  <Area type="monotone" dataKey="cashIn" stroke="#38bdf8" strokeWidth={2} fillOpacity={1} fill="url(#colorCashIn)" />
-                  <Area type="monotone" dataKey="cashOut" stroke="#818cf8" strokeWidth={2} fillOpacity={1} fill="url(#colorCashOut)" />
-                </AreaChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-full w-full flex flex-col items-center justify-center text-slate-500 text-xs">
-                <Building2 className="w-8 h-8 text-slate-600 mb-2" />
-                <p className="font-semibold text-slate-300">No financial activity yet.</p>
-                <p className="text-[11px] text-slate-500 mt-1">Create invoices or record expenses to generate cash flow charts.</p>
-              </div>
-            )}
-          </div>
+          <h1 className="text-2xl sm:text-3xl font-semibold text-slate-900 dark:text-slate-100 font-heading tracking-tight">
+            {greetingTime}, {user.name}
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            {totalNeedsAttentionCount > 0
+              ? `You have ${totalNeedsAttentionCount} task${totalNeedsAttentionCount > 1 ? 's' : ''} requiring attention today.`
+              : 'Everything is up to date across your active applications.'}
+          </p>
         </div>
 
-        {/* AI Finance Insights Panel */}
-        <div className="p-6 rounded-3xl bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border border-slate-800 shadow-xl space-y-4 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center gap-2 text-cyan-400 text-xs font-bold uppercase tracking-wider">
-              <Sparkles className="w-4 h-4" />
-              Finance Intelligence Insights
-            </div>
-            <h3 className="text-base font-bold text-slate-100 font-heading mt-1">Automated Observations</h3>
-
-            <div className="mt-4 space-y-3">
-              {realInsights.length > 0 ? (
-                realInsights.map((insight, idx) => {
-                  const Icon = insight.icon;
-                  return (
-                    <div key={idx} className={`p-3.5 rounded-2xl bg-slate-950/80 border ${insight.borderColor} flex items-start gap-3`}>
-                      <div className={`p-1.5 rounded-lg ${insight.bgColor} ${insight.textColor} shrink-0 mt-0.5`}>
-                        <Icon className="w-3.5 h-3.5" />
-                      </div>
-                      <div>
-                        <div className="text-xs font-semibold text-slate-200">{insight.title}</div>
-                        <p className="text-[11px] text-slate-400 mt-0.5">{insight.desc}</p>
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="p-6 rounded-2xl bg-slate-950/80 border border-slate-800 text-center space-y-2 my-auto py-8">
-                  <Sparkles className="w-6 h-6 text-slate-600 mx-auto" />
-                  <div className="text-xs font-semibold text-slate-300">No insights available yet.</div>
-                  <p className="text-[11px] text-slate-500">Add business activity to generate insights.</p>
-                </div>
-              )}
-            </div>
-          </div>
-
+        {/* B. Quick Actions Bar */}
+        <div className="flex flex-wrap items-center gap-2 shrink-0 pt-2 md:pt-0">
           <button
-            onClick={() => navigate('analytics')}
-            className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 transition-colors flex items-center justify-center gap-2 mt-4"
+            onClick={() => navigate('invoicing', 'new-invoice')}
+            className="px-3.5 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-500 text-white font-medium text-xs shadow-xs flex items-center gap-1.5 transition-colors"
           >
-            Open Analytics Center
-            <ArrowUpRight className="w-3.5 h-3.5 text-cyan-400" />
+            <Plus className="w-3.5 h-3.5" />
+            <span>Create Invoice</span>
+          </button>
+
+          {activeServices.includes('employees') && (
+            <button
+              onClick={() => navigate('employees', 'overview')}
+              className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700 font-medium text-xs transition-colors flex items-center gap-1.5"
+            >
+              <Users className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+              <span>Add Employee</span>
+            </button>
+          )}
+
+          {activeServices.includes('payroll') && (
+            <button
+              onClick={() => navigate('payroll', 'overview')}
+              className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700 font-medium text-xs transition-colors flex items-center gap-1.5"
+            >
+              <Wallet className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span>Create Payroll Run</span>
+            </button>
+          )}
+
+          {activeServices.includes('email_marketing') && (
+            <button
+              onClick={() => navigate('email', 'new')}
+              className="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200/80 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 border border-slate-200/80 dark:border-slate-700 font-medium text-xs transition-colors flex items-center gap-1.5"
+            >
+              <Mail className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
+              <span>New Campaign</span>
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* C. Your Active Applications Launchpad Tiles */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100 font-heading">Your Active Applications</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Direct workspace access to enabled product modules</p>
+          </div>
+          <button
+            onClick={() => navigate('settings', 'services')}
+            className="text-xs font-semibold text-blue-700 dark:text-blue-400 hover:underline flex items-center gap-1"
+          >
+            <span>Manage Services</span>
+            <ArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {activeAppTiles.map((tile) => {
+            const Icon = tile.icon;
+            const customIcon = getServiceCustomIcon(tile.category, tile.title, tile.key);
+
+            return (
+              <div
+                key={tile.key}
+                onClick={() => navigate(tile.app as any, 'overview')}
+                className="group p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-slate-300 dark:hover:border-slate-700 shadow-xs transition-all cursor-pointer flex flex-col justify-between space-y-3"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-700 dark:text-slate-300 group-hover:bg-blue-50 dark:group-hover:bg-slate-700 transition-colors">
+                      {customIcon ? (
+                        <img src={customIcon} alt={`${tile.title} icon`} className="w-5 h-5 object-contain" />
+                      ) : (
+                        <Icon className="w-4 h-4" />
+                      )}
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-sm text-slate-900 dark:text-slate-100 group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors">
+                        {tile.title}
+                      </h3>
+                      <span className="text-[10px] font-medium text-slate-400 capitalize">{tile.category}</span>
+                    </div>
+                  </div>
+
+                  <ArrowRight className="w-4 h-4 text-slate-400 group-hover:text-blue-700 dark:group-hover:text-blue-400 group-hover:translate-x-0.5 transition-all" />
+                </div>
+
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                  {tile.desc}
+                </p>
+              </div>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Row 3: Actionable Module Queues */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {/* Expense Approvals Queue */}
-        <div className="p-6 rounded-3xl bg-slate-900/90 border border-slate-800/90 shadow-xl space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              {expensesIcon ? (
-                <img src={expensesIcon} alt="Expenses icon" className="w-5 h-5 object-contain" />
-              ) : (
-                <CreditCard className="w-4 h-4 text-cyan-400" />
-              )}
-              <h4 className="text-sm font-bold text-slate-100 font-heading">Expense Approvals</h4>
+      {/* D. Needs Attention & Operational Status Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        {/* Needs Attention Queue (8 cols) */}
+        <div className="lg:col-span-8 p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-4">
+          <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+            <div>
+              <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100 font-heading">Needs Attention</h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Action items requiring review or approval</p>
             </div>
-            <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-cyan-500/10 text-cyan-400">
-              {pendingApprovals.length} Pending
-            </span>
+            {totalNeedsAttentionCount > 0 && (
+              <span className="px-2.5 py-0.5 text-xs font-semibold rounded-full bg-amber-50 text-amber-800 border border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800">
+                {totalNeedsAttentionCount} Pending
+              </span>
+            )}
           </div>
 
           <div className="space-y-2.5">
-            {pendingApprovals.length > 0 ? (
-              pendingApprovals.map((exp) => (
-                <div key={exp.id} className="p-3 rounded-2xl bg-slate-950 border border-slate-800/80 flex items-center justify-between">
-                  <div>
-                    <div className="text-xs font-semibold text-slate-200">{exp.title}</div>
-                    <div className="text-[10px] text-slate-400">{exp.employeeName} • ${exp.amount}</div>
+            {totalNeedsAttentionCount > 0 ? (
+              <>
+                {/* Pending Leave Requests */}
+                {pendingTimeOff.map((req) => (
+                  <div key={req.id} className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-amber-50 text-amber-800 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-200 dark:border-amber-800">
+                        <Calendar className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold text-slate-900 dark:text-slate-100">Leave Request: {req.employeeName}</div>
+                        <div className="text-[11px] text-slate-500">{req.leaveType} • {req.startDate} to {req.endDate}</div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => navigate('time-off', 'requests')}
+                      className="px-3 py-1 rounded-lg bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-600 text-xs font-medium transition-colors"
+                    >
+                      Review
+                    </button>
                   </div>
-                  <button
-                    onClick={() => navigate('expenses', 'approvals')}
-                    className="px-2.5 py-1 rounded-lg bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 text-[11px] font-bold"
-                  >
-                    Review
-                  </button>
-                </div>
-              ))
+                ))}
+
+                {/* Pending Expenses */}
+                {pendingExpenses.map((exp) => (
+                  <div key={exp.id} className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                        <CreditCard className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold text-slate-900 dark:text-slate-100">Expense Claim: {exp.title}</div>
+                        <div className="text-[11px] text-slate-500">{exp.employeeName} • {formatCurrency(exp.amount, exp.currency)}</div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => navigate('expenses', 'approvals')}
+                      className="px-3 py-1 rounded-lg bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-600 text-xs font-medium transition-colors"
+                    >
+                      Review
+                    </button>
+                  </div>
+                ))}
+
+                {/* Pending Signatures */}
+                {pendingSignatures.map((doc) => (
+                  <div key={doc.id} className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-teal-50 text-teal-700 dark:bg-teal-950/50 dark:text-teal-300 border border-teal-200 dark:border-teal-800">
+                        <FileSignature className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold text-slate-900 dark:text-slate-100">Signature Document: {doc.title}</div>
+                        <div className="text-[11px] text-slate-500">{doc.recipients.length} Recipient(s)</div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => navigate('sign', 'overview')}
+                      className="px-3 py-1 rounded-lg bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-600 text-xs font-medium transition-colors"
+                    >
+                      Track
+                    </button>
+                  </div>
+                ))}
+
+                {/* Overdue Invoices */}
+                {overdueInvoices.map((inv) => (
+                  <div key={inv.id} className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-rose-50 text-rose-700 dark:bg-rose-950/50 dark:text-rose-300 border border-rose-200 dark:border-rose-800">
+                        <AlertCircle className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-semibold text-slate-900 dark:text-slate-100">Overdue Invoice: #{inv.number}</div>
+                        <div className="text-[11px] text-slate-500">{inv.customerName} • {formatCurrency(inv.amountDue, inv.currency)}</div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => navigate('invoicing', 'overview')}
+                      className="px-3 py-1 rounded-lg bg-white dark:bg-slate-700 hover:bg-slate-100 dark:hover:bg-slate-600 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-600 text-xs font-medium transition-colors"
+                    >
+                      View
+                    </button>
+                  </div>
+                ))}
+              </>
             ) : (
-              <div className="p-4 text-center text-xs text-slate-500 bg-slate-950/40 rounded-2xl border border-slate-800/40">
-                No pending expense approvals
+              <div className="p-8 text-center bg-slate-50/50 dark:bg-slate-800/30 rounded-xl border border-slate-200/60 dark:border-slate-800/60 space-y-2">
+                <CheckCircle2 className="w-6 h-6 text-emerald-600 dark:text-emerald-400 mx-auto" />
+                <h4 className="text-sm font-semibold text-slate-800 dark:text-slate-200">No pending action items</h4>
+                <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mx-auto">
+                  All approvals, leave requests, and document signatures are processed.
+                </p>
               </div>
             )}
           </div>
         </div>
 
-        {/* E-Signature Pending Documents */}
-        <div className="p-6 rounded-3xl bg-slate-900/90 border border-slate-800/90 shadow-xl space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              {signIcon ? (
-                <img src={signIcon} alt="Sign icon" className="w-5 h-5 object-contain" />
-              ) : (
-                <FileSignature className="w-4 h-4 text-teal-400" />
-              )}
-              <h4 className="text-sm font-bold text-slate-100 font-heading">Pending Signatures</h4>
+        {/* E. Recent Activity Stream (4 cols) */}
+        <div className="lg:col-span-4 p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-4 flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4">
+              <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100 font-heading">Recent Activity</h3>
+              <span className="text-xs text-slate-400 font-mono">Live Audit</span>
             </div>
-            <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-teal-500/10 text-teal-400">
-              {openDocs.length} Active
-            </span>
-          </div>
 
-          <div className="space-y-2.5">
-            {openDocs.length > 0 ? (
-              openDocs.map((doc) => (
-                <div key={doc.id} className="p-3 rounded-2xl bg-slate-950 border border-slate-800/80 flex items-center justify-between">
-                  <div className="truncate me-2">
-                    <div className="text-xs font-semibold text-slate-200 truncate">{doc.title}</div>
-                    <div className="text-[10px] text-slate-400">{doc.recipients.length} recipients</div>
+            <div className="mt-4 space-y-3">
+              {auditLogs.length > 0 ? (
+                auditLogs.slice(0, 5).map((log) => (
+                  <div key={log.id} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 text-xs space-y-1">
+                    <div className="font-semibold text-slate-800 dark:text-slate-200">{log.action}</div>
+                    <div className="text-[11px] text-slate-500 flex items-center justify-between">
+                      <span>{log.userName}</span>
+                      <span>{formatDate(log.timestamp)}</span>
+                    </div>
                   </div>
-                  <button
-                    onClick={() => navigate('sign', 'overview')}
-                    className="px-2.5 py-1 rounded-lg bg-teal-500/10 text-teal-400 hover:bg-teal-500/20 text-[11px] font-bold shrink-0"
-                  >
-                    Track
-                  </button>
-                </div>
-              ))
-            ) : (
-              <div className="p-4 text-center text-xs text-slate-500 bg-slate-950/40 rounded-2xl border border-slate-800/40">
-                No active document signatures
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* Equity & ESG Snapshot */}
-        <div className="p-6 rounded-3xl bg-slate-900/90 border border-slate-800/90 shadow-xl space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              {equityIcon ? (
-                <img src={equityIcon} alt="Equity icon" className="w-5 h-5 object-contain" />
+                ))
               ) : (
-                <PieChart className="w-4 h-4 text-amber-400" />
+                <div className="p-6 text-center text-xs text-slate-500 bg-slate-50/50 dark:bg-slate-800/30 rounded-xl border border-slate-200/60 dark:border-slate-800/60">
+                  No tenant activity recorded yet.
+                </div>
               )}
-              <h4 className="text-sm font-bold text-slate-100 font-heading">Ownership & ESG Score</h4>
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div
-              onClick={() => navigate('equity', 'cap-table')}
-              className="p-3 rounded-2xl bg-slate-950 border border-slate-800/80 cursor-pointer hover:border-amber-500/40 transition-colors"
-            >
-              <div className="text-[10px] font-semibold text-amber-400">Cap Table</div>
-              <div className="text-lg font-black text-slate-100 mt-1">{shareholders.length}</div>
-              <div className="text-[10px] text-slate-400">Shareholders</div>
+          {/* Compact Tenant Overview Stats */}
+          <div className="pt-4 border-t border-slate-100 dark:border-slate-800 grid grid-cols-2 gap-3 text-center">
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50">
+              <div className="text-xs text-slate-500">Active Personnel</div>
+              <div className="text-lg font-semibold text-slate-900 dark:text-slate-100 mt-0.5 font-heading">
+                {employees.length}
+              </div>
             </div>
 
-            <div
-              onClick={() => navigate('esg', 'overview')}
-              className="p-3 rounded-2xl bg-slate-950 border border-slate-800/80 cursor-pointer hover:border-emerald-500/40 transition-colors"
-            >
-              <div className="text-[10px] font-semibold text-emerald-400">ESG Index</div>
-              <div className="text-lg font-black text-slate-100 mt-1">
-                {esgScore > 0 ? `${esgScore} / 100` : '0 / 100'}
-              </div>
-              <div className="text-[10px] text-slate-400">
-                {esgMetrics.length > 0 ? 'Scorecard Active' : 'Not available yet'}
+            <div className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50">
+              <div className="text-xs text-slate-500">Total Invoices</div>
+              <div className="text-lg font-semibold text-slate-900 dark:text-slate-100 mt-0.5 font-heading">
+                {invoices.length}
               </div>
             </div>
           </div>
         </div>
+
       </div>
+
     </div>
   );
 };
-

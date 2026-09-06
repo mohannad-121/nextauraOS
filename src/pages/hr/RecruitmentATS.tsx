@@ -11,6 +11,8 @@ import { useApp } from '../../context/AppContext';
 import { PageHeader } from '../../components/common/PageHeader';
 import { StatCard } from '../../components/common/StatCard';
 import { Modal } from '../../components/common/Modal';
+import { StatusBadge } from '../../components/common/StatusBadge';
+import { Button } from '../../components/common/Button';
 import type { CandidateStage, Candidate } from '../../types';
 
 export const RecruitmentATS: React.FC = () => {
@@ -80,14 +82,14 @@ export const RecruitmentATS: React.FC = () => {
   ];
 
   const stageColors: Record<CandidateStage, string> = {
-    'New Applicant': 'border-slate-700 text-slate-400',
-    Screening: 'border-cyan-500/30 text-cyan-400',
-    'Phone Interview': 'border-indigo-500/30 text-indigo-400',
-    'Technical Interview': 'border-purple-500/30 text-purple-400',
-    'Final Interview': 'border-amber-500/30 text-amber-400',
-    Offer: 'border-pink-500/30 text-pink-400',
-    Hired: 'border-emerald-500/30 text-emerald-400',
-    Rejected: 'border-rose-500/30 text-rose-400',
+    'New Applicant': 'text-slate-600 dark:text-slate-400',
+    Screening: 'text-blue-600 dark:text-blue-400',
+    'Phone Interview': 'text-indigo-600 dark:text-indigo-400',
+    'Technical Interview': 'text-purple-600 dark:text-purple-400',
+    'Final Interview': 'text-amber-600 dark:text-amber-400',
+    Offer: 'text-rose-600 dark:text-rose-400',
+    Hired: 'text-emerald-600 dark:text-emerald-400',
+    Rejected: 'text-rose-600 dark:text-rose-400',
   };
 
   const handleCreateJob = () => {
@@ -157,66 +159,68 @@ export const RecruitmentATS: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 max-w-7xl mx-auto">
       <PageHeader
         title="Recruitment & Applicant Tracking (ATS)"
         subtitle="Manage job openings, candidate pipeline, interviews, offer letters & seamless employee conversion."
         actions={
-          <div className="flex items-center gap-3">
-            <button
+          <div className="flex items-center gap-2.5">
+            <Button
               onClick={() => setCandidateModalOpen(true)}
-              className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5"
+              variant="secondary"
+              size="sm"
+              icon={<UserPlus className="w-4 h-4" />}
             >
-              <UserPlus className="w-4 h-4 text-pink-400" />
               Add Candidate
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => setJobModalOpen(true)}
-              className="px-4 py-2.5 rounded-xl bg-pink-500 hover:bg-pink-400 text-slate-950 font-bold text-xs shadow-lg shadow-pink-500/20 flex items-center gap-1.5"
+              variant="primary"
+              size="sm"
+              icon={<Plus className="w-4 h-4" />}
             >
-              <Plus className="w-4 h-4 stroke-[3]" />
               Create Job Opening
-            </button>
+            </Button>
           </div>
         }
       />
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <StatCard title="Open Positions" value={jobOpenings.length} comparisonText="active requisitions" accentColor="pink" />
-        <StatCard title="Active Applicants" value={candidates.length} change={14.0} accentColor="cyan" />
-        <StatCard title="Interviews Scheduled" value={interviews.length} comparisonText="in calendar" accentColor="amber" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard title="Open Positions" value={jobOpenings.length} comparisonText="active requisitions" accentColor="amber" />
+        <StatCard title="Active Applicants" value={candidates.length} change={14.0} accentColor="azure" />
+        <StatCard title="Interviews Scheduled" value={interviews.length} comparisonText="in calendar" accentColor="indigo" />
         <StatCard title="Offer Accept Rate" value="88.5%" comparisonText="YTD metric" accentColor="emerald" />
       </div>
 
-      {/* Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
+      {/* Segmented Navigation Tabs */}
+      <div className="flex items-center gap-1.5 border-b border-slate-200/80 dark:border-slate-800 pb-3">
         <button
           onClick={() => setActiveTab('kanban')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+          className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
             activeTab === 'kanban'
-              ? 'bg-pink-500 text-slate-950 shadow-lg shadow-pink-500/20'
-              : 'text-slate-400 hover:text-slate-200'
+              ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 shadow-sm'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
           Candidate Hiring Pipeline (Kanban)
         </button>
         <button
           onClick={() => setActiveTab('jobs')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+          className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
             activeTab === 'jobs'
-              ? 'bg-pink-500 text-slate-950 shadow-lg shadow-pink-500/20'
-              : 'text-slate-400 hover:text-slate-200'
+              ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 shadow-sm'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
           Job Openings Directory ({jobOpenings.length})
         </button>
         <button
           onClick={() => setActiveTab('interviews')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+          className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
             activeTab === 'interviews'
-              ? 'bg-pink-500 text-slate-950 shadow-lg shadow-pink-500/20'
-              : 'text-slate-400 hover:text-slate-200'
+              ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 shadow-sm'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
           }`}
         >
           Scheduled Interviews ({interviews.length})
@@ -229,10 +233,10 @@ export const RecruitmentATS: React.FC = () => {
           {stages.map((stg) => {
             const stageCandidates = candidates.filter((c) => c.stage === stg);
             return (
-              <div key={stg} className="p-3.5 rounded-3xl bg-slate-900/90 border border-slate-800/90 space-y-3 shrink-0 w-72 lg:w-auto">
-                <div className="flex items-center justify-between border-b border-slate-800 pb-2">
-                  <span className={`text-xs font-bold font-heading truncate ${stageColors[stg]}`}>{stg}</span>
-                  <span className="px-2 py-0.5 rounded-full bg-slate-950 text-slate-400 text-[10px] font-bold">
+              <div key={stg} className="p-3.5 rounded-2xl bg-slate-50/70 dark:bg-slate-800/40 border border-slate-200/80 dark:border-slate-800 space-y-3 shrink-0 w-72 lg:w-auto">
+                <div className="flex items-center justify-between border-b border-slate-200/80 dark:border-slate-700/60 pb-2">
+                  <span className={`text-xs font-semibold truncate ${stageColors[stg]}`}>{stg}</span>
+                  <span className="px-2 py-0.5 rounded-full bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 text-[10px] font-semibold border border-slate-200/80 dark:border-slate-700">
                     {stageCandidates.length}
                   </span>
                 </div>
@@ -242,16 +246,16 @@ export const RecruitmentATS: React.FC = () => {
                     <div
                       key={cand.id}
                       onClick={() => setSelectedCandidate(cand)}
-                      className="p-4 rounded-2xl bg-slate-950 border border-slate-800/90 hover:border-pink-500/40 cursor-pointer space-y-2.5 transition-all shadow-md group"
+                      className="p-4 rounded-xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-500 cursor-pointer space-y-2.5 transition-all shadow-sm group"
                     >
                       <div className="flex items-start justify-between">
                         <div>
-                          <div className="font-bold text-xs text-slate-100 group-hover:text-pink-400 transition-colors">
+                          <div className="font-semibold text-xs text-slate-900 dark:text-slate-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
                             {cand.name}
                           </div>
-                          <div className="text-[10px] text-slate-400 truncate max-w-[150px]">{cand.appliedPositionTitle}</div>
+                          <div className="text-[11px] text-slate-500 truncate max-w-[150px]">{cand.appliedPositionTitle}</div>
                         </div>
-                        <div className="flex items-center text-amber-400 text-[10px] font-bold">
+                        <div className="flex items-center text-amber-500 text-[11px] font-semibold">
                           <Star className="w-3 h-3 fill-current me-0.5" />
                           {cand.rating}
                         </div>
@@ -259,13 +263,13 @@ export const RecruitmentATS: React.FC = () => {
 
                       <div className="flex flex-wrap gap-1">
                         {cand.skills.slice(0, 2).map((sk) => (
-                          <span key={sk} className="px-1.5 py-0.5 rounded bg-slate-900 text-slate-400 text-[9px]">
+                          <span key={sk} className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px]">
                             {sk}
                           </span>
                         ))}
                       </div>
 
-                      <div className="pt-2 border-t border-slate-900 flex justify-between items-center text-[10px] text-slate-500">
+                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-[10px] text-slate-400">
                         <span>Source: {cand.source}</span>
                         <span className="font-mono">{cand.appliedDate}</span>
                       </div>
@@ -280,31 +284,29 @@ export const RecruitmentATS: React.FC = () => {
 
       {/* TAB 2: JOB OPENINGS DIRECTORY */}
       {activeTab === 'jobs' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {jobOpenings.map((job) => (
-            <div key={job.id} className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
+            <div key={job.id} className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
               <div className="flex justify-between items-start">
                 <div>
-                  <h3 className="text-base font-bold text-slate-100 font-heading">{job.title}</h3>
-                  <div className="text-xs text-slate-400 mt-0.5">{job.department} • {job.location}</div>
+                  <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">{job.title}</h3>
+                  <div className="text-xs text-slate-500 mt-0.5">{job.department} • {job.location}</div>
                 </div>
-                <span className="px-2.5 py-0.5 rounded-full bg-pink-500/10 text-pink-400 border border-pink-500/20 text-[10px] font-bold uppercase">
-                  {job.status}
-                </span>
+                <StatusBadge status={job.status} />
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 grid grid-cols-3 gap-3 text-xs text-center">
+              <div className="p-3.5 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 grid grid-cols-3 gap-3 text-xs text-center">
                 <div>
-                  <span className="text-[10px] text-slate-500 block">Openings</span>
-                  <span className="font-bold text-slate-100">{job.openingsCount}</span>
+                  <span className="text-[10px] text-slate-400 block">Openings</span>
+                  <span className="font-bold text-slate-900 dark:text-slate-100">{job.openingsCount}</span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-slate-500 block">Applicants</span>
-                  <span className="font-bold text-cyan-400">{job.applicantsCount}</span>
+                  <span className="text-[10px] text-slate-400 block">Applicants</span>
+                  <span className="font-bold text-blue-600 dark:text-blue-400">{job.applicantsCount}</span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-slate-500 block">Salary Range</span>
-                  <span className="font-bold text-emerald-400 font-mono">{job.salaryRange}</span>
+                  <span className="text-[10px] text-slate-400 block">Salary Range</span>
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400 font-mono">{job.salaryRange}</span>
                 </div>
               </div>
             </div>
@@ -315,23 +317,23 @@ export const RecruitmentATS: React.FC = () => {
       {/* TAB 3: SCHEDULED INTERVIEWS */}
       {activeTab === 'interviews' && (
         <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {interviews.map((int) => (
-              <div key={int.id} className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
+              <div key={int.id} className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
                 <div className="flex justify-between items-start">
                   <div>
-                    <span className="text-[10px] text-pink-400 font-bold uppercase">{int.type}</span>
-                    <h3 className="text-base font-bold text-slate-100 font-heading mt-0.5">{int.candidateName}</h3>
-                    <div className="text-xs text-slate-400">{int.positionTitle}</div>
+                    <span className="text-[10px] text-blue-600 dark:text-blue-400 font-semibold uppercase">{int.type}</span>
+                    <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100 mt-0.5">{int.candidateName}</h3>
+                    <div className="text-xs text-slate-500">{int.positionTitle}</div>
                   </div>
-                  <div className="px-3 py-1 rounded-xl bg-slate-950 border border-slate-800 font-mono text-xs text-cyan-400 font-bold">
+                  <div className="px-3 py-1 rounded-lg bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono text-xs text-blue-600 dark:text-blue-400 font-semibold">
                     {int.date} @ {int.time}
                   </div>
                 </div>
 
-                <div className="text-xs text-slate-400 flex items-center justify-between pt-2 border-t border-slate-800">
+                <div className="text-xs text-slate-500 flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
                   <span>Interviewers: {int.interviewers.join(', ')}</span>
-                  <span className="text-slate-500">{int.location}</span>
+                  <span>{int.location}</span>
                 </div>
               </div>
             ))}
@@ -348,22 +350,22 @@ export const RecruitmentATS: React.FC = () => {
           subtitle={`Applied for ${selectedCandidate.appliedPositionTitle}`}
           maxWidth="lg"
         >
-          <div className="space-y-6 text-xs text-slate-300">
-            <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-950 border border-slate-800">
+          <div className="space-y-6 text-xs text-slate-600 dark:text-slate-300">
+            <div className="flex items-center justify-between p-4 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800">
               <div>
-                <span className="text-[10px] text-slate-500 uppercase block">Current Stage</span>
-                <span className="font-bold text-pink-400 text-sm">{selectedCandidate.stage}</span>
+                <span className="text-[10px] text-slate-400 uppercase block font-medium">Current Stage</span>
+                <span className="font-semibold text-blue-600 dark:text-blue-400 text-sm">{selectedCandidate.stage}</span>
               </div>
 
               <div className="flex items-center gap-2">
-                <label className="text-slate-400 text-[10px] uppercase font-bold">Move Stage:</label>
+                <label className="text-slate-500 text-[10px] uppercase font-semibold">Move Stage:</label>
                 <select
                   value={selectedCandidate.stage}
                   onChange={(e) => {
                     updateCandidateStage(selectedCandidate.id, e.target.value as CandidateStage);
                     setSelectedCandidate({ ...selectedCandidate, stage: e.target.value as CandidateStage });
                   }}
-                  className="px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-800 text-slate-100 font-semibold"
+                  className="px-3 py-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-medium"
                 >
                   {stages.map((st) => (
                     <option key={st} value={st}>{st}</option>
@@ -373,8 +375,8 @@ export const RecruitmentATS: React.FC = () => {
             </div>
 
             {/* Score Rating Bar */}
-            <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between">
-              <span className="font-bold text-slate-300">Score & Evaluation Rating:</span>
+            <div className="p-4 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 flex items-center justify-between">
+              <span className="font-medium text-slate-900 dark:text-slate-100">Score & Evaluation Rating:</span>
               <div className="flex items-center gap-1">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <button
@@ -385,54 +387,57 @@ export const RecruitmentATS: React.FC = () => {
                     }}
                     className="p-1 hover:scale-110 transition-transform"
                   >
-                    <Star className={`w-5 h-5 ${star <= selectedCandidate.rating ? 'text-amber-400 fill-amber-400' : 'text-slate-700'}`} />
+                    <Star className={`w-5 h-5 ${star <= selectedCandidate.rating ? 'text-amber-500 fill-amber-500' : 'text-slate-300 dark:text-slate-700'}`} />
                   </button>
                 ))}
-                <span className="text-xs font-mono font-bold text-amber-400 ms-2">{selectedCandidate.rating} / 5.0</span>
+                <span className="text-xs font-mono font-semibold text-amber-600 dark:text-amber-400 ms-2">{selectedCandidate.rating} / 5.0</span>
               </div>
             </div>
 
             {/* Details */}
-            <div className="grid grid-cols-2 gap-3 p-3.5 rounded-2xl bg-slate-950 border border-slate-800">
+            <div className="grid grid-cols-2 gap-3 p-3.5 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800">
               <div>
-                <span className="text-slate-500 block">Email</span>
-                <span className="font-semibold text-slate-200">{selectedCandidate.email}</span>
+                <span className="text-slate-400 block text-[11px]">Email</span>
+                <span className="font-semibold text-slate-900 dark:text-slate-100">{selectedCandidate.email}</span>
               </div>
               <div>
-                <span className="text-slate-500 block">Phone</span>
-                <span className="font-semibold text-slate-200">{selectedCandidate.phone}</span>
+                <span className="text-slate-400 block text-[11px]">Phone</span>
+                <span className="font-semibold text-slate-900 dark:text-slate-100">{selectedCandidate.phone}</span>
               </div>
             </div>
 
             {/* Action Buttons: Schedule Interview, Create Offer, Hire */}
-            <div className="pt-4 border-t border-slate-800 flex flex-wrap gap-2 justify-end">
-              <button
+            <div className="pt-4 border-t border-slate-200/80 dark:border-slate-800 flex flex-wrap gap-2 justify-end">
+              <Button
                 onClick={() => setInterviewModalOpen(true)}
-                className="px-4 py-2.5 rounded-xl bg-indigo-500/10 text-indigo-400 hover:bg-indigo-500/20 font-bold border border-indigo-500/20 text-xs flex items-center gap-1.5"
+                variant="secondary"
+                size="sm"
+                icon={<CalendarIcon className="w-4 h-4" />}
               >
-                <CalendarIcon className="w-4 h-4" />
                 Schedule Interview
-              </button>
+              </Button>
 
-              <button
+              <Button
                 onClick={() => setOfferModalOpen(true)}
-                className="px-4 py-2.5 rounded-xl bg-pink-500/10 text-pink-400 hover:bg-pink-500/20 font-bold border border-pink-500/20 text-xs flex items-center gap-1.5"
+                variant="secondary"
+                size="sm"
+                icon={<FileSignature className="w-4 h-4" />}
               >
-                <FileSignature className="w-4 h-4" />
                 Generate Offer
-              </button>
+              </Button>
 
-              <button
+              <Button
                 onClick={() => {
                   hireCandidateToEmployee(selectedCandidate.id);
                   setSelectedCandidate(null);
                   navigate('employees', 'overview');
                 }}
-                className="px-5 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 flex items-center gap-1.5"
+                variant="primary"
+                size="sm"
+                icon={<CheckCircle2 className="w-4 h-4" />}
               >
-                <CheckCircle2 className="w-4 h-4" />
                 Hire & Auto-Create Employee
-              </button>
+              </Button>
             </div>
           </div>
         </Modal>
@@ -447,31 +452,31 @@ export const RecruitmentATS: React.FC = () => {
           subtitle="Add applicant details directly into the ATS hiring pipeline."
           maxWidth="md"
         >
-          <div className="space-y-4 text-xs text-slate-300">
+          <div className="space-y-4 text-xs text-slate-600 dark:text-slate-300">
             <div>
-              <label className="block text-slate-400 mb-1">Candidate Full Name</label>
-              <input type="text" value={candName} onChange={(e) => setCandName(e.target.value)} placeholder="e.g. Layla Hassan" className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100" />
+              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Candidate Full Name</label>
+              <input type="text" value={candName} onChange={(e) => setCandName(e.target.value)} placeholder="e.g. Layla Hassan" className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-xs" />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-slate-400 mb-1">Email Address</label>
-                <input type="email" value={candEmail} onChange={(e) => setCandEmail(e.target.value)} placeholder="layla@example.com" className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100" />
+                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Email Address</label>
+                <input type="email" value={candEmail} onChange={(e) => setCandEmail(e.target.value)} placeholder="layla@example.com" className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-xs" />
               </div>
               <div>
-                <label className="block text-slate-400 mb-1">Phone Number</label>
-                <input type="text" value={candPhone} onChange={(e) => setCandPhone(e.target.value)} placeholder="+1 415 555 0199" className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100" />
+                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Phone Number</label>
+                <input type="text" value={candPhone} onChange={(e) => setCandPhone(e.target.value)} placeholder="+1 415 555 0199" className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-xs" />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-slate-400 mb-1">Applied Position</label>
-                <input type="text" value={candPosition} onChange={(e) => setCandPosition(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100" />
+                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Applied Position</label>
+                <input type="text" value={candPosition} onChange={(e) => setCandPosition(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-xs" />
               </div>
               <div>
-                <label className="block text-slate-400 mb-1">Sourcing Channel</label>
-                <select value={candSource} onChange={(e) => setCandSource(e.target.value as any)} className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200">
+                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Sourcing Channel</label>
+                <select value={candSource} onChange={(e) => setCandSource(e.target.value as any)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-xs">
                   <option value="LinkedIn">LinkedIn</option>
                   <option value="Company Website">Company Website</option>
                   <option value="Referral">Referral</option>
@@ -481,9 +486,9 @@ export const RecruitmentATS: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
-              <button onClick={() => setCandidateModalOpen(false)} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-200">Cancel</button>
-              <button onClick={handleAddCandidate} className="px-5 py-2 rounded-xl bg-pink-500 text-slate-950 font-bold shadow-lg shadow-pink-500/20">Add Candidate</button>
+            <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-200/80 dark:border-slate-800">
+              <Button onClick={() => setCandidateModalOpen(false)} variant="ghost" size="sm">Cancel</Button>
+              <Button onClick={handleAddCandidate} variant="primary" size="sm">Add Candidate</Button>
             </div>
           </div>
         </Modal>
@@ -498,10 +503,10 @@ export const RecruitmentATS: React.FC = () => {
           subtitle="Adds event to Global Calendar & notifies interviewers."
           maxWidth="md"
         >
-          <div className="space-y-4 text-xs text-slate-300">
+          <div className="space-y-4 text-xs text-slate-600 dark:text-slate-300">
             <div>
-              <label className="block text-slate-400 mb-1">Interview Type</label>
-              <select value={intType} onChange={(e) => setIntType(e.target.value as any)} className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200">
+              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Interview Type</label>
+              <select value={intType} onChange={(e) => setIntType(e.target.value as any)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-xs">
                 <option value="HR Screening">HR Screening</option>
                 <option value="Technical">Technical Deep Dive</option>
                 <option value="Manager">Hiring Manager Interview</option>
@@ -511,18 +516,18 @@ export const RecruitmentATS: React.FC = () => {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-slate-400 mb-1">Date</label>
-                <input type="date" value={intDate} onChange={(e) => setIntDate(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100" />
+                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Date</label>
+                <input type="date" value={intDate} onChange={(e) => setIntDate(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-xs" />
               </div>
               <div>
-                <label className="block text-slate-400 mb-1">Time</label>
-                <input type="text" value={intTime} onChange={(e) => setIntTime(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100" />
+                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Time</label>
+                <input type="text" value={intTime} onChange={(e) => setIntTime(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-xs" />
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
-              <button onClick={() => setInterviewModalOpen(false)} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-200">Cancel</button>
-              <button onClick={handleScheduleInterview} className="px-5 py-2 rounded-xl bg-indigo-500 text-slate-950 font-bold shadow-lg shadow-indigo-500/20">Confirm Interview</button>
+            <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-200/80 dark:border-slate-800">
+              <Button onClick={() => setInterviewModalOpen(false)} variant="ghost" size="sm">Cancel</Button>
+              <Button onClick={handleScheduleInterview} variant="primary" size="sm">Confirm Interview</Button>
             </div>
           </div>
         </Modal>
@@ -537,20 +542,20 @@ export const RecruitmentATS: React.FC = () => {
           subtitle="Moves candidate to Offer stage and prepares offer letter."
           maxWidth="md"
         >
-          <div className="space-y-4 text-xs text-slate-300">
+          <div className="space-y-4 text-xs text-slate-600 dark:text-slate-300">
             <div>
-              <label className="block text-slate-400 mb-1">Annual Base Salary ($)</label>
-              <input type="number" value={offerSalary} onChange={(e) => setOfferSalary(Number(e.target.value))} className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-emerald-400 font-mono font-bold" />
+              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Annual Base Salary ($)</label>
+              <input type="number" value={offerSalary} onChange={(e) => setOfferSalary(Number(e.target.value))} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 font-mono font-bold text-xs" />
             </div>
 
             <div>
-              <label className="block text-slate-400 mb-1">Proposed Start Date</label>
-              <input type="date" value={offerStartDate} onChange={(e) => setOfferStartDate(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100" />
+              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Proposed Start Date</label>
+              <input type="date" value={offerStartDate} onChange={(e) => setOfferStartDate(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-xs" />
             </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
-              <button onClick={() => setOfferModalOpen(false)} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-200">Cancel</button>
-              <button onClick={handleCreateOffer} className="px-5 py-2 rounded-xl bg-pink-500 text-slate-950 font-bold shadow-lg shadow-pink-500/20">Issue Offer Letter</button>
+            <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-200/80 dark:border-slate-800">
+              <Button onClick={() => setOfferModalOpen(false)} variant="ghost" size="sm">Cancel</Button>
+              <Button onClick={handleCreateOffer} variant="primary" size="sm">Issue Offer Letter</Button>
             </div>
           </div>
         </Modal>
@@ -565,16 +570,16 @@ export const RecruitmentATS: React.FC = () => {
           subtitle="Publish new open position on company careers portal."
           maxWidth="md"
         >
-          <div className="space-y-4 text-xs text-slate-300">
+          <div className="space-y-4 text-xs text-slate-600 dark:text-slate-300">
             <div>
-              <label className="block text-slate-400 mb-1">Job Title</label>
-              <input type="text" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} placeholder="e.g. Senior AI Infrastructure Engineer" className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100" />
+              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Job Title</label>
+              <input type="text" value={jobTitle} onChange={(e) => setJobTitle(e.target.value)} placeholder="e.g. Senior AI Infrastructure Engineer" className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-xs" />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-slate-400 mb-1">Department</label>
-                <select value={department} onChange={(e) => setDepartment(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200">
+                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Department</label>
+                <select value={department} onChange={(e) => setDepartment(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-xs">
                   <option value="Engineering">Engineering</option>
                   <option value="Marketing">Marketing</option>
                   <option value="Sales & Growth">Sales & Growth</option>
@@ -582,14 +587,14 @@ export const RecruitmentATS: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-slate-400 mb-1">Target Salary Range</label>
-                <input type="text" value={salaryRange} onChange={(e) => setSalaryRange(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-pink-400 font-bold" />
+                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Target Salary Range</label>
+                <input type="text" value={salaryRange} onChange={(e) => setSalaryRange(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 font-bold text-xs" />
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
-              <button onClick={() => setJobModalOpen(false)} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-200">Cancel</button>
-              <button onClick={handleCreateJob} className="px-5 py-2 rounded-xl bg-pink-500 text-slate-950 font-bold shadow-lg shadow-pink-500/20">Publish Job Opening</button>
+            <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-200/80 dark:border-slate-800">
+              <Button onClick={() => setJobModalOpen(false)} variant="ghost" size="sm">Cancel</Button>
+              <Button onClick={handleCreateJob} variant="primary" size="sm">Publish Job Opening</Button>
             </div>
           </div>
         </Modal>

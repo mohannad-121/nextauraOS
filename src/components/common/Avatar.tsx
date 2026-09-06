@@ -8,13 +8,13 @@ interface AvatarProps {
   alt?: string;
 }
 
-const GRADIENTS = [
-  'from-violet-600 to-indigo-600 text-white',
-  'from-cyan-600 to-blue-600 text-white',
-  'from-emerald-600 to-teal-600 text-white',
-  'from-amber-500 to-orange-600 text-slate-950',
-  'from-rose-600 to-pink-600 text-white',
-  'from-purple-600 to-fuchsia-600 text-white',
+const TONES = [
+  'bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/60 dark:text-blue-300 dark:border-blue-800',
+  'bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/60 dark:text-indigo-300 dark:border-indigo-800',
+  'bg-violet-50 text-violet-700 border-violet-200 dark:bg-violet-950/60 dark:text-violet-300 dark:border-violet-800',
+  'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/60 dark:text-amber-300 dark:border-amber-800',
+  'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/60 dark:text-emerald-300 dark:border-emerald-800',
+  'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/60 dark:text-rose-300 dark:border-rose-800',
 ];
 
 function getInitials(name?: string): string {
@@ -26,17 +26,17 @@ function getInitials(name?: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
-function getGradient(name?: string): string {
-  if (!name) return GRADIENTS[0];
+function getTone(name?: string): string {
+  if (!name) return TONES[0];
   let hash = 0;
   for (let i = 0; i < name.length; i++) {
     hash = name.charCodeAt(i) + ((hash << 5) - hash);
   }
-  const index = Math.abs(hash) % GRADIENTS.length;
-  return GRADIENTS[index];
+  const index = Math.abs(hash) % TONES.length;
+  return TONES[index];
 }
 
-export const Avatar: React.FC<AvatarProps> = ({ src, name, className = 'w-10 h-10 rounded-xl', alt = '' }) => {
+export const Avatar: React.FC<AvatarProps> = ({ src, name, className = 'w-9 h-9 rounded-xl', alt = '' }) => {
   const [resolvedUrl, setResolvedUrl] = useState<string>('');
   const [hasError, setHasError] = useState<boolean>(false);
 
@@ -78,7 +78,7 @@ export const Avatar: React.FC<AvatarProps> = ({ src, name, className = 'w-10 h-1
   }, [src]);
 
   const initials = getInitials(name);
-  const gradient = getGradient(name);
+  const tone = getTone(name);
 
   if (resolvedUrl && !hasError) {
     return (
@@ -86,14 +86,14 @@ export const Avatar: React.FC<AvatarProps> = ({ src, name, className = 'w-10 h-1
         src={resolvedUrl}
         alt={alt || name || 'Avatar'}
         onError={() => setHasError(true)}
-        className={`object-cover ${className}`}
+        className={`object-cover border border-slate-200/80 dark:border-slate-700/80 ${className}`}
       />
     );
   }
 
   return (
     <div
-      className={`bg-gradient-to-br ${gradient} font-heading font-black flex items-center justify-center select-none uppercase tracking-wider shrink-0 ${className}`}
+      className={`${tone} border font-heading font-semibold text-xs flex items-center justify-center select-none uppercase tracking-wider shrink-0 ${className}`}
       title={name}
     >
       {initials}

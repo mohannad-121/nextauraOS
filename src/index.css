@@ -5,18 +5,30 @@
     --font-heading: 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
     --font-sans: 'Inter', 'IBM Plex Sans Arabic', system-ui, sans-serif;
     --font-arabic: 'IBM Plex Sans Arabic', sans-serif;
+    
+    color-scheme: light;
+  }
+  
+  html {
+    background-color: #f8fafc;
+    color: #0f172a;
   }
   
   body {
     font-family: var(--font-sans);
+    background-color: #f8fafc;
+    color: #0f172a;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
   
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-heading);
+    letter-spacing: -0.015em;
   }
 }
 
-/* Custom scrollbars */
+/* Custom refined scrollbars */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -27,141 +39,84 @@
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(148, 163, 184, 0.2);
+  background: rgba(148, 163, 184, 0.25);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(148, 163, 184, 0.4);
+  background: rgba(148, 163, 184, 0.45);
 }
 
 .tabular-nums {
   font-variant-numeric: tabular-nums;
 }
 
-/* Glassmorphism utilities */
-.glass-panel {
-  background: rgba(15, 23, 42, 0.75);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+/* Restrained Surface Utilities */
+.surface-card {
+  background-color: #ffffff;
+  border: 1px solid rgba(226, 232, 240, 0.9);
+  box-shadow: 0 1px 3px 0 rgba(15, 23, 42, 0.03), 0 1px 2px -1px rgba(15, 23, 42, 0.03);
 }
 
-.glass-panel-light {
+.surface-card-hover {
+  transition: all 180ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.surface-card-hover:hover {
+  border-color: rgba(203, 213, 225, 0.9);
+  box-shadow: 0 4px 12px -2px rgba(15, 23, 42, 0.05), 0 2px 4px -1px rgba(15, 23, 42, 0.03);
+}
+
+/* Glassmorphism utilities (Subtle & Restrained) */
+.glass-panel {
   background: rgba(255, 255, 255, 0.85);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid rgba(226, 232, 240, 0.8);
 }
 
-/* Glowing accent effects */
-.glow-azure {
-  box-shadow: 0 0 25px -5px rgba(56, 189, 248, 0.25);
-}
-
-.glow-indigo {
-  box-shadow: 0 0 25px -5px rgba(129, 140, 248, 0.25);
-}
-
-.glow-emerald {
-  box-shadow: 0 0 25px -5px rgba(52, 211, 153, 0.25);
-}
-
-.glow-amber {
-  box-shadow: 0 0 25px -5px rgba(251, 191, 36, 0.25);
-}
-
-/* Tabular figures for numbers */
+/* Tabular figures for numbers & codes */
 .num-font {
   font-variant-numeric: tabular-nums lining-nums;
   letter-spacing: -0.02em;
 }
 
+/* Focus Visible outline styling */
+:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
+}
+
+/* RTL Helpers */
+.rtl {
+  direction: rtl;
+}
+
+.ltr {
+  direction: ltr;
+}
+
 /* ==========================================================================
-   Light Mode Theme Rules (Activated when html.light class is applied)
+   Dark Mode Secondary Theme (Activated when html.dark class is present)
+   Soft Charcoal aesthetic - never harsh near-black
    ========================================================================== */
-html.light {
-  color-scheme: light;
-  background-color: #f8fafc !important;
-  color: #0f172a !important;
+html.dark {
+  color-scheme: dark;
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
 }
 
-html.light body {
-  background-color: #f8fafc !important;
-  color: #0f172a !important;
+html.dark body {
+  background-color: #0f172a !important;
+  color: #f8fafc !important;
 }
 
-/* Background overrides */
-html.light .bg-slate-950,
-html.light .bg-slate-950\/95,
-html.light .bg-slate-950\/90,
-html.light .bg-slate-950\/80,
-html.light .bg-slate-950\/60 {
-  background-color: #f8fafc !important;
+html.dark .surface-card {
+  background-color: #1e293b !important;
+  border-color: rgba(51, 65, 85, 0.8) !important;
 }
 
-html.light .bg-slate-900,
-html.light .bg-slate-900\/95,
-html.light .bg-slate-900\/90,
-html.light .bg-slate-900\/80,
-html.light .bg-slate-900\/60,
-html.light .bg-slate-900\/50,
-html.light .bg-slate-900\/40 {
-  background-color: #ffffff !important;
+html.dark .glass-panel {
+  background: rgba(15, 23, 42, 0.85) !important;
+  border-color: rgba(51, 65, 85, 0.8) !important;
 }
-
-html.light .bg-slate-800,
-html.light .bg-slate-800\/90,
-html.light .bg-slate-800\/80,
-html.light .bg-slate-800\/50,
-html.light .bg-slate-800\/40 {
-  background-color: #f1f5f9 !important;
-}
-
-/* Border overrides */
-html.light .border-slate-800,
-html.light .border-slate-800\/90,
-html.light .border-slate-800\/80,
-html.light .border-slate-800\/50,
-html.light .border-slate-700,
-html.light .border-s-slate-800,
-html.light .border-b-slate-800,
-html.light .border-e-slate-800 {
-  border-color: #e2e8f0 !important;
-}
-
-/* Text overrides */
-html.light .text-slate-100,
-html.light .text-slate-200 {
-  color: #0f172a !important;
-}
-
-html.light .text-slate-300,
-html.light .text-slate-400 {
-  color: #475569 !important;
-}
-
-html.light .text-slate-500 {
-  color: #64748b !important;
-}
-
-/* Glass panel */
-html.light .glass-panel {
-  background: rgba(255, 255, 255, 0.85) !important;
-  border-color: rgba(226, 232, 240, 0.8) !important;
-}
-
-/* Inputs & Form controls in Light Mode */
-html.light input:not([type="checkbox"]):not([type="radio"]),
-html.light select,
-html.light textarea {
-  background-color: #ffffff !important;
-  color: #0f172a !important;
-  border-color: #cbd5e1 !important;
-}
-
-html.light input::placeholder,
-html.light textarea::placeholder {
-  color: #94a3b8 !important;
-}
-

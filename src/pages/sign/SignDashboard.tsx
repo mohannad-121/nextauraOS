@@ -5,6 +5,7 @@ import { PageHeader } from '../../components/common/PageHeader';
 import { StatCard } from '../../components/common/StatCard';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { Modal } from '../../components/common/Modal';
+import { Button } from '../../components/common/Button';
 import { ExternalSignerExperience } from './ExternalSignerExperience';
 import type { SignDocument } from '../../types';
 
@@ -17,59 +18,60 @@ export const SignDashboard: React.FC = () => {
   const activeDocs = signDocuments.filter((d) => d.status === 'Sent' || d.status === 'Partially Signed');
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 max-w-7xl mx-auto">
       <PageHeader
         title="Electronic Signatures (Sign)"
         subtitle="Prepare, send, and legally e-sign business agreements with audit trail certificates."
         actions={
-          <button
+          <Button
             onClick={() => navigate('sign', 'builder')}
-            className="px-4 py-2.5 rounded-xl bg-teal-500 hover:bg-teal-400 text-slate-950 font-bold text-xs shadow-lg shadow-teal-500/20 flex items-center gap-1.5"
+            variant="primary"
+            size="sm"
+            icon={<Plus className="w-4 h-4" />}
           >
-            <Plus className="w-4 h-4 stroke-[3]" />
             Prepare Document
-          </button>
+          </Button>
         }
       />
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="Total Agreements Sent" value={signDocuments.length} change={12.0} accentColor="teal" />
         <StatCard title="Awaiting Signatures" value={activeDocs.length} change={0} comparisonText="active workflow" accentColor="amber" />
         <StatCard title="Completed & Executed" value={completedDocs.length} change={25.0} accentColor="emerald" />
-        <StatCard title="Compliance Rate" value="100%" comparisonText="SOC2 & eIDAS valid" accentColor="cyan" />
+        <StatCard title="Compliance Rate" value="100%" comparisonText="SOC2 & eIDAS valid" accentColor="azure" />
       </div>
 
       {/* Document List Table */}
-      <div className="rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl overflow-hidden">
-        <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-          <h3 className="text-sm font-bold text-slate-100 font-heading">Document Workflows</h3>
+      <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
+        <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Document Workflows</h3>
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-start text-xs">
-            <thead className="bg-slate-950/80 text-[10px] font-bold uppercase text-slate-400 border-b border-slate-800">
+            <thead className="bg-slate-50/70 dark:bg-slate-800/40 text-[11px] font-semibold text-slate-500 border-b border-slate-200/80 dark:border-slate-800">
               <tr>
-                <th className="p-4 text-start">Document Title</th>
-                <th className="p-4 text-start">Recipients</th>
-                <th className="p-4 text-start">Created Date</th>
-                <th className="p-4 text-center">Status</th>
-                <th className="p-4 text-center">Actions</th>
+                <th className="p-3.5 text-start">Document Title</th>
+                <th className="p-3.5 text-start">Recipients</th>
+                <th className="p-3.5 text-start">Created Date</th>
+                <th className="p-3.5 text-center">Status</th>
+                <th className="p-3.5 text-center">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60 font-medium">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
               {signDocuments.map((doc) => (
-                <tr key={doc.id} className="hover:bg-slate-800/40">
-                  <td className="p-4">
-                    <div className="font-semibold text-slate-100">{doc.title}</div>
-                    <div className="text-[10px] text-slate-400 font-mono">{doc.fileName} ({doc.fileSize})</div>
+                <tr key={doc.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                  <td className="p-3.5">
+                    <div className="font-semibold text-slate-900 dark:text-slate-100">{doc.title}</div>
+                    <div className="text-[11px] text-slate-500 font-mono">{doc.fileName} ({doc.fileSize})</div>
                   </td>
-                  <td className="p-4 text-slate-300">
-                    <div className="flex -space-x-2">
+                  <td className="p-3.5 text-slate-700 dark:text-slate-300">
+                    <div className="flex -space-x-1.5">
                       {doc.recipients.map((r) => (
                         <span
                           key={r.id}
-                          className="w-6 h-6 rounded-full bg-teal-500/20 text-teal-400 border border-teal-500/40 flex items-center justify-center font-bold text-[10px]"
+                          className="w-6 h-6 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-950/60 dark:text-blue-300 border border-blue-200 dark:border-blue-800 flex items-center justify-center font-semibold text-[10px]"
                           title={`${r.name} (${r.status})`}
                         >
                           {r.name.substring(0, 1)}
@@ -77,20 +79,21 @@ export const SignDashboard: React.FC = () => {
                       ))}
                     </div>
                   </td>
-                  <td className="p-4 text-slate-400">{doc.createdAt}</td>
-                  <td className="p-4 text-center">
+                  <td className="p-3.5 text-slate-500">{doc.createdAt}</td>
+                  <td className="p-3.5 text-center">
                     <StatusBadge status={doc.status} />
                   </td>
-                  <td className="p-4 text-center">
-                    <button
+                  <td className="p-3.5 text-center">
+                    <Button
                       onClick={() => {
                         setSelectedDoc(doc);
                         setIsSignerModalOpen(true);
                       }}
-                      className="px-3 py-1.5 rounded-lg bg-teal-500/10 text-teal-400 hover:bg-teal-500/20 font-bold text-xs"
+                      variant="secondary"
+                      size="xs"
                     >
                       Sign / Inspect
-                    </button>
+                    </Button>
                   </td>
                 </tr>
               ))}
@@ -99,17 +102,18 @@ export const SignDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Signer Modal */}
+      {/* External Signer Modal */}
       {isSignerModalOpen && selectedDoc && (
         <Modal
           isOpen={isSignerModalOpen}
           onClose={() => setIsSignerModalOpen(false)}
           title={`E-Sign Agreement — ${selectedDoc.title}`}
-          maxWidth="4xl"
+          subtitle="Legally binding document execution powered by NextAura Sign."
+          maxWidth="xl"
         >
           <ExternalSignerExperience
             document={selectedDoc}
-            onComplete={() => setIsSignerModalOpen(false)}
+            onClose={() => setIsSignerModalOpen(false)}
           />
         </Modal>
       )}

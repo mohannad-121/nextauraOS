@@ -42,7 +42,9 @@ export const getStatusBadgeStyle = (status: string): string => {
     case 'active':
     case 'matched':
     case 'signed':
-      return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20';
+    case 'hired':
+    case 'published':
+      return 'bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800/60';
     
     case 'sent':
     case 'viewed':
@@ -53,7 +55,9 @@ export const getStatusBadgeStyle = (status: string): string => {
     case 'suggested':
     case 'pending':
     case 'planned':
-      return 'bg-amber-500/10 text-amber-400 border-amber-500/20';
+    case 'interview':
+    case 'offer':
+      return 'bg-amber-50 text-amber-800 border-amber-200 dark:bg-amber-950/40 dark:text-amber-300 dark:border-amber-800/60';
 
     case 'overdue':
     case 'rejected':
@@ -63,12 +67,13 @@ export const getStatusBadgeStyle = (status: string): string => {
     case 'cancelled':
     case 'unmatched':
     case 'frozen':
-      return 'bg-rose-500/10 text-rose-400 border-rose-500/20';
+      return 'bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800/60';
 
     case 'draft':
     case 'inactive':
+    case 'applied':
     default:
-      return 'bg-slate-500/10 text-slate-400 border-slate-500/20';
+      return 'bg-slate-100 text-slate-700 border-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700';
   }
 };
 

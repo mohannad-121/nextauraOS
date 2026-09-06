@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
-import { CheckCircle2, Check } from 'lucide-react';
+import { CheckCircle2, X } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { PageHeader } from '../components/common/PageHeader';
+import { Button } from '../components/common/Button';
+import { StatusBadge } from '../components/common/StatusBadge';
 
 export const GlobalApprovals: React.FC = () => {
   const {
@@ -43,54 +45,49 @@ export const GlobalApprovals: React.FC = () => {
           const isRejected = rejectedIds.includes(item.id);
 
           return (
-            <div key={item.id} className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800 pb-4 gap-4">
+            <div key={item.id} className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-4 hover:border-slate-300 dark:hover:border-slate-700 transition-all">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4 gap-4">
                 <div>
                   <div className="flex items-center gap-2">
-                    <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 text-[10px] font-bold uppercase">
-                      {item.module}
-                    </span>
-                    <span className="text-xs text-slate-500">• Requested by {item.requestedBy}</span>
+                    <StatusBadge status={item.module} variant="info" />
+                    <span className="text-xs text-slate-500 dark:text-slate-400">• Requested by {item.requestedBy}</span>
                   </div>
-                  <h3 className="text-base font-bold text-slate-100 font-heading mt-1">{item.title}</h3>
-                  <p className="text-xs text-slate-400 mt-0.5">{item.description}</p>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 mt-1">{item.title}</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{item.description}</p>
                 </div>
 
                 {item.amount && (
-                  <div className="text-end shrink-0">
-                    <span className="text-[10px] text-slate-500 uppercase block font-semibold">Value</span>
-                    <span className="text-xl font-black text-slate-100 font-mono">${item.amount.toLocaleString()}</span>
+                  <div className="sm:text-end shrink-0">
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase block font-medium">Value</span>
+                    <span className="text-xl font-bold text-slate-900 dark:text-slate-100 font-mono">${item.amount.toLocaleString()}</span>
                   </div>
                 )}
               </div>
 
-              <div className="flex items-center justify-between text-xs pt-2">
-                <span className="text-slate-500 font-mono">Date: {item.date}</span>
+              <div className="flex items-center justify-between text-xs pt-1">
+                <span className="text-slate-400 dark:text-slate-500 font-mono">Date: {item.date}</span>
 
                 {isApproved ? (
-                  <span className="px-4 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold flex items-center gap-1.5">
-                    <Check className="w-4 h-4" />
-                    Approved & Actioned
-                  </span>
+                  <StatusBadge status="Approved & Actioned" variant="success" />
                 ) : isRejected ? (
-                  <span className="px-4 py-1.5 rounded-xl bg-rose-500/10 text-rose-400 border border-rose-500/20 font-bold">
-                    Rejected
-                  </span>
+                  <StatusBadge status="Rejected" variant="danger" />
                 ) : (
-                  <div className="flex items-center gap-3">
-                    <button
+                  <div className="flex items-center gap-2.5">
+                    <Button
+                      variant="outline"
+                      size="sm"
                       onClick={() => handleReject(item.id)}
-                      className="px-4 py-2 rounded-xl bg-rose-500/10 text-rose-400 font-bold border border-rose-500/20 hover:bg-rose-500/20 transition-colors"
+                      icon={<X className="w-3.5 h-3.5" />}
                     >
                       Reject
-                    </button>
-                    <button
+                    </Button>
+                    <Button
+                      size="sm"
                       onClick={() => handleApprove(item.id, item.module)}
-                      className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold shadow-lg shadow-emerald-500/20 flex items-center gap-1.5 transition-transform hover:scale-105"
+                      icon={<CheckCircle2 className="w-3.5 h-3.5" />}
                     >
-                      <CheckCircle2 className="w-4 h-4 stroke-[3]" />
                       Approve Request
-                    </button>
+                    </Button>
                   </div>
                 )}
               </div>

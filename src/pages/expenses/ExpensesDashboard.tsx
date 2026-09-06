@@ -5,6 +5,8 @@ import { PageHeader } from '../../components/common/PageHeader';
 import { StatCard } from '../../components/common/StatCard';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { Modal } from '../../components/common/Modal';
+import { Avatar } from '../../components/common/Avatar';
+import { formatCurrency } from '../../utils/formatters';
 
 export const ExpensesDashboard: React.FC = () => {
   const { navigate, expenses, createExpense, user } = useApp();
@@ -72,80 +74,81 @@ export const ExpensesDashboard: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
+        category="Finance"
         title="Employee Expenses & Cards"
         subtitle="Receipt capture with AI OCR, manager approval workflows, policy checks & corporate cards."
         actions={
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <button
               onClick={() => navigate('expenses', 'approvals')}
-              className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold"
+              className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700 text-xs font-medium transition-colors"
             >
               Approval Queue ({pendingApprovals.length})
             </button>
             <button
               onClick={() => setSubmitModalOpen(true)}
-              className="px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/20 flex items-center gap-1.5"
+              className="px-4 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-500 text-white font-medium text-xs shadow-xs flex items-center gap-1.5 transition-colors"
             >
-              <Plus className="w-4 h-4 stroke-[3]" />
-              Submit Expense
+              <Plus className="w-4 h-4" />
+              <span>Submit Expense</span>
             </button>
           </div>
         }
       />
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <StatCard title="Total Expense Spend" value={totalSpent} isCurrency change={-3.2} accentColor="cyan" />
-        <StatCard title="Awaiting Approval" value={pendingApprovals.length} change={0} comparisonText="active items" accentColor="amber" />
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard title="Total Expense Spend" value={totalSpent} isCurrency accentColor="rose" />
+        <StatCard title="Awaiting Approval" value={pendingApprovals.length} comparisonText="active items" accentColor="amber" />
         <StatCard title="Corporate Cards Active" value={2} comparisonText="virtual & physical" accentColor="indigo" />
-        <StatCard title="Reimbursed YTD" value={1450} isCurrency change={8.4} accentColor="emerald" />
+        <StatCard title="Reimbursed YTD" value={1450} isCurrency accentColor="emerald" />
       </div>
 
       {/* Expense List */}
-      <div className="rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl overflow-hidden">
-        <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-          <h3 className="text-sm font-bold text-slate-100 font-heading">Recent Expense Claims</h3>
+      <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
+        <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 font-heading">Recent Expense Claims</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-start text-xs">
-            <thead className="bg-slate-950/80 text-[10px] font-bold uppercase text-slate-400 border-b border-slate-800">
+            <thead className="bg-slate-50 dark:bg-slate-800/80 text-[11px] font-semibold uppercase tracking-wider text-slate-500 border-b border-slate-200/80 dark:border-slate-800">
               <tr>
-                <th className="p-4 text-start">Employee</th>
-                <th className="p-4 text-start">Title & Merchant</th>
-                <th className="p-4 text-start">Category</th>
-                <th className="p-4 text-start">Date</th>
-                <th className="p-4 text-end">Amount</th>
-                <th className="p-4 text-center">Policy Alert</th>
-                <th className="p-4 text-center">Status</th>
+                <th className="p-3.5 text-start">Employee</th>
+                <th className="p-3.5 text-start">Title & Merchant</th>
+                <th className="p-3.5 text-start">Category</th>
+                <th className="p-3.5 text-start">Date</th>
+                <th className="p-3.5 text-end">Amount</th>
+                <th className="p-3.5 text-center">Policy Check</th>
+                <th className="p-3.5 text-center">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60 font-medium">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
               {expenses.map((exp) => (
-                <tr key={exp.id} className="hover:bg-slate-800/40">
-                  <td className="p-4 flex items-center gap-2.5">
-                    <img src={exp.employeeAvatar} alt="" className="w-7 h-7 rounded-xl object-cover" />
-                    <span className="font-semibold text-slate-200">{exp.employeeName}</span>
+                <tr key={exp.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                  <td className="p-3.5 flex items-center gap-2.5">
+                    <Avatar src={exp.employeeAvatar} name={exp.employeeName} className="w-7 h-7 rounded-lg" />
+                    <span className="font-semibold text-slate-900 dark:text-slate-100">{exp.employeeName}</span>
                   </td>
-                  <td className="p-4">
-                    <div className="font-semibold text-slate-100">{exp.title}</div>
-                    <div className="text-[10px] text-slate-400">{exp.merchant}</div>
+                  <td className="p-3.5">
+                    <div className="font-semibold text-slate-900 dark:text-slate-100">{exp.title}</div>
+                    <div className="text-[11px] text-slate-400">{exp.merchant}</div>
                   </td>
-                  <td className="p-4 text-slate-300">{exp.category}</td>
-                  <td className="p-4 text-slate-400">{exp.date}</td>
-                  <td className="p-4 text-end font-bold text-slate-100">${exp.amount.toLocaleString()}</td>
-                  <td className="p-4 text-center">
+                  <td className="p-3.5 text-slate-500 dark:text-slate-400">{exp.category}</td>
+                  <td className="p-3.5 text-slate-500 dark:text-slate-400">{exp.date}</td>
+                  <td className="p-3.5 text-end font-semibold text-slate-900 dark:text-slate-100 tabular-nums">{formatCurrency(exp.amount, exp.currency)}</td>
+                  <td className="p-3.5 text-center">
                     {exp.policyViolations && exp.policyViolations.length > 0 ? (
-                      <span className="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20 text-[10px] font-bold flex items-center gap-1 justify-center">
+                      <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 text-[10px] font-medium inline-flex items-center gap-1">
                         <AlertTriangle className="w-3 h-3" />
                         Cap Exceeded
                       </span>
                     ) : (
-                      <span className="text-[10px] text-slate-500">Compliant</span>
+                      <span className="text-[11px] text-slate-400">Compliant</span>
                     )}
                   </td>
-                  <td className="p-4 text-center">
+                  <td className="p-3.5 text-center">
                     <StatusBadge status={exp.status} />
                   </td>
                 </tr>
@@ -164,27 +167,27 @@ export const ExpensesDashboard: React.FC = () => {
           subtitle="Upload receipt for automated AI OCR data extraction."
           maxWidth="lg"
         >
-          <div className="space-y-5 text-xs text-slate-300">
+          <div className="space-y-4 text-xs text-slate-700 dark:text-slate-300">
             {/* Receipt Upload Mock */}
-            <div className="p-6 rounded-2xl bg-slate-950 border border-dashed border-slate-800 text-center space-y-3">
+            <div className="p-5 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-dashed border-slate-200 dark:border-slate-700 text-center space-y-2.5">
               {isScanning ? (
-                <div className="py-6 space-y-2">
-                  <Sparkles className="w-8 h-8 text-cyan-400 animate-spin mx-auto" />
-                  <div className="font-bold text-cyan-400">Scanning receipt with AI OCR...</div>
+                <div className="py-4 space-y-1.5">
+                  <Sparkles className="w-7 h-7 text-blue-600 animate-spin mx-auto" />
+                  <div className="font-semibold text-blue-700 dark:text-blue-400">Scanning receipt with AI OCR...</div>
                   <p className="text-[11px] text-slate-500">Extracting merchant name, total amount, tax & date</p>
                 </div>
               ) : (
                 <>
-                  <div className="p-3 rounded-2xl bg-slate-900 text-cyan-400 w-12 h-12 mx-auto flex items-center justify-center border border-slate-800">
-                    <Upload className="w-6 h-6" />
+                  <div className="p-2.5 rounded-xl bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 w-10 h-10 mx-auto flex items-center justify-center border border-slate-200 dark:border-slate-600 shadow-xs">
+                    <Upload className="w-5 h-5" />
                   </div>
                   <div>
-                    <div className="font-bold text-slate-200">Drop receipt image or click to scan</div>
-                    <p className="text-[11px] text-slate-500 mt-0.5">Supports PNG, JPG, PDF up to 10MB</p>
+                    <div className="font-semibold text-slate-900 dark:text-slate-100">Drop receipt image or click to scan</div>
+                    <p className="text-[11px] text-slate-400 mt-0.5">Supports PNG, JPG, PDF up to 10MB</p>
                   </div>
                   <button
                     onClick={handleSimulateScan}
-                    className="px-4 py-2 rounded-xl bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 font-bold border border-cyan-500/20 text-xs inline-flex items-center gap-1.5"
+                    className="px-3.5 py-1.5 rounded-xl bg-blue-50 text-blue-700 hover:bg-blue-100 font-medium border border-blue-200 text-xs inline-flex items-center gap-1.5 transition-colors"
                   >
                     <Sparkles className="w-3.5 h-3.5" />
                     Simulate AI OCR Scan
@@ -196,45 +199,45 @@ export const ExpensesDashboard: React.FC = () => {
             {/* Form Fields */}
             <div className="space-y-3">
               <div>
-                <label className="block text-slate-400 font-medium mb-1">Expense Title</label>
+                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Expense Title</label>
                 <input
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="e.g. STK Steakhouse Client Dinner"
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200"
+                  className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-slate-400 font-medium mb-1">Merchant</label>
+                  <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Merchant</label>
                   <input
                     type="text"
                     value={merchant}
                     onChange={(e) => setMerchant(e.target.value)}
                     placeholder="Merchant name"
-                    className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600"
                   />
                 </div>
                 <div>
-                  <label className="block text-slate-400 font-medium mb-1">Amount ($)</label>
+                  <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Amount ($)</label>
                   <input
                     type="number"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     placeholder="0.00"
-                    className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 font-bold text-cyan-400"
+                    className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-slate-400 font-medium mb-1">Category</label>
+                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Category</label>
                 <select
                   value={category}
                   onChange={(e) => setCategory(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200"
+                  className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600"
                 >
                   <option value="Meals & Entertainment">Meals & Entertainment</option>
                   <option value="Travel & Lodging">Travel & Lodging</option>
@@ -244,34 +247,34 @@ export const ExpensesDashboard: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-slate-400 font-medium mb-1">Notes</label>
+                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Notes</label>
                 <textarea
                   rows={2}
                   value={notes}
                   onChange={(e) => setNotes(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200"
+                  className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none"
                 />
               </div>
             </div>
 
             {errorMessage && (
-              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold">
+              <div className="p-3 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800 text-xs font-medium">
                 {errorMessage}
               </div>
             )}
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
+            <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-100 dark:border-slate-800">
               <button
                 onClick={() => setSubmitModalOpen(false)}
                 disabled={isSubmitting}
-                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 disabled:opacity-50"
+                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 text-xs font-medium disabled:opacity-50 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={isSubmitting}
-                className="px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/20 disabled:opacity-50"
+                className="px-4 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-500 text-white font-medium text-xs shadow-xs disabled:opacity-50 transition-colors"
               >
                 {isSubmitting ? 'Submitting...' : 'Submit Expense'}
               </button>

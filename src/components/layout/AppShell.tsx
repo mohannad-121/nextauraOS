@@ -12,7 +12,7 @@ interface AppShellProps {
 
 const appTitles: Record<string, string> = {
   launchpad: 'App Launcher',
-  home: 'Dashboard',
+  home: 'Workspace Home',
   invoicing: 'Invoicing',
   accounting: 'NextAura Finance',
   expenses: 'Expenses',
@@ -55,16 +55,16 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
   }
 
   return (
-    <div className={`min-h-screen bg-slate-950 text-slate-100 flex flex-col antialiased ${isRtl ? 'rtl' : 'ltr'}`}>
+    <div className={`min-h-screen bg-[#F8F9FA] dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col antialiased ${isRtl ? 'rtl' : 'ltr'}`}>
       <div className="flex-1 flex w-full overflow-x-hidden">
         <Sidebar />
-        <div className="flex-1 flex flex-col min-w-0 min-h-screen bg-slate-950">
+        <div className="flex-1 flex flex-col min-w-0 min-h-screen bg-[#F8F9FA] dark:bg-slate-950">
           <Topbar />
           <main className="flex-1 p-4 sm:p-6 md:p-8 max-w-7xl w-full mx-auto animate-in fade-in duration-200">
             <ErrorBoundary
               activeApp={activeApp}
               activeSubView={activeSubView}
-              onReset={() => navigate('launchpad', 'overview')}
+              onReset={() => navigate('home', 'overview')}
             >
               {children}
             </ErrorBoundary>

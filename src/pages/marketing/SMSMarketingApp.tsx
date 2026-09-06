@@ -22,12 +22,12 @@ export const SMSMarketingApp: React.FC = () => {
   const charCount = message.length;
   const segmentCount = Math.ceil(charCount / 160) || 1;
 
-  const avgDeliveryRate = smsCampaigns.length > 0 
-    ? `${(smsCampaigns.reduce((sum, c) => sum + (c.deliveryRate || 0), 0) / smsCampaigns.length).toFixed(1)}%` 
+  const avgDeliveryRate = smsCampaigns.length > 0
+    ? `${(smsCampaigns.reduce((sum, c) => sum + (c.deliveryRate || 0), 0) / smsCampaigns.length).toFixed(1)}%`
     : '0%';
 
-  const avgClickRate = smsCampaigns.length > 0 
-    ? `${(smsCampaigns.reduce((sum, c) => sum + (c.clickRate || 0), 0) / smsCampaigns.length).toFixed(1)}%` 
+  const avgClickRate = smsCampaigns.length > 0
+    ? `${(smsCampaigns.reduce((sum, c) => sum + (c.clickRate || 0), 0) / smsCampaigns.length).toFixed(1)}%`
     : '0%';
 
   const totalSMSSubscribers = contacts.length > 0 ? contacts.length : smsCampaigns.reduce((sum, c) => sum + (c.recipientCount || 0), 0);
@@ -47,51 +47,52 @@ export const SMSMarketingApp: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
+        category="Marketing"
         title="SMS Marketing & Broadcast Messaging"
         subtitle="Send targeted SMS broadcasts, inspect phone previews, character limits & short-link tracking."
         actions={
           <button
             onClick={() => setModalOpen(true)}
-            className="px-4 py-2.5 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-slate-950 font-bold text-xs shadow-lg shadow-indigo-500/20 flex items-center gap-1.5"
+            className="px-4 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 text-white font-medium text-xs shadow-xs flex items-center gap-1.5 transition-colors"
           >
-            <Plus className="w-4 h-4 stroke-[3]" />
+            <Plus className="w-4 h-4" />
             New SMS Broadcast
           </button>
         }
       />
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="Broadcasts Sent" value={smsCampaigns.length} comparisonText="active messages" accentColor="indigo" />
-        <StatCard title="Delivery Success Rate" value={avgDeliveryRate} change={0} accentColor="emerald" />
-        <StatCard title="Link Click Rate" value={avgClickRate} change={0} accentColor="cyan" />
-        <StatCard title="Total SMS Subscribers" value={totalSMSSubscribers.toLocaleString()} comparisonText="opted in phone numbers" accentColor="purple" />
+        <StatCard title="Delivery Success Rate" value={avgDeliveryRate} accentColor="emerald" />
+        <StatCard title="Link Click Rate" value={avgClickRate} accentColor="rose" />
+        <StatCard title="Total SMS Subscribers" value={totalSMSSubscribers.toLocaleString()} comparisonText="opted in phone numbers" accentColor="amber" />
       </div>
 
       {/* SMS Broadcast Composer & Phone Simulator */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Left: Composer Form */}
-        <div className="lg:col-span-2 p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
-          <h3 className="text-base font-bold text-slate-100 font-heading">SMS Broadcast Composer</h3>
+        <div className="lg:col-span-2 p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-4">
+          <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 font-heading">SMS Broadcast Composer</h3>
 
           <div className="space-y-4 text-xs">
             <div>
-              <label className="block text-slate-400 font-medium mb-1">Campaign Title</label>
+              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Campaign Title</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. End of Quarter Flash Promotion"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 focus:outline-none focus:border-indigo-500"
+                className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600"
               />
             </div>
 
             <div>
               <div className="flex justify-between items-center mb-1">
-                <label className="text-slate-400 font-medium">SMS Message Text</label>
-                <span className={`font-mono text-[10px] ${charCount > 160 ? 'text-amber-400 font-bold' : 'text-slate-500'}`}>
+                <label className="text-slate-700 dark:text-slate-300 font-medium">SMS Message Text</label>
+                <span className={`font-mono text-[10px] ${charCount > 160 ? 'text-amber-600 font-bold' : 'text-slate-400'}`}>
                   {charCount} / 160 characters ({segmentCount} SMS Segment{segmentCount > 1 ? 's' : ''})
                 </span>
               </div>
@@ -99,16 +100,16 @@ export const SMSMarketingApp: React.FC = () => {
                 rows={4}
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                className="w-full p-3.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 font-sans text-xs focus:outline-none focus:border-indigo-500"
+                className="w-full p-3 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-sans text-xs focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600"
               />
             </div>
 
             <div>
-              <label className="block text-slate-400 font-medium mb-1">Audience Segment</label>
+              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Audience Segment</label>
               <select
                 value={targetSegment}
                 onChange={(e) => setTargetSegment(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-slate-200"
+                className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600"
               >
                 <option value="VIP Customers">VIP Customers (8,400 Numbers)</option>
                 <option value="All Opted-in Contacts">All Opted-in Contacts (28,900 Numbers)</option>
@@ -120,67 +121,67 @@ export const SMSMarketingApp: React.FC = () => {
               onClick={() => {
                 if (name) handleCreate();
               }}
-              className="px-6 py-3 rounded-xl bg-indigo-500 hover:bg-indigo-400 text-slate-950 font-bold text-xs shadow-lg shadow-indigo-500/20 flex items-center gap-2"
+              className="px-4 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 text-white font-medium text-xs shadow-xs flex items-center gap-1.5 transition-colors"
             >
-              <Send className="w-4 h-4" />
+              <Send className="w-3.5 h-3.5" />
               Broadcast SMS Now
             </button>
           </div>
         </div>
 
         {/* Right: Realistic Phone Preview */}
-        <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-4 flex flex-col items-center justify-center">
-          <span className="text-xs font-bold text-indigo-400 uppercase tracking-widest flex items-center gap-1.5">
-            <Smartphone className="w-4 h-4" />
+        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-4 flex flex-col items-center justify-center">
+          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+            <Smartphone className="w-4 h-4 text-blue-600 dark:text-blue-400" />
             LIVE SMARTPHONE PREVIEW
           </span>
 
-          <div className="w-64 h-[400px] rounded-[36px] bg-slate-950 border-4 border-slate-800 p-4 shadow-2xl relative flex flex-col justify-between overflow-hidden">
+          <div className="w-60 h-[380px] rounded-[32px] bg-slate-900 border-4 border-slate-800 p-3.5 shadow-lg relative flex flex-col justify-between overflow-hidden">
             {/* Speaker & Notch */}
-            <div className="w-20 h-4 bg-slate-900 rounded-b-xl mx-auto -mt-4" />
+            <div className="w-16 h-3.5 bg-slate-800 rounded-b-xl mx-auto -mt-3.5" />
 
             {/* Chat Bubble */}
-            <div className="space-y-2 mt-4">
+            <div className="space-y-2 mt-3">
               <div className="text-[10px] text-center text-slate-500 font-mono">Today 10:42 AM</div>
-              <div className="p-3 rounded-2xl bg-indigo-600 text-slate-100 text-[11px] leading-relaxed shadow-lg rounded-tl-sm">
+              <div className="p-3 rounded-2xl bg-blue-600 text-white text-[11px] leading-relaxed shadow-xs rounded-tl-xs">
                 {message || 'Type message text to preview...'}
               </div>
             </div>
 
             {/* Bottom Bar */}
-            <div className="w-24 h-1 bg-slate-700 rounded-full mx-auto mb-1" />
+            <div className="w-20 h-1 bg-slate-700 rounded-full mx-auto mb-1" />
           </div>
         </div>
       </div>
 
       {/* History */}
-      <div className="rounded-3xl bg-slate-900 border border-slate-800 shadow-xl overflow-hidden">
-        <div className="p-4 border-b border-slate-800 font-bold text-xs text-slate-100 font-heading">
+      <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
+        <div className="p-4 border-b border-slate-100 dark:border-slate-800 font-semibold text-xs text-slate-900 dark:text-slate-100 font-heading">
           Recent SMS Campaign Broadcasts
         </div>
 
         <div className="overflow-x-auto">
           <table className="w-full text-start text-xs">
-            <thead className="bg-slate-950/80 text-[10px] font-bold uppercase text-slate-400 border-b border-slate-800">
+            <thead className="bg-slate-50 dark:bg-slate-800/80 text-[11px] font-semibold uppercase tracking-wider text-slate-500 border-b border-slate-200/80 dark:border-slate-800">
               <tr>
-                <th className="p-4 text-start">Campaign</th>
-                <th className="p-4 text-start">Segment</th>
-                <th className="p-4 text-end">Recipients</th>
-                <th className="p-4 text-center">Delivery Rate</th>
-                <th className="p-4 text-center">Click Rate</th>
-                <th className="p-4 text-center">Status</th>
+                <th className="p-3.5 text-start">Campaign</th>
+                <th className="p-3.5 text-start">Segment</th>
+                <th className="p-3.5 text-end">Recipients</th>
+                <th className="p-3.5 text-center">Delivery Rate</th>
+                <th className="p-3.5 text-center">Click Rate</th>
+                <th className="p-3.5 text-center">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60 font-medium">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
               {smsCampaigns.map((sms) => (
-                <tr key={sms.id} className="hover:bg-slate-800/40">
-                  <td className="p-4 font-bold text-slate-100">{sms.name}</td>
-                  <td className="p-4 text-indigo-400">{sms.targetSegment || 'VIP Contacts'}</td>
-                  <td className="p-4 text-end font-mono">{(sms.recipientCount || 0).toLocaleString()}</td>
-                  <td className="p-4 text-center font-bold text-emerald-400">{sms.deliveryRate}%</td>
-                  <td className="p-4 text-center font-bold text-cyan-400">{sms.clickRate}%</td>
-                  <td className="p-4 text-center">
-                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold uppercase">
+                <tr key={sms.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                  <td className="p-3.5 font-semibold text-slate-900 dark:text-slate-100">{sms.name}</td>
+                  <td className="p-3.5 text-blue-600 dark:text-blue-400">{sms.targetSegment || 'VIP Contacts'}</td>
+                  <td className="p-3.5 text-end font-mono tabular-nums">{(sms.recipientCount || 0).toLocaleString()}</td>
+                  <td className="p-3.5 text-center font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">{sms.deliveryRate}%</td>
+                  <td className="p-3.5 text-center font-semibold text-indigo-600 dark:text-indigo-400 tabular-nums">{sms.clickRate}%</td>
+                  <td className="p-3.5 text-center">
+                    <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-semibold uppercase tracking-wider">
                       {sms.status}
                     </span>
                   </td>
@@ -200,15 +201,31 @@ export const SMSMarketingApp: React.FC = () => {
           subtitle="Configure SMS campaign title and message text."
           maxWidth="md"
         >
-          <div className="space-y-4 text-xs text-slate-300">
+          <div className="space-y-3.5 text-xs text-slate-700 dark:text-slate-300">
             <div>
-              <label className="block text-slate-400 mb-1">Campaign Title</label>
-              <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. VIP Promotion" className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100" />
+              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Campaign Title</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. VIP Promotion"
+                className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600"
+              />
             </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
-              <button onClick={() => setModalOpen(false)} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-200">Cancel</button>
-              <button onClick={handleCreate} className="px-5 py-2 rounded-xl bg-indigo-500 text-slate-950 font-bold shadow-lg shadow-indigo-500/20">Send Broadcast</button>
+            <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <button
+                onClick={() => setModalOpen(false)}
+                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 text-xs font-medium transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreate}
+                className="px-4 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 text-white font-medium text-xs shadow-xs transition-colors"
+              >
+                Send Broadcast
+              </button>
             </div>
           </div>
         </Modal>
@@ -216,3 +233,4 @@ export const SMSMarketingApp: React.FC = () => {
     </div>
   );
 };
+

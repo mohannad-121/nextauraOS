@@ -23,12 +23,12 @@ export const EmailMarketingApp: React.FC = () => {
   const [subject, setSubject] = useState('');
   const [targetSegment, setTargetSegment] = useState('All Customers');
 
-  const avgOpenRate = emailCampaigns.length > 0 
-    ? `${(emailCampaigns.reduce((sum, c) => sum + (c.openRate || 0), 0) / emailCampaigns.length).toFixed(1)}%` 
+  const avgOpenRate = emailCampaigns.length > 0
+    ? `${(emailCampaigns.reduce((sum, c) => sum + (c.openRate || 0), 0) / emailCampaigns.length).toFixed(1)}%`
     : '0%';
 
-  const avgClickRate = emailCampaigns.length > 0 
-    ? `${(emailCampaigns.reduce((sum, c) => sum + (c.clickRate || 0), 0) / emailCampaigns.length).toFixed(1)}%` 
+  const avgClickRate = emailCampaigns.length > 0
+    ? `${(emailCampaigns.reduce((sum, c) => sum + (c.clickRate || 0), 0) / emailCampaigns.length).toFixed(1)}%`
     : '0%';
 
   const totalSubscribers = contacts.length > 0 ? contacts.length : emailCampaigns.reduce((sum, c) => sum + (c.recipientCount || 0), 0);
@@ -49,47 +49,48 @@ export const EmailMarketingApp: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
+        category="Marketing"
         title="Email Marketing & Automation"
         subtitle="Design email campaigns, target segments, inspect open/click rates & build reusable templates."
         actions={
           <button
             onClick={() => setModalOpen(true)}
-            className="px-4 py-2.5 rounded-xl bg-rose-500 hover:bg-rose-400 text-slate-950 font-bold text-xs shadow-lg shadow-rose-500/20 flex items-center gap-1.5"
+            className="px-4 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 text-white font-medium text-xs shadow-xs flex items-center gap-1.5 transition-colors"
           >
-            <Plus className="w-4 h-4 stroke-[3]" />
+            <Plus className="w-4 h-4" />
             Create Campaign
           </button>
         }
       />
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="Active Campaigns" value={emailCampaigns.length} comparisonText="sent & scheduled" accentColor="rose" />
-        <StatCard title="Avg Open Rate" value={avgOpenRate} change={0} accentColor="cyan" />
-        <StatCard title="Click-Through Rate" value={avgClickRate} change={0} accentColor="indigo" />
-        <StatCard title="Total Subscribers" value={totalSubscribers.toLocaleString()} comparisonText="verified contacts" accentColor="emerald" />
+        <StatCard title="Avg Open Rate" value={avgOpenRate} accentColor="indigo" />
+        <StatCard title="Click-Through Rate" value={avgClickRate} accentColor="emerald" />
+        <StatCard title="Total Subscribers" value={totalSubscribers.toLocaleString()} comparisonText="verified contacts" accentColor="amber" />
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-800 pb-3">
+      <div className="flex items-center gap-1 border-b border-slate-200 dark:border-slate-800 pb-3">
         <button
           onClick={() => setActiveTab('campaigns')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+          className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
             activeTab === 'campaigns'
-              ? 'bg-rose-500 text-slate-950 shadow-lg shadow-rose-500/20'
-              : 'text-slate-400 hover:text-slate-200'
+              ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
           }`}
         >
           Email Campaigns ({emailCampaigns.length})
         </button>
         <button
           onClick={() => setActiveTab('templates')}
-          className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+          className={`px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all ${
             activeTab === 'templates'
-              ? 'bg-rose-500 text-slate-950 shadow-lg shadow-rose-500/20'
-              : 'text-slate-400 hover:text-slate-200'
+              ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 shadow-xs'
+              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
           }`}
         >
           Email Templates ({emailTemplates.length})
@@ -98,44 +99,44 @@ export const EmailMarketingApp: React.FC = () => {
 
       {/* TAB 1: CAMPAIGNS */}
       {activeTab === 'campaigns' && (
-        <div className="space-y-4">
+        <div className="space-y-3.5">
           {emailCampaigns.map((camp) => (
-            <div key={camp.id} className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800 pb-4 gap-4">
+            <div key={camp.id} className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3.5 gap-4">
                 <div>
                   <div className="flex items-center gap-2">
-                    <h3 className="text-base font-bold text-slate-100 font-heading">{camp.name}</h3>
-                    <span className="px-2 py-0.5 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20 text-[10px] font-bold uppercase">
+                    <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 font-heading">{camp.name}</h3>
+                    <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-semibold uppercase tracking-wider">
                       {camp.status}
                     </span>
                   </div>
-                  <div className="text-xs text-slate-400 mt-1">
-                    Subject: <span className="text-slate-200 font-medium">"{camp.subject}"</span> • Target Segment: <span className="text-cyan-400 font-semibold">{camp.targetSegment || 'All Subscribers'}</span>
+                  <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    Subject: <span className="text-slate-700 dark:text-slate-300 font-medium">"{camp.subject}"</span> • Target Segment: <span className="text-blue-600 dark:text-blue-400 font-medium">{camp.targetSegment || 'All Subscribers'}</span>
                   </div>
                 </div>
 
                 <div className="text-end text-xs">
-                  <span className="text-slate-500 block">Recipients</span>
-                  <span className="font-mono font-bold text-slate-100">{(camp.recipientCount || 0).toLocaleString()} Subscribers</span>
+                  <span className="text-slate-400 block text-[11px]">Recipients</span>
+                  <span className="font-mono font-semibold text-slate-900 dark:text-slate-100 tabular-nums">{(camp.recipientCount || 0).toLocaleString()} Subscribers</span>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs text-center p-3.5 rounded-2xl bg-slate-950 border border-slate-800">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs text-center p-3 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-200/60 dark:border-slate-700/60">
                 <div>
-                  <span className="text-slate-500 block text-[10px]">Delivery Rate</span>
-                  <span className="font-bold text-slate-100">{camp.deliveryRate}%</span>
+                  <span className="text-slate-400 block text-[10px] uppercase font-semibold">Delivery Rate</span>
+                  <span className="font-semibold text-slate-900 dark:text-slate-100 tabular-nums">{camp.deliveryRate}%</span>
                 </div>
                 <div>
-                  <span className="text-slate-500 block text-[10px]">Open Rate</span>
-                  <span className="font-bold text-rose-400 font-mono">{camp.openRate}%</span>
+                  <span className="text-slate-400 block text-[10px] uppercase font-semibold">Open Rate</span>
+                  <span className="font-bold text-blue-600 dark:text-blue-400 font-mono tabular-nums">{camp.openRate}%</span>
                 </div>
                 <div>
-                  <span className="text-slate-500 block text-[10px]">Click Rate</span>
-                  <span className="font-bold text-cyan-400 font-mono">{camp.clickRate}%</span>
+                  <span className="text-slate-400 block text-[10px] uppercase font-semibold">Click Rate</span>
+                  <span className="font-bold text-emerald-600 dark:text-emerald-400 font-mono tabular-nums">{camp.clickRate}%</span>
                 </div>
                 <div>
-                  <span className="text-slate-500 block text-[10px]">Unsubscribes</span>
-                  <span className="font-bold text-slate-400 font-mono">{camp.unsubscribeRate}%</span>
+                  <span className="text-slate-400 block text-[10px] uppercase font-semibold">Unsubscribes</span>
+                  <span className="font-medium text-slate-500 dark:text-slate-400 font-mono tabular-nums">{camp.unsubscribeRate}%</span>
                 </div>
               </div>
             </div>
@@ -145,17 +146,17 @@ export const EmailMarketingApp: React.FC = () => {
 
       {/* TAB 2: TEMPLATES */}
       {activeTab === 'templates' && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
           {emailTemplates.map((tpl) => (
-            <div key={tpl.id} className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
+            <div key={tpl.id} className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-3">
               <div className="flex justify-between items-start">
                 <div>
-                  <span className="text-[10px] text-rose-400 uppercase font-bold">{tpl.category}</span>
-                  <h3 className="text-base font-bold text-slate-100 font-heading mt-0.5">{tpl.name}</h3>
+                  <span className="text-[10px] text-blue-600 dark:text-blue-400 uppercase font-semibold tracking-wider">{tpl.category}</span>
+                  <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100 font-heading mt-0.5">{tpl.name}</h3>
                 </div>
-                <span className="px-2 py-0.5 rounded bg-slate-950 text-slate-400 text-[10px]">HTML Visual</span>
+                <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 text-[10px] font-medium">HTML Visual</span>
               </div>
-              <p className="text-xs text-slate-400 leading-relaxed font-sans">{tpl.subject || 'Standard Template'}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed font-sans">{tpl.subject || 'Standard Template'}</p>
             </div>
           ))}
         </div>
@@ -170,29 +171,55 @@ export const EmailMarketingApp: React.FC = () => {
           subtitle="Configure campaign details, target audience & subject line."
           maxWidth="md"
         >
-          <div className="space-y-4 text-xs text-slate-300">
+          <div className="space-y-3.5 text-xs text-slate-700 dark:text-slate-300">
             <div>
-              <label className="block text-slate-400 mb-1">Campaign Name</label>
-              <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Q3 Product Update Blast" className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100" />
+              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Campaign Name</label>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="e.g. Q3 Product Update Blast"
+                className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600"
+              />
             </div>
 
             <div>
-              <label className="block text-slate-400 mb-1">Email Subject Line</label>
-              <input type="text" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="e.g. Introducing 17 New Enterprise Modules in NextAura" className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 font-semibold" />
+              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Email Subject Line</label>
+              <input
+                type="text"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                placeholder="e.g. Introducing 17 New Enterprise Modules in NextAura"
+                className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600"
+              />
             </div>
 
             <div>
-              <label className="block text-slate-400 mb-1">Target Audience Segment</label>
-              <select value={targetSegment} onChange={(e) => setTargetSegment(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200">
+              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Target Audience Segment</label>
+              <select
+                value={targetSegment}
+                onChange={(e) => setTargetSegment(e.target.value)}
+                className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600"
+              >
                 <option value="All Customers">All Verified Customers (78,400)</option>
                 <option value="Active Subscribers">Active SaaS Subscribers (14,200)</option>
                 <option value="Enterprise Leads">Enterprise Prospects (8,900)</option>
               </select>
             </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
-              <button onClick={() => setModalOpen(false)} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-200">Cancel</button>
-              <button onClick={handleCreate} className="px-5 py-2 rounded-xl bg-rose-500 text-slate-950 font-bold shadow-lg shadow-rose-500/20">Schedule Campaign</button>
+            <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <button
+                onClick={() => setModalOpen(false)}
+                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 text-xs font-medium transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreate}
+                className="px-4 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 text-white font-medium text-xs shadow-xs transition-colors"
+              >
+                Schedule Campaign
+              </button>
             </div>
           </div>
         </Modal>
@@ -200,3 +227,4 @@ export const EmailMarketingApp: React.FC = () => {
     </div>
   );
 };
+

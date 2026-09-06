@@ -156,43 +156,37 @@ export const VerificationScreen: React.FC<VerificationScreenProps> = ({
   };
 
   return (
-    <div className="min-h-screen w-full bg-slate-950 text-slate-100 flex items-center justify-center p-4 sm:p-6 md:p-10 relative overflow-hidden font-sans">
-      {/* Background Glows */}
-      <div className="absolute top-0 right-1/4 w-[500px] h-[500px] bg-cyan-500/10 rounded-full blur-[160px] pointer-events-none" />
-      <div className="absolute bottom-0 left-1/4 w-[500px] h-[500px] bg-indigo-500/10 rounded-full blur-[160px] pointer-events-none" />
-
-      {/* Main Fullscreen Card */}
-      <div className="w-full max-w-md bg-slate-900/90 border border-slate-800/90 rounded-3xl p-8 shadow-2xl backdrop-blur-xl relative z-10 text-center space-y-6 animate-in zoom-in-95">
+    <div className="min-h-screen w-full bg-[#F8F9FA] dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex items-center justify-center p-4 sm:p-6 md:p-10 relative overflow-hidden font-sans">
+      {/* Main Container Card */}
+      <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-8 shadow-xl relative z-10 text-center space-y-6 animate-in zoom-in-95">
         
         {/* Logo & Header */}
         <div className="space-y-3">
-          <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-500 to-indigo-500 p-0.5 mx-auto shadow-xl shadow-cyan-500/20">
-            <div className="w-full h-full rounded-[14px] bg-slate-950 flex items-center justify-center font-black text-cyan-400 text-xl">
-              N
-            </div>
+          <div className="w-12 h-12 rounded-xl bg-blue-700 text-white mx-auto flex items-center justify-center font-black text-xl shadow-xs">
+            N
           </div>
 
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 font-mono text-xs font-semibold">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800 text-xs font-medium">
             <ShieldCheck className="w-3.5 h-3.5" />
-            NextAura Security Verification
+            Security Verification
           </div>
 
-          <h1 className="text-2xl font-black text-slate-100 font-heading">Verify your email</h1>
-          <p className="text-xs text-slate-400 leading-relaxed max-w-xs mx-auto">
-            We sent a 6-digit verification code to <span className="font-bold text-slate-200">{maskEmail(email)}</span>
+          <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100 font-heading">Verify your email</h1>
+          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-xs mx-auto">
+            We sent a 6-digit verification code to <span className="font-semibold text-slate-800 dark:text-slate-200">{maskEmail(email)}</span>
           </p>
         </div>
 
         {/* Error / Success Banners */}
         {errorMsg && (
-          <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2 text-start animate-in fade-in">
+          <div className="p-3 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800 text-xs flex items-center gap-2 text-start animate-in fade-in">
             <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{errorMsg}</span>
           </div>
         )}
 
         {successMsg && (
-          <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-xs font-bold text-center animate-in fade-in">
+          <div className="p-3 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 text-xs font-semibold text-center animate-in fade-in">
             {successMsg}
           </div>
         )}
@@ -214,7 +208,7 @@ export const VerificationScreen: React.FC<VerificationScreenProps> = ({
                 onKeyDown={(e) => handleKeyDown(idx, e)}
                 onPaste={handlePaste}
                 disabled={loading || isLocked}
-                className="w-11 h-13 text-center text-xl font-bold font-mono rounded-xl bg-slate-950 border border-slate-800 text-cyan-400 focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/20 focus:outline-none transition-all pointer-events-auto disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-11 h-13 text-center text-xl font-bold font-mono rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-blue-700 dark:text-blue-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xs"
               />
             ))}
           </div>
@@ -222,7 +216,7 @@ export const VerificationScreen: React.FC<VerificationScreenProps> = ({
           <button
             type="submit"
             disabled={loading || isLocked}
-            className="w-full py-3.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 font-extrabold text-xs shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 transition-all pointer-events-auto"
+            className="w-full py-3 rounded-xl bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-xs shadow-xs flex items-center justify-center gap-2 transition-all"
           >
             <span>{loading ? 'Verifying Code...' : 'Verify & Continue'}</span>
             <ArrowRight className="w-4 h-4" />
@@ -230,12 +224,12 @@ export const VerificationScreen: React.FC<VerificationScreenProps> = ({
         </form>
 
         {/* Action Controls */}
-        <div className="pt-2 flex items-center justify-between border-t border-slate-800/80 text-xs">
+        <div className="pt-2 flex items-center justify-between border-t border-slate-100 dark:border-slate-800 text-xs">
           <button
             type="button"
             onClick={handleResend}
             disabled={resendCooldown > 0 || resending}
-            className="text-slate-400 hover:text-slate-200 disabled:opacity-40 font-semibold flex items-center gap-1.5 transition-colors"
+            className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 disabled:opacity-40 font-medium flex items-center gap-1.5 transition-colors"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${resending ? 'animate-spin' : ''}`} />
             <span>
@@ -246,7 +240,7 @@ export const VerificationScreen: React.FC<VerificationScreenProps> = ({
           <button
             type="button"
             onClick={onSignOut}
-            className="text-rose-400 hover:text-rose-300 font-semibold flex items-center gap-1.5 transition-colors"
+            className="text-rose-600 hover:text-rose-700 dark:text-rose-400 font-medium flex items-center gap-1.5 transition-colors"
           >
             <LogOut className="w-3.5 h-3.5" />
             <span>Sign out</span>

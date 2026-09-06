@@ -3,6 +3,9 @@ import { CheckCircle2, Download, Plus, Trash2, FileText, Building2, AlertCircle 
 import { useApp } from '../../context/AppContext';
 import { PageHeader } from '../../components/common/PageHeader';
 import { Modal } from '../../components/common/Modal';
+import { StatusBadge } from '../../components/common/StatusBadge';
+import { EmptyState } from '../../components/common/EmptyState';
+import { Button } from '../../components/common/Button';
 import type { Payslip } from '../../types';
 
 export const PayrollApp: React.FC = () => {
@@ -226,7 +229,7 @@ export const PayrollApp: React.FC = () => {
           <style>
             body { font-family: system-ui, -apple-system, sans-serif; padding: 40px; color: #0f172a; max-width: 700px; margin: 0 auto; }
             .header { display: flex; justify-content: space-between; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px; margin-bottom: 30px; }
-            .company-name { font-size: 22px; font-weight: 900; color: #059669; }
+            .company-name { font-size: 22px; font-weight: 800; color: #0f172a; }
             .doc-title { font-size: 14px; font-weight: 700; text-transform: uppercase; color: #64748b; }
             .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; }
             .info-box { background: #f8fafc; padding: 15px; border-radius: 8px; border: 1px solid #e2e8f0; }
@@ -236,7 +239,7 @@ export const PayrollApp: React.FC = () => {
             th { text-align: left; padding: 10px; font-size: 11px; text-transform: uppercase; background: #f1f5f9; color: #475569; }
             td { padding: 12px 10px; font-size: 13px; border-bottom: 1px solid #e2e8f0; }
             .total-box { background: #f0fdf4; border: 1px solid #bbf7d0; padding: 20px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; }
-            .net-pay { font-size: 24px; font-weight: 900; color: #166534; font-family: monospace; }
+            .net-pay { font-size: 24px; font-weight: 800; color: #166534; font-family: monospace; }
           </style>
         </head>
         <body>
@@ -250,74 +253,104 @@ export const PayrollApp: React.FC = () => {
               <div style="font-size: 12px; color: #64748b; margin-top: 4px;">Period: ${runPeriod}</div>
             </div>
           </div>
+
           <div class="info-grid">
             <div class="info-box">
-              <div class="info-label">Employee</div>
+              <div class="info-label">Employee Details</div>
               <div class="info-value">${ps.employeeName}</div>
-              <div style="font-size: 11px; color: #64748b; margin-top: 2px;">${ps.employeeRole || ''} • ${ps.department || 'General'}</div>
+              <div style="font-size: 12px; color: #64748b;">${ps.employeeRole} • ${ps.department || 'General'}</div>
             </div>
             <div class="info-box">
-              <div class="info-label">Disbursement Details</div>
-              <div class="info-value">Status: ${ps.status || 'Paid'}</div>
-              <div style="font-size: 11px; color: #64748b; margin-top: 2px;">Generated Date: ${new Date().toISOString().substring(0, 10)}</div>
+              <div class="info-label">Payment Status</div>
+              <div class="info-value" style="color: #059669;">${ps.status || 'Paid'}</div>
+              <div style="font-size: 12px; color: #64748b;">Issued via NextAura Payroll</div>
             </div>
           </div>
+
           <table>
             <thead>
               <tr>
                 <th>Description</th>
-                <th style="text-align: right;">Amount</th>
+                <th style="text-align: right;">Earnings ($)</th>
+                <th style="text-align: right;">Deductions ($)</th>
               </tr>
             </thead>
             <tbody>
-              <tr><td>Base Monthly Salary</td><td style="text-align: right; font-family: monospace;">$${(ps.baseSalary || 0).toLocaleString()}</td></tr>
-              <tr><td>Allowances Total</td><td style="text-align: right; font-family: monospace; color: #166534;">+$${(ps.allowancesTotal || 0).toLocaleString()}</td></tr>
-              <tr><td>Performance Bonus</td><td style="text-align: right; font-family: monospace; color: #166534;">+$${(ps.bonusPay || 0).toLocaleString()}</td></tr>
-              <tr><td>Income Tax Deduction</td><td style="text-align: right; font-family: monospace; color: #991b1b;">-$${(ps.taxDeduction || 0).toLocaleString()}</td></tr>
-              <tr><td>Insurance & Benefits Withholding</td><td style="text-align: right; font-family: monospace; color: #991b1b;">-$${(ps.insuranceDeduction || 0).toLocaleString()}</td></tr>
-              ${ps.otherDeductions ? `<tr><td>Other Deductions</td><td style="text-align: right; font-family: monospace; color: #991b1b;">-$${ps.otherDeductions.toLocaleString()}</td></tr>` : ''}
+              <tr>
+                <td>Base Monthly Salary</td>
+                <td style="text-align: right; font-family: monospace;">$${(ps.baseSalary || 0).toLocaleString()}</td>
+                <td style="text-align: right; font-family: monospace;">-</td>
+              </tr>
+              ${
+                ps.allowancesTotal
+                  ? `<tr><td>Allowances</td><td style="text-align: right; font-family: monospace;">+$${ps.allowancesTotal.toLocaleString()}</td><td style="text-align: right;">-</td></tr>`
+                  : ''
+              }
+              ${
+                ps.bonusPay
+                  ? `<tr><td>Performance Bonus</td><td style="text-align: right; font-family: monospace;">+$${ps.bonusPay.toLocaleString()}</td><td style="text-align: right;">-</td></tr>`
+                  : ''
+              }
+              ${
+                ps.taxDeduction
+                  ? `<tr><td>Income Tax Withholding</td><td style="text-align: right;">-</td><td style="text-align: right; font-family: monospace; color: #dc2626;">-$${ps.taxDeduction.toLocaleString()}</td></tr>`
+                  : ''
+              }
+              ${
+                ps.insuranceDeduction
+                  ? `<tr><td>Social Insurance / Health</td><td style="text-align: right;">-</td><td style="text-align: right; font-family: monospace; color: #dc2626;">-$${ps.insuranceDeduction.toLocaleString()}</td></tr>`
+                  : ''
+              }
+              ${
+                ps.otherDeductions
+                  ? `<tr><td>Other Deductions</td><td style="text-align: right;">-</td><td style="text-align: right; font-family: monospace; color: #dc2626;">-$${ps.otherDeductions.toLocaleString()}</td></tr>`
+                  : ''
+              }
             </tbody>
           </table>
+
           <div class="total-box">
             <div>
-              <div class="info-label">Net Direct Take-Home Disbursement</div>
-              <div style="font-size: 11px; color: #166534;">Deposited into employee account of record</div>
+              <div style="font-size: 11px; font-weight: 700; text-transform: uppercase; color: #166534;">Total Net Disbursement</div>
+              <div style="font-size: 12px; color: #15803d;">Direct Deposit / Bank Transfer</div>
             </div>
             <div class="net-pay">$${(ps.netPay || 0).toLocaleString()}</div>
           </div>
-          <script>
-            window.onload = () => { window.print(); };
-          </script>
         </body>
       </html>
     `);
     printWindow.document.close();
+    printWindow.focus();
+    setTimeout(() => {
+      printWindow.print();
+    }, 250);
   };
 
   const isOwnerOrAdmin = ['Owner', 'Administrator', 'HR Manager'].includes(user.role);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 max-w-7xl mx-auto">
       <PageHeader
         title="Payroll Processing & Disbursements"
         subtitle="Monthly payroll runs, employee compensation calculation, tax deductions & General Ledger GL postings."
         actions={
           <div className="flex items-center gap-3">
             {isOwnerOrAdmin && (
-              <button
+              <Button
                 onClick={handleOpenCreateModal}
-                className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 flex items-center gap-1.5"
+                variant="primary"
+                size="sm"
+                icon={<Plus className="w-4 h-4" />}
               >
-                <Plus className="w-4 h-4 stroke-[3]" />
                 Create Payroll Run
-              </button>
+              </Button>
             )}
           </div>
         }
       />
 
-      {/* Subview Navigation Bar */}
-      <div className="flex items-center gap-2 border-b border-slate-800 pb-2 overflow-x-auto">
+      {/* Segmented Subview Navigation */}
+      <div className="flex items-center gap-1.5 border-b border-slate-200/80 dark:border-slate-800 pb-3 overflow-x-auto">
         {[
           { id: 'overview', label: 'Payroll Control Center' },
           { id: 'runs', label: 'Monthly Runs' },
@@ -326,10 +359,10 @@ export const PayrollApp: React.FC = () => {
           <button
             key={sub.id}
             onClick={() => navigate('payroll', sub.id)}
-            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+            className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
               activeSubView === sub.id
-                ? 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/20'
-                : 'text-slate-400 hover:text-slate-200'
+                ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 shadow-sm'
+                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
             }`}
           >
             {sub.label}
@@ -339,99 +372,79 @@ export const PayrollApp: React.FC = () => {
 
       {/* SUBVIEW 1: OVERVIEW / CONTROL CENTER */}
       {activeSubView === 'overview' && (
-        <div className="space-y-8">
+        <div className="space-y-6">
           {payrollRuns.length === 0 ? (
-            <div className="p-12 rounded-3xl bg-slate-900 border border-slate-800 text-center space-y-4 shadow-xl">
-              <div className="w-16 h-16 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto">
-                <FileText className="w-8 h-8" />
-              </div>
-              <div className="space-y-1">
-                <h3 className="text-lg font-bold text-slate-100 font-heading">No Payroll Runs Yet</h3>
-                <p className="text-xs text-slate-400 max-w-md mx-auto">
-                  Create a new monthly payroll run to calculate employee salaries, manage deductions, generate payslips, and post journal entries to General Ledger.
-                </p>
-              </div>
-              {isOwnerOrAdmin && (
-                <button
-                  onClick={handleOpenCreateModal}
-                  className="px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 inline-flex items-center gap-2"
-                >
-                  <Plus className="w-4 h-4 stroke-[3]" />
-                  Create First Payroll Run
-                </button>
-              )}
-            </div>
+            <EmptyState
+              icon={FileText}
+              title="No Payroll Runs Yet"
+              description="Create a new monthly payroll run to calculate employee salaries, manage deductions, generate payslips, and post journal entries to General Ledger."
+              actionLabel={isOwnerOrAdmin ? "Create First Payroll Run" : undefined}
+              onAction={isOwnerOrAdmin ? handleOpenCreateModal : undefined}
+            />
           ) : (
             <>
               {/* Active Run Banner */}
               {activeRun && (
-                <div className="p-8 rounded-3xl bg-gradient-to-r from-emerald-950/80 via-slate-900 to-slate-950 border border-emerald-500/30 shadow-2xl space-y-6">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+                <div className="p-6 sm:p-8 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-5">
                     <div>
-                      <span className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest flex items-center gap-1.5">
+                      <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
                         <Building2 className="w-3.5 h-3.5" />
                         ACTIVE PAYROLL RUN
                       </span>
-                      <h2 className="text-2xl font-black text-slate-100 font-heading mt-1">{activeRun.periodName}</h2>
-                      <div className="text-xs text-slate-400 mt-0.5">
+                      <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 mt-1">{activeRun.periodName}</h2>
+                      <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                         Pay Date: {activeRun.payDate} • {activeRun.employeeCount || selectedRunPayslips.length} Employees Included
                       </div>
                     </div>
 
                     <div className="flex items-center gap-3">
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-bold border ${
-                          activeRun.status === 'Paid'
-                            ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                            : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                        }`}
-                      >
-                        {activeRun.status === 'Paid' ? 'EXECUTED & POSTED TO GL' : `STATUS: ${activeRun.status.toUpperCase()}`}
-                      </span>
+                      <StatusBadge status={activeRun.status} />
 
                       {activeRun.status !== 'Paid' && isOwnerOrAdmin && (
-                        <button
+                        <Button
                           onClick={handleApproveCurrentRun}
-                          className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 flex items-center gap-1.5"
+                          variant="primary"
+                          size="sm"
+                          icon={<CheckCircle2 className="w-4 h-4" />}
                         >
-                          <CheckCircle2 className="w-4 h-4 stroke-[3]" />
                           Approve & Post to Accounting
-                        </button>
+                        </Button>
                       )}
                     </div>
                   </div>
 
                   {/* Metrics Summary */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-                    <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800">
-                      <span className="text-[10px] text-slate-500 uppercase font-bold block">Gross Compensation</span>
-                      <span className="text-lg font-black text-slate-100 font-mono">${(activeRun.grossPayTotal || 0).toLocaleString()}</span>
+                    <div className="p-4 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800">
+                      <span className="text-[10px] text-slate-400 uppercase font-semibold tracking-wider block">Gross Compensation</span>
+                      <span className="text-lg font-bold text-slate-900 dark:text-slate-100 font-mono">${(activeRun.grossPayTotal || 0).toLocaleString()}</span>
                     </div>
-                    <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800">
-                      <span className="text-[10px] text-slate-500 uppercase font-bold block">Tax & Benefit Deductions</span>
-                      <span className="text-lg font-black text-rose-400 font-mono">-${(activeRun.deductionsTotal || 0).toLocaleString()}</span>
+                    <div className="p-4 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800">
+                      <span className="text-[10px] text-slate-400 uppercase font-semibold tracking-wider block">Tax & Benefit Deductions</span>
+                      <span className="text-lg font-bold text-rose-600 dark:text-rose-400 font-mono">-${(activeRun.deductionsTotal || 0).toLocaleString()}</span>
                     </div>
-                    <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800">
-                      <span className="text-[10px] text-slate-500 uppercase font-bold block">Employer Tax Match</span>
-                      <span className="text-lg font-black text-slate-300 font-mono">${(activeRun.employerCostsTotal || 0).toLocaleString()}</span>
+                    <div className="p-4 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800">
+                      <span className="text-[10px] text-slate-400 uppercase font-semibold tracking-wider block">Employer Tax Match</span>
+                      <span className="text-lg font-bold text-slate-700 dark:text-slate-300 font-mono">${(activeRun.employerCostsTotal || 0).toLocaleString()}</span>
                     </div>
-                    <div className="p-4 rounded-2xl bg-slate-950 border border-slate-800">
-                      <span className="text-[10px] text-emerald-400 uppercase font-bold block">Net Direct Disbursement</span>
-                      <span className="text-xl font-black text-emerald-400 font-mono">${(activeRun.netPayTotal || 0).toLocaleString()}</span>
+                    <div className="p-4 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800">
+                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 uppercase font-semibold tracking-wider block">Net Direct Disbursement</span>
+                      <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400 font-mono">${(activeRun.netPayTotal || 0).toLocaleString()}</span>
                     </div>
                   </div>
                 </div>
               )}
 
               {/* Individual Employee Payslips Table */}
-              <div className="rounded-3xl bg-slate-900 border border-slate-800 shadow-xl overflow-hidden">
-                <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-                  <h3 className="text-sm font-bold text-slate-100 font-heading">Individual Employee Payslips</h3>
+              <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
+                <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Individual Employee Payslips</h3>
                   {payrollRuns.length > 1 && (
                     <select
                       value={selectedRunId}
                       onChange={(e) => setSelectedRunId(e.target.value)}
-                      className="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none"
+                      className="px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-800 dark:text-slate-200 focus:outline-none"
                     >
                       {payrollRuns.map((run) => (
                         <option key={run.id} value={run.id}>
@@ -443,46 +456,47 @@ export const PayrollApp: React.FC = () => {
                 </div>
 
                 {isLoadingPayslips ? (
-                  <div className="p-8 text-center text-slate-400 text-xs">Loading payslips...</div>
+                  <div className="p-8 text-center text-slate-500 text-xs">Loading payslips...</div>
                 ) : selectedRunPayslips.length === 0 ? (
-                  <div className="p-8 text-center text-slate-400 text-xs">No payslips recorded for this run.</div>
+                  <div className="p-8 text-center text-slate-500 text-xs">No payslips recorded for this run.</div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-start text-xs">
-                      <thead className="bg-slate-950/80 text-[10px] font-bold uppercase text-slate-400 border-b border-slate-800">
+                      <thead className="bg-slate-50/70 dark:bg-slate-800/40 text-[11px] font-semibold text-slate-500 border-b border-slate-200/80 dark:border-slate-800">
                         <tr>
-                          <th className="p-4 text-start">Employee</th>
-                          <th className="p-4 text-start">Department</th>
-                          <th className="p-4 text-end">Base Salary</th>
-                          <th className="p-4 text-end">Allowances / Bonus</th>
-                          <th className="p-4 text-end">Deductions</th>
-                          <th className="p-4 text-end">Net Pay</th>
-                          <th className="p-4 text-center">Payslip</th>
+                          <th className="p-3.5 text-start">Employee</th>
+                          <th className="p-3.5 text-start">Department</th>
+                          <th className="p-3.5 text-end">Base Salary</th>
+                          <th className="p-3.5 text-end">Allowances / Bonus</th>
+                          <th className="p-3.5 text-end">Deductions</th>
+                          <th className="p-3.5 text-end">Net Pay</th>
+                          <th className="p-3.5 text-center">Payslip</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-800/60 font-medium">
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                         {selectedRunPayslips.map((ps) => (
-                          <tr key={ps.id} className="hover:bg-slate-800/40">
-                            <td className="p-4">
-                              <div className="font-bold text-slate-100">{ps.employeeName}</div>
-                              <div className="text-[10px] text-slate-400">{ps.employeeRole}</div>
+                          <tr key={ps.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                            <td className="p-3.5">
+                              <div className="font-semibold text-slate-900 dark:text-slate-100">{ps.employeeName}</div>
+                              <div className="text-[11px] text-slate-500">{ps.employeeRole}</div>
                             </td>
-                            <td className="p-4 text-slate-300">{ps.department || 'General'}</td>
-                            <td className="p-4 text-end font-mono">${(ps.baseSalary || 0).toLocaleString()}</td>
-                            <td className="p-4 text-end font-mono text-emerald-400">
+                            <td className="p-3.5 text-slate-600 dark:text-slate-300">{ps.department || 'General'}</td>
+                            <td className="p-3.5 text-end font-mono text-slate-900 dark:text-slate-100">${(ps.baseSalary || 0).toLocaleString()}</td>
+                            <td className="p-3.5 text-end font-mono text-emerald-600 dark:text-emerald-400 font-medium">
                               +${((ps.allowancesTotal || 0) + (ps.bonusPay || 0)).toLocaleString()}
                             </td>
-                            <td className="p-4 text-end font-mono text-rose-400">
+                            <td className="p-3.5 text-end font-mono text-rose-600 dark:text-rose-400 font-medium">
                               -${((ps.taxDeduction || 0) + (ps.insuranceDeduction || 0) + (ps.otherDeductions || 0)).toLocaleString()}
                             </td>
-                            <td className="p-4 text-end font-mono font-bold text-slate-100">${(ps.netPay || 0).toLocaleString()}</td>
-                            <td className="p-4 text-center">
-                              <button
+                            <td className="p-3.5 text-end font-mono font-bold text-slate-900 dark:text-slate-100">${(ps.netPay || 0).toLocaleString()}</td>
+                            <td className="p-3.5 text-center">
+                              <Button
                                 onClick={() => setSelectedPayslip(ps)}
-                                className="px-3 py-1.5 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 font-bold text-xs"
+                                variant="secondary"
+                                size="xs"
                               >
                                 Inspect Payslip
-                              </button>
+                              </Button>
                             </td>
                           </tr>
                         ))}
@@ -499,89 +513,80 @@ export const PayrollApp: React.FC = () => {
       {/* SUBVIEW 2: MONTHLY RUNS */}
       {activeSubView === 'runs' && (
         <div className="space-y-6">
-          <div className="rounded-3xl bg-slate-900 border border-slate-800 shadow-xl overflow-hidden">
-            <div className="p-4 border-b border-slate-800 flex items-center justify-between">
-              <h3 className="text-sm font-bold text-slate-100 font-heading">Historical & Active Payroll Runs</h3>
+          <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
+            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Historical & Active Payroll Runs</h3>
               {isOwnerOrAdmin && (
-                <button
+                <Button
                   onClick={handleOpenCreateModal}
-                  className="px-3 py-1.5 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs flex items-center gap-1.5"
+                  variant="primary"
+                  size="sm"
+                  icon={<Plus className="w-4 h-4" />}
                 >
-                  <Plus className="w-3.5 h-3.5 stroke-[3]" />
                   Create Payroll Run
-                </button>
+                </Button>
               )}
             </div>
 
             {payrollRuns.length === 0 ? (
-              <div className="p-12 text-center space-y-3">
-                <div className="text-slate-400 text-xs">No payroll runs recorded yet.</div>
-                {isOwnerOrAdmin && (
-                  <button
-                    onClick={handleOpenCreateModal}
-                    className="px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs"
-                  >
-                    Create Payroll Run
-                  </button>
-                )}
-              </div>
+              <EmptyState
+                icon={FileText}
+                title="No Payroll Runs"
+                description="No historical payroll runs found."
+                actionLabel={isOwnerOrAdmin ? "Create Payroll Run" : undefined}
+                onAction={isOwnerOrAdmin ? handleOpenCreateModal : undefined}
+              />
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-start text-xs">
-                  <thead className="bg-slate-950/80 text-[10px] font-bold uppercase text-slate-400 border-b border-slate-800">
+                  <thead className="bg-slate-50/70 dark:bg-slate-800/40 text-[11px] font-semibold text-slate-500 border-b border-slate-200/80 dark:border-slate-800">
                     <tr>
-                      <th className="p-4 text-start">Period Name</th>
-                      <th className="p-4 text-start">Pay Date</th>
-                      <th className="p-4 text-center">Employees</th>
-                      <th className="p-4 text-end">Gross Total</th>
-                      <th className="p-4 text-end">Deductions</th>
-                      <th className="p-4 text-end">Net Direct Pay</th>
-                      <th className="p-4 text-center">Status</th>
-                      <th className="p-4 text-center">Actions</th>
+                      <th className="p-3.5 text-start">Period Name</th>
+                      <th className="p-3.5 text-start">Pay Date</th>
+                      <th className="p-3.5 text-center">Employees</th>
+                      <th className="p-3.5 text-end">Gross Total</th>
+                      <th className="p-3.5 text-end">Deductions</th>
+                      <th className="p-3.5 text-end">Net Direct Pay</th>
+                      <th className="p-3.5 text-center">Status</th>
+                      <th className="p-3.5 text-center">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-800/60 font-medium">
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
                     {payrollRuns.map((run) => (
-                      <tr key={run.id} className="hover:bg-slate-800/40">
-                        <td className="p-4 font-bold text-slate-100">{run.periodName}</td>
-                        <td className="p-4 text-slate-300 font-mono">{run.payDate}</td>
-                        <td className="p-4 text-center text-slate-300 font-bold">{run.employeeCount || 0}</td>
-                        <td className="p-4 text-end font-mono">${(run.grossPayTotal || 0).toLocaleString()}</td>
-                        <td className="p-4 text-end font-mono text-rose-400">-${(run.deductionsTotal || 0).toLocaleString()}</td>
-                        <td className="p-4 text-end font-mono font-bold text-emerald-400">${(run.netPayTotal || 0).toLocaleString()}</td>
-                        <td className="p-4 text-center">
-                          <span
-                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
-                              run.status === 'Paid'
-                                ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-                                : 'bg-amber-500/10 text-amber-400 border-amber-500/20'
-                            }`}
-                          >
-                            {run.status}
-                          </span>
+                      <tr key={run.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                        <td className="p-3.5 font-semibold text-slate-900 dark:text-slate-100">{run.periodName}</td>
+                        <td className="p-3.5 text-slate-600 dark:text-slate-400 font-mono">{run.payDate}</td>
+                        <td className="p-3.5 text-center text-slate-700 dark:text-slate-300 font-medium">{run.employeeCount || 0}</td>
+                        <td className="p-3.5 text-end font-mono text-slate-900 dark:text-slate-100">${(run.grossPayTotal || 0).toLocaleString()}</td>
+                        <td className="p-3.5 text-end font-mono text-rose-600 dark:text-rose-400">-${(run.deductionsTotal || 0).toLocaleString()}</td>
+                        <td className="p-3.5 text-end font-mono font-bold text-emerald-600 dark:text-emerald-400">${(run.netPayTotal || 0).toLocaleString()}</td>
+                        <td className="p-3.5 text-center">
+                          <StatusBadge status={run.status} />
                         </td>
-                        <td className="p-4 text-center">
+                        <td className="p-3.5 text-center">
                           <div className="flex items-center justify-center gap-2">
-                            <button
+                            <Button
                               onClick={() => {
                                 setSelectedRunId(run.id);
                                 navigate('payroll', 'overview');
                               }}
-                              className="px-2.5 py-1 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold"
+                              variant="secondary"
+                              size="xs"
                             >
                               Open
-                            </button>
+                            </Button>
                             {run.status !== 'Paid' && isOwnerOrAdmin && (
                               <>
-                                <button
+                                <Button
                                   onClick={() => approvePayrollRun(run.id)}
-                                  className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 text-xs font-bold"
+                                  variant="primary"
+                                  size="xs"
                                 >
                                   Approve
-                                </button>
+                                </Button>
                                 <button
                                   onClick={() => handleDeleteRun(run.id)}
-                                  className="p-1 rounded-lg bg-rose-500/10 text-rose-400 hover:bg-rose-500/20"
+                                  className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
                                   title="Delete Draft Run"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
@@ -603,20 +608,20 @@ export const PayrollApp: React.FC = () => {
       {/* SUBVIEW 3: PAYSLIP GENERATOR */}
       {activeSubView === 'payslips' && (
         <div className="space-y-6">
-          <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
+          <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h3 className="text-sm font-bold text-slate-100 font-heading">Payslip Generator & Inspector</h3>
-                <p className="text-xs text-slate-400">Select a payroll cycle to generate and print employee payslips.</p>
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Payslip Generator & Inspector</h3>
+                <p className="text-xs text-slate-500">Select a payroll cycle to generate and print employee payslips.</p>
               </div>
 
               {payrollRuns.length > 0 && (
                 <div className="flex items-center gap-2">
-                  <label className="text-xs font-bold text-slate-400">Payroll Cycle:</label>
+                  <label className="text-xs font-medium text-slate-600 dark:text-slate-400">Payroll Cycle:</label>
                   <select
                     value={selectedRunId}
                     onChange={(e) => setSelectedRunId(e.target.value)}
-                    className="px-3 py-1.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none"
+                    className="px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-800 dark:text-slate-200 focus:outline-none"
                   >
                     {payrollRuns.map((r) => (
                       <option key={r.id} value={r.id}>
@@ -629,7 +634,7 @@ export const PayrollApp: React.FC = () => {
             </div>
 
             {selectedRunPayslips.length === 0 ? (
-              <div className="p-8 text-center text-slate-400 text-xs">
+              <div className="p-8 text-center text-slate-500 text-xs">
                 No payslips available for the selected cycle.
               </div>
             ) : (
@@ -637,53 +642,55 @@ export const PayrollApp: React.FC = () => {
                 {selectedRunPayslips.map((ps) => (
                   <div
                     key={ps.id}
-                    className="p-5 rounded-2xl bg-slate-950 border border-slate-800 space-y-4 hover:border-emerald-500/30 transition-all"
+                    className="p-5 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 space-y-4 hover:border-slate-300 dark:hover:border-slate-700 transition-all"
                   >
-                    <div className="flex justify-between items-start border-b border-slate-800 pb-3">
+                    <div className="flex justify-between items-start border-b border-slate-200/60 dark:border-slate-700/60 pb-3">
                       <div>
-                        <div className="font-bold text-slate-100 text-sm">{ps.employeeName}</div>
-                        <div className="text-[10px] text-slate-400">
+                        <div className="font-semibold text-slate-900 dark:text-slate-100 text-sm">{ps.employeeName}</div>
+                        <div className="text-[11px] text-slate-500">
                           {ps.employeeRole} • {ps.department || 'General'}
                         </div>
                       </div>
-                      <span className="font-mono font-bold text-emerald-400 text-sm">
+                      <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-sm">
                         ${(ps.netPay || 0).toLocaleString()} NET
                       </span>
                     </div>
 
-                    <div className="space-y-1.5 text-xs text-slate-300">
+                    <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
                       <div className="flex justify-between">
-                        <span className="text-slate-400">Base Salary</span>
-                        <span className="font-mono font-bold">${(ps.baseSalary || 0).toLocaleString()}</span>
+                        <span className="text-slate-500">Base Salary</span>
+                        <span className="font-mono font-semibold">${(ps.baseSalary || 0).toLocaleString()}</span>
                       </div>
-                      <div className="flex justify-between text-emerald-400">
+                      <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
                         <span>Allowances & Bonus</span>
-                        <span className="font-mono font-bold">
+                        <span className="font-mono font-semibold">
                           +${((ps.allowancesTotal || 0) + (ps.bonusPay || 0)).toLocaleString()}
                         </span>
                       </div>
-                      <div className="flex justify-between text-rose-400">
+                      <div className="flex justify-between text-rose-600 dark:text-rose-400">
                         <span>Tax & Insurance Withholding</span>
-                        <span className="font-mono font-bold">
+                        <span className="font-mono font-semibold">
                           -${((ps.taxDeduction || 0) + (ps.insuranceDeduction || 0) + (ps.otherDeductions || 0)).toLocaleString()}
                         </span>
                       </div>
                     </div>
 
-                    <div className="flex justify-end gap-2 pt-2 border-t border-slate-800">
-                      <button
+                    <div className="flex justify-end gap-2 pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
+                      <Button
                         onClick={() => setSelectedPayslip(ps)}
-                        className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200"
+                        variant="secondary"
+                        size="xs"
                       >
                         Inspect Breakdown
-                      </button>
-                      <button
+                      </Button>
+                      <Button
                         onClick={() => generatePayslipPDF(ps, activeRun?.periodName || 'Payroll Cycle')}
-                        className="px-3.5 py-1.5 rounded-lg bg-emerald-500 text-slate-950 font-bold text-xs shadow-lg flex items-center gap-1.5"
+                        variant="primary"
+                        size="xs"
+                        icon={<Download className="w-4 h-4" />}
                       >
-                        <Download className="w-3.5 h-3.5" />
                         Download PDF Payslip
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -702,124 +709,124 @@ export const PayrollApp: React.FC = () => {
           subtitle="Calculate compensation, adjustments, and deductions for active employees."
           maxWidth="lg"
         >
-          <div className="space-y-6 text-xs text-slate-300">
+          <div className="space-y-6 text-xs text-slate-600 dark:text-slate-300">
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
               <div>
-                <label className="block text-slate-400 font-medium mb-1">Period Name *</label>
+                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Period Name *</label>
                 <input
                   type="text"
                   value={periodName}
                   onChange={(e) => setPeriodName(e.target.value)}
                   placeholder="e.g. September 2026 Payroll"
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 focus:border-emerald-500 outline-none"
+                  className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none text-xs"
                 />
               </div>
               <div>
-                <label className="block text-slate-400 font-medium mb-1">Start Date</label>
+                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Start Date</label>
                 <input
                   type="date"
                   value={periodStart}
                   onChange={(e) => setPeriodStart(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 outline-none"
+                  className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none text-xs"
                 />
               </div>
               <div>
-                <label className="block text-slate-400 font-medium mb-1">End Date</label>
+                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">End Date</label>
                 <input
                   type="date"
                   value={periodEnd}
                   onChange={(e) => setPeriodEnd(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200 focus:border-emerald-500 outline-none"
+                  className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none text-xs"
                 />
               </div>
               <div>
-                <label className="block text-slate-400 font-medium mb-1">Pay Date *</label>
+                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Pay Date *</label>
                 <input
                   type="date"
                   value={payDate}
                   onChange={(e) => setPayDate(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 font-bold focus:border-emerald-500 outline-none"
+                  className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-bold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none text-xs"
                 />
               </div>
             </div>
 
             {/* Editable Employee Payroll List */}
             <div className="space-y-3">
-              <h4 className="font-bold text-slate-200 uppercase text-[10px]">Included Employee Compensation</h4>
+              <h4 className="font-semibold text-slate-900 dark:text-slate-100 text-xs">Included Employee Compensation</h4>
               {draftPayslips.length === 0 ? (
-                <div className="p-6 text-center rounded-2xl bg-slate-950 border border-amber-500/30 text-amber-400">
+                <div className="p-6 text-center rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300">
                   No active employees found. Please register employees first before executing payroll.
                 </div>
               ) : (
                 <div className="max-h-80 overflow-y-auto space-y-3 pr-1">
                   {draftPayslips.map((row, idx) => (
-                    <div key={row.employeeId} className="p-4 rounded-2xl bg-slate-950 border border-slate-800 space-y-3">
-                      <div className="flex justify-between items-center border-b border-slate-800 pb-2">
+                    <div key={row.employeeId} className="p-4 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 space-y-3">
+                      <div className="flex justify-between items-center border-b border-slate-200/60 dark:border-slate-700/60 pb-2">
                         <div>
-                          <div className="font-bold text-slate-100">{row.employeeName}</div>
-                          <div className="text-[10px] text-slate-400">
+                          <div className="font-semibold text-slate-900 dark:text-slate-100">{row.employeeName}</div>
+                          <div className="text-[11px] text-slate-500">
                             {row.employeeRole} • {row.department}
                           </div>
                         </div>
                         <div className="text-end font-mono">
-                          <span className="text-[10px] text-slate-500 block uppercase">Net Pay</span>
-                          <span className="font-bold text-emerald-400 text-sm">${row.netPay.toLocaleString()}</span>
+                          <span className="text-[10px] text-slate-400 block uppercase">Net Pay</span>
+                          <span className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">${row.netPay.toLocaleString()}</span>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                         <div>
-                          <label className="block text-[10px] text-slate-500 font-bold mb-0.5">Base Salary</label>
+                          <label className="block text-[10px] text-slate-500 font-medium mb-0.5">Base Salary</label>
                           <input
                             type="number"
                             value={row.baseSalary}
                             onChange={(e) => updateDraftRow(idx, 'baseSalary', Number(e.target.value))}
-                            className="w-full px-2 py-1 rounded-lg bg-slate-900 border border-slate-800 text-slate-100 font-mono text-xs"
+                            className="w-full px-2 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-mono text-xs"
                           />
                         </div>
                         <div>
-                          <label className="block text-[10px] text-emerald-400 font-bold mb-0.5">Allowances</label>
+                          <label className="block text-[10px] text-emerald-600 dark:text-emerald-400 font-medium mb-0.5">Allowances</label>
                           <input
                             type="number"
                             value={row.allowancesTotal}
                             onChange={(e) => updateDraftRow(idx, 'allowancesTotal', Number(e.target.value))}
-                            className="w-full px-2 py-1 rounded-lg bg-slate-900 border border-slate-800 text-emerald-400 font-mono text-xs"
+                            className="w-full px-2 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 font-mono text-xs"
                           />
                         </div>
                         <div>
-                          <label className="block text-[10px] text-emerald-400 font-bold mb-0.5">Bonus</label>
+                          <label className="block text-[10px] text-emerald-600 dark:text-emerald-400 font-medium mb-0.5">Bonus</label>
                           <input
                             type="number"
                             value={row.bonusPay}
                             onChange={(e) => updateDraftRow(idx, 'bonusPay', Number(e.target.value))}
-                            className="w-full px-2 py-1 rounded-lg bg-slate-900 border border-slate-800 text-emerald-400 font-mono text-xs"
+                            className="w-full px-2 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 font-mono text-xs"
                           />
                         </div>
                         <div>
-                          <label className="block text-[10px] text-rose-400 font-bold mb-0.5">Tax Withholding</label>
+                          <label className="block text-[10px] text-rose-600 dark:text-rose-400 font-medium mb-0.5">Tax Withholding</label>
                           <input
                             type="number"
                             value={row.taxDeduction}
                             onChange={(e) => updateDraftRow(idx, 'taxDeduction', Number(e.target.value))}
-                            className="w-full px-2 py-1 rounded-lg bg-slate-900 border border-slate-800 text-rose-400 font-mono text-xs"
+                            className="w-full px-2 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-rose-600 dark:text-rose-400 font-mono text-xs"
                           />
                         </div>
                         <div>
-                          <label className="block text-[10px] text-rose-400 font-bold mb-0.5">Insurance</label>
+                          <label className="block text-[10px] text-rose-600 dark:text-rose-400 font-medium mb-0.5">Insurance</label>
                           <input
                             type="number"
                             value={row.insuranceDeduction}
                             onChange={(e) => updateDraftRow(idx, 'insuranceDeduction', Number(e.target.value))}
-                            className="w-full px-2 py-1 rounded-lg bg-slate-900 border border-slate-800 text-rose-400 font-mono text-xs"
+                            className="w-full px-2 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-rose-600 dark:text-rose-400 font-mono text-xs"
                           />
                         </div>
                         <div>
-                          <label className="block text-[10px] text-rose-400 font-bold mb-0.5">Other Deductions</label>
+                          <label className="block text-[10px] text-rose-600 dark:text-rose-400 font-medium mb-0.5">Other Deductions</label>
                           <input
                             type="number"
                             value={row.otherDeductions}
                             onChange={(e) => updateDraftRow(idx, 'otherDeductions', Number(e.target.value))}
-                            className="w-full px-2 py-1 rounded-lg bg-slate-900 border border-slate-800 text-rose-400 font-mono text-xs"
+                            className="w-full px-2 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-rose-600 dark:text-rose-400 font-mono text-xs"
                           />
                         </div>
                       </div>
@@ -830,38 +837,41 @@ export const PayrollApp: React.FC = () => {
             </div>
 
             {formError && (
-              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold flex items-center gap-2">
+              <div className="p-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 text-xs font-medium flex items-center gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0" />
                 <span>{formError}</span>
               </div>
             )}
 
-            <div className="flex justify-between items-center pt-4 border-t border-slate-800">
-              <button
+            <div className="flex justify-between items-center pt-4 border-t border-slate-200/80 dark:border-slate-800">
+              <Button
                 type="button"
                 onClick={() => setIsCreateModalOpen(false)}
                 disabled={isSubmittingRun}
-                className="px-4 py-2 rounded-xl bg-slate-800 text-slate-300 font-semibold text-xs hover:bg-slate-700"
+                variant="ghost"
+                size="sm"
               >
                 Cancel
-              </button>
+              </Button>
               <div className="flex gap-2">
-                <button
+                <Button
                   type="button"
                   onClick={() => handleSaveRun('Draft')}
                   disabled={isSubmittingRun}
-                  className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 font-semibold text-xs disabled:opacity-50"
+                  variant="secondary"
+                  size="sm"
                 >
                   Save Draft
-                </button>
-                <button
+                </Button>
+                <Button
                   type="button"
                   onClick={() => handleSaveRun('Approved')}
                   disabled={isSubmittingRun}
-                  className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/20 disabled:opacity-50"
+                  variant="primary"
+                  size="sm"
                 >
                   {isSubmittingRun ? 'Saving...' : 'Submit & Create Payroll Run'}
-                </button>
+                </Button>
               </div>
             </div>
           </div>
@@ -877,43 +887,43 @@ export const PayrollApp: React.FC = () => {
           subtitle={`Period: ${activeRun?.periodName || 'Payroll Run'}`}
           maxWidth="md"
         >
-          <div className="space-y-6 text-xs text-slate-300">
-            <div className="p-6 rounded-2xl bg-slate-950 border border-slate-800 space-y-4">
-              <div className="flex justify-between items-start border-b border-slate-800 pb-3">
+          <div className="space-y-6 text-xs text-slate-600 dark:text-slate-300">
+            <div className="p-6 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 space-y-4">
+              <div className="flex justify-between items-start border-b border-slate-200/60 dark:border-slate-700/60 pb-3">
                 <div>
-                  <div className="font-bold text-slate-100 text-sm">{selectedPayslip.employeeName}</div>
-                  <div className="text-[10px] text-slate-400">
+                  <div className="font-semibold text-slate-900 dark:text-slate-100 text-sm">{selectedPayslip.employeeName}</div>
+                  <div className="text-[11px] text-slate-500">
                     {selectedPayslip.employeeRole} • {selectedPayslip.department || 'General'}
                   </div>
                 </div>
-                <span className="font-mono font-bold text-emerald-400 text-base">
+                <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-base">
                   ${(selectedPayslip.netPay || 0).toLocaleString()} NET
                 </span>
               </div>
 
               <div className="space-y-2 font-mono">
-                <div className="flex justify-between text-slate-300">
+                <div className="flex justify-between text-slate-700 dark:text-slate-300">
                   <span>Base Monthly Salary</span>
                   <span className="font-bold">${(selectedPayslip.baseSalary || 0).toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between text-emerald-400">
+                <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
                   <span>Allowances Total</span>
                   <span className="font-bold">+${(selectedPayslip.allowancesTotal || 0).toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between text-emerald-400">
+                <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
                   <span>Performance Bonus</span>
                   <span className="font-bold">+${(selectedPayslip.bonusPay || 0).toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between text-rose-400">
+                <div className="flex justify-between text-rose-600 dark:text-rose-400">
                   <span>Income Tax Deduction</span>
                   <span className="font-bold">-${(selectedPayslip.taxDeduction || 0).toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between text-rose-400">
+                <div className="flex justify-between text-rose-600 dark:text-rose-400">
                   <span>Insurance & Benefits Withholding</span>
                   <span className="font-bold">-${(selectedPayslip.insuranceDeduction || 0).toLocaleString()}</span>
                 </div>
                 {selectedPayslip.otherDeductions ? (
-                  <div className="flex justify-between text-rose-400">
+                  <div className="flex justify-between text-rose-600 dark:text-rose-400">
                     <span>Other Deductions</span>
                     <span className="font-bold">-${selectedPayslip.otherDeductions.toLocaleString()}</span>
                   </div>
@@ -921,22 +931,24 @@ export const PayrollApp: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 pt-2">
-              <button
+            <div className="flex justify-end gap-2.5 pt-2">
+              <Button
                 onClick={() => setSelectedPayslip(null)}
-                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200"
+                variant="ghost"
+                size="sm"
               >
                 Close
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => {
                   generatePayslipPDF(selectedPayslip, activeRun?.periodName || 'Payroll Run');
                 }}
-                className="px-5 py-2 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs shadow-lg flex items-center gap-1.5"
+                variant="primary"
+                size="sm"
+                icon={<Download className="w-4 h-4" />}
               >
-                <Download className="w-3.5 h-3.5" />
                 Download PDF Payslip
-              </button>
+              </Button>
             </div>
           </div>
         </Modal>

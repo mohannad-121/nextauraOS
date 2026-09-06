@@ -7,6 +7,8 @@ import { useApp } from '../../context/AppContext';
 import { PageHeader } from '../../components/common/PageHeader';
 import { Modal } from '../../components/common/Modal';
 import { Avatar } from '../../components/common/Avatar';
+import { StatusBadge } from '../../components/common/StatusBadge';
+import { Button } from '../../components/common/Button';
 
 export const TimeOffApp: React.FC = () => {
   const {
@@ -42,99 +44,102 @@ export const TimeOffApp: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 max-w-7xl mx-auto">
       <PageHeader
         title="Time Off & Leave Management"
         subtitle="Request vacation, track leave balances, review manager approvals & inspect team conflict alerts."
         actions={
-          <button
+          <Button
             onClick={() => setModalOpen(true)}
-            className="px-4 py-2.5 rounded-xl bg-purple-500 hover:bg-purple-400 text-slate-950 font-bold text-xs shadow-lg shadow-purple-500/20 flex items-center gap-1.5"
+            variant="primary"
+            size="sm"
+            icon={<Plus className="w-4 h-4" />}
           >
-            <Plus className="w-4 h-4 stroke-[3]" />
             Request Time Off
-          </button>
+          </Button>
         }
       />
 
-      {/* Employee Balances */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-        <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-2">
-          <div className="flex justify-between items-center text-xs font-bold text-purple-400 uppercase">
+      {/* Employee Balances Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2">
+          <div className="flex justify-between items-center text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">
             <span>Annual Paid Leave</span>
-            <span className="px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20">21 Allocated</span>
+            <span className="px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-200 dark:border-blue-800 text-[10px]">21 Allocated</span>
           </div>
-          <div className="text-3xl font-black text-slate-100 font-heading">17 Days</div>
-          <p className="text-[11px] text-slate-400">4 days used • 17 days remaining</p>
+          <div className="text-3xl font-bold text-slate-900 dark:text-slate-100">17 Days</div>
+          <p className="text-xs text-slate-500">4 days used • 17 days remaining</p>
         </div>
 
-        <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-2">
-          <div className="flex justify-between items-center text-xs font-bold text-cyan-400 uppercase">
+        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2">
+          <div className="flex justify-between items-center text-xs font-semibold text-teal-600 dark:text-teal-400 uppercase tracking-wider">
             <span>Sick Leave</span>
-            <span className="px-2 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20">10 Allocated</span>
+            <span className="px-2 py-0.5 rounded-full bg-teal-50 text-teal-700 dark:bg-teal-950/40 dark:text-teal-300 border border-teal-200 dark:border-teal-800 text-[10px]">10 Allocated</span>
           </div>
-          <div className="text-3xl font-black text-slate-100 font-heading">8 Days</div>
-          <p className="text-[11px] text-slate-400">2 days used • 8 days remaining</p>
+          <div className="text-3xl font-bold text-slate-900 dark:text-slate-100">8 Days</div>
+          <p className="text-xs text-slate-500">2 days used • 8 days remaining</p>
         </div>
 
-        <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-2">
-          <div className="flex justify-between items-center text-xs font-bold text-amber-400 uppercase">
+        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-2">
+          <div className="flex justify-between items-center text-xs font-semibold text-amber-600 dark:text-amber-400 uppercase tracking-wider">
             <span>Personal & Emergency</span>
-            <span className="px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20">3 Allocated</span>
+            <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-200 dark:border-amber-800 text-[10px]">3 Allocated</span>
           </div>
-          <div className="text-3xl font-black text-slate-100 font-heading">3 Days</div>
-          <p className="text-[11px] text-slate-400">0 days used • 3 days remaining</p>
+          <div className="text-3xl font-bold text-slate-900 dark:text-slate-100">3 Days</div>
+          <p className="text-xs text-slate-500">0 days used • 3 days remaining</p>
         </div>
       </div>
 
       {/* Manager Approval Queue with Conflict Warnings */}
       <div className="space-y-4">
-        <h3 className="text-base font-bold text-slate-100 font-heading">Pending Manager Leave Requests ({pendingRequests.length})</h3>
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Pending Manager Leave Requests ({pendingRequests.length})</h3>
 
         {pendingRequests.length === 0 ? (
-          <div className="p-8 text-center rounded-3xl bg-slate-900 border border-slate-800 text-slate-400 text-xs">
+          <div className="p-8 text-center rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-slate-500 text-xs shadow-sm">
             No pending time-off requests needing review.
           </div>
         ) : (
           <div className="space-y-4">
             {pendingRequests.map((req) => (
-              <div key={req.id} className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-4">
+              <div key={req.id} className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
                   <div className="flex items-center gap-3">
-                    <Avatar src={req.employeeAvatar} name={req.employeeName} className="w-10 h-10 rounded-2xl" />
+                    <Avatar src={req.employeeAvatar} name={req.employeeName} className="w-10 h-10 rounded-xl" />
                     <div>
-                      <h4 className="text-base font-bold text-slate-100 font-heading">{req.employeeName}</h4>
-                      <div className="text-xs text-slate-400">{req.department} • {req.leaveType}</div>
+                      <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{req.employeeName}</h4>
+                      <div className="text-xs text-slate-500">{req.department} • {req.leaveType}</div>
                     </div>
                   </div>
 
-                  <div className="text-end">
-                    <div className="text-lg font-black text-purple-400 font-mono">{req.totalDays} Days</div>
-                    <div className="text-xs text-slate-400">{req.startDate} to {req.endDate}</div>
+                  <div className="text-right">
+                    <div className="text-lg font-bold text-blue-600 dark:text-blue-400 font-mono">{req.totalDays} Days</div>
+                    <div className="text-xs text-slate-500">{req.startDate} to {req.endDate}</div>
                   </div>
                 </div>
 
                 {/* Team Conflict Warning */}
-                <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs flex items-center gap-2">
+                <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300 text-xs flex items-center gap-2">
                   <AlertTriangle className="w-4 h-4 shrink-0" />
                   <span><strong>Team Conflict Notice:</strong> 1 other member of Finance department is already scheduled on leave during this period.</span>
                 </div>
 
                 <div className="flex items-center justify-between text-xs pt-2">
-                  <span className="text-slate-400 italic">" Reason: {req.reason} "</span>
+                  <span className="text-slate-500 italic">" Reason: {req.reason} "</span>
                   <div className="flex items-center gap-2">
-                    <button
+                    <Button
                       onClick={() => updateTimeOffStatus(req.id, 'Rejected')}
-                      className="px-4 py-2 rounded-xl bg-rose-500/10 text-rose-400 font-bold border border-rose-500/20"
+                      variant="danger"
+                      size="sm"
                     >
                       Reject
-                    </button>
-                    <button
+                    </Button>
+                    <Button
                       onClick={() => updateTimeOffStatus(req.id, 'Approved')}
-                      className="px-5 py-2 rounded-xl bg-purple-500 hover:bg-purple-400 text-slate-950 font-bold shadow-lg shadow-purple-500/20"
+                      variant="primary"
+                      size="sm"
                     >
                       Approve Leave
-                    </button>
+                    </Button>
                   </div>
                 </div>
               </div>
@@ -144,11 +149,11 @@ export const TimeOffApp: React.FC = () => {
       </div>
 
       {/* Past Requests Log */}
-      <div className="rounded-3xl bg-slate-900 border border-slate-800 shadow-xl overflow-hidden space-y-3 p-6">
-        <h3 className="text-base font-bold text-slate-100 font-heading">Approved & Completed Leave History</h3>
+      <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden space-y-3 p-6">
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Approved & Completed Leave History</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-start text-xs">
-            <thead className="bg-slate-950/80 text-[10px] font-bold uppercase text-slate-400 border-b border-slate-800">
+            <thead className="bg-slate-50/70 dark:bg-slate-800/40 text-[11px] font-semibold text-slate-500 border-b border-slate-200/80 dark:border-slate-800">
               <tr>
                 <th className="p-3 text-start">Employee</th>
                 <th className="p-3 text-start">Leave Type</th>
@@ -157,24 +162,18 @@ export const TimeOffApp: React.FC = () => {
                 <th className="p-3 text-center">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60 font-medium">
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
               {pastRequests.map((req) => (
-                <tr key={req.id} className="hover:bg-slate-800/40">
+                <tr key={req.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
                   <td className="p-3 flex items-center gap-2">
-                    <Avatar src={req.employeeAvatar} name={req.employeeName} className="w-6 h-6 rounded-lg text-[10px]" />
-                    <span className="font-bold text-slate-100">{req.employeeName}</span>
+                    <Avatar src={req.employeeAvatar} name={req.employeeName} className="w-6 h-6 rounded-md text-[10px]" />
+                    <span className="font-medium text-slate-900 dark:text-slate-100">{req.employeeName}</span>
                   </td>
-                  <td className="p-3 text-purple-400">{req.leaveType}</td>
-                  <td className="p-3 text-slate-400">{req.startDate} - {req.endDate}</td>
-                  <td className="p-3 text-center font-mono font-bold">{req.totalDays}</td>
+                  <td className="p-3 text-blue-600 dark:text-blue-400">{req.leaveType}</td>
+                  <td className="p-3 text-slate-500">{req.startDate} - {req.endDate}</td>
+                  <td className="p-3 text-center font-mono font-semibold text-slate-900 dark:text-slate-100">{req.totalDays}</td>
                   <td className="p-3 text-center">
-                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
-                      req.status === 'Approved'
-                        ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                        : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                    }`}>
-                      {req.status}
-                    </span>
+                    <StatusBadge status={req.status} />
                   </td>
                 </tr>
               ))}
@@ -192,10 +191,10 @@ export const TimeOffApp: React.FC = () => {
           subtitle="Select leave category and date range."
           maxWidth="md"
         >
-          <div className="space-y-4 text-xs text-slate-300">
+          <div className="space-y-4 text-xs text-slate-600 dark:text-slate-300">
             <div>
-              <label className="block text-slate-400 mb-1">Leave Type</label>
-              <select value={leaveType} onChange={(e) => setLeaveType(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200">
+              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Leave Type</label>
+              <select value={leaveType} onChange={(e) => setLeaveType(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-xs">
                 <option value="Annual Leave">Annual Paid Leave (17 days remaining)</option>
                 <option value="Sick Leave">Sick Leave (8 days remaining)</option>
                 <option value="Personal Leave">Personal Leave (3 days remaining)</option>
@@ -205,23 +204,23 @@ export const TimeOffApp: React.FC = () => {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-slate-400 mb-1">Start Date</label>
-                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100" />
+                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Start Date</label>
+                <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-xs" />
               </div>
               <div>
-                <label className="block text-slate-400 mb-1">End Date</label>
-                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100" />
+                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">End Date</label>
+                <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-xs" />
               </div>
             </div>
 
             <div>
-              <label className="block text-slate-400 mb-1">Reason / Notes</label>
-              <textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200" />
+              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Reason / Notes</label>
+              <textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-xs" />
             </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
-              <button onClick={() => setModalOpen(false)} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-200">Cancel</button>
-              <button onClick={handleCreate} className="px-5 py-2 rounded-xl bg-purple-500 text-slate-950 font-bold shadow-lg shadow-purple-500/20">Submit Request</button>
+            <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-200/80 dark:border-slate-800">
+              <Button onClick={() => setModalOpen(false)} variant="ghost" size="sm">Cancel</Button>
+              <Button onClick={handleCreate} variant="primary" size="sm">Submit Request</Button>
             </div>
           </div>
         </Modal>

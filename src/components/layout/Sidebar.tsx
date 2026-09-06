@@ -56,29 +56,29 @@ export const Sidebar: React.FC = () => {
   const [expandedApp, setExpandedApp] = useState<string | null>(activeApp);
 
   const rawFinanceModules = [
-    { key: 'invoicing', id: 'invoicing', title: 'Invoicing', icon: CreditCard, color: 'text-azure-400', subViews: [{ id: 'overview', label: 'Invoices Dashboard' }, { id: 'new-invoice', label: 'Create Invoice' }, { id: 'customers', label: 'Customers Directory' }] },
-    { key: 'accounting', id: 'accounting', title: 'Accounting', icon: CreditCard, color: 'text-indigo-400', subViews: [{ id: 'overview', label: 'Accounting Hub' }, { id: 'ledger', label: 'General Ledger' }, { id: 'journal-new', label: 'Journal Entry' }, { id: 'reconciliation', label: 'Bank Reconciliation' }, { id: 'reports', label: 'Financial Reports' }] },
-    { key: 'expenses', id: 'expenses', title: 'Expenses & Cards', icon: CreditCard, color: 'text-rose-400', subViews: [{ id: 'overview', label: 'Expenses Dashboard' }, { id: 'approvals', label: 'Approval Queue' }, { id: 'cards', label: 'Corporate Cards' }] },
-    { key: 'sign', id: 'sign', title: 'Sign (E-Signature)', icon: FileSignature, color: 'text-teal-400', subViews: [{ id: 'overview', label: 'Sign Documents' }, { id: 'builder', label: 'Prepare Agreement' }] },
-    { key: 'equity', id: 'equity', title: 'Equity & Cap Table', icon: PieChart, color: 'text-amber-400', subViews: [{ id: 'overview', label: 'Cap Table Summary' }, { id: 'cap-table', label: 'Shareholders' }, { id: 'dilution', label: 'Dilution Simulator' }] },
-    { key: 'esg', id: 'esg', title: 'ESG & Carbon', icon: Leaf, color: 'text-emerald-400', subViews: [{ id: 'overview', label: 'ESG Hub Scorecard' }, { id: 'carbon', label: 'Carbon Calculator' }] },
+    { key: 'invoicing', id: 'invoicing', title: 'Invoicing', icon: CreditCard, color: 'text-indigo-600 dark:text-indigo-400', subViews: [{ id: 'overview', label: 'Invoices Dashboard' }, { id: 'new-invoice', label: 'Create Invoice' }, { id: 'customers', label: 'Customers Directory' }] },
+    { key: 'accounting', id: 'accounting', title: 'Accounting', icon: CreditCard, color: 'text-blue-600 dark:text-blue-400', subViews: [{ id: 'overview', label: 'Accounting Hub' }, { id: 'ledger', label: 'General Ledger' }, { id: 'journal-new', label: 'Journal Entry' }, { id: 'reconciliation', label: 'Bank Reconciliation' }, { id: 'reports', label: 'Financial Reports' }] },
+    { key: 'expenses', id: 'expenses', title: 'Expenses & Cards', icon: CreditCard, color: 'text-rose-600 dark:text-rose-400', subViews: [{ id: 'overview', label: 'Expenses Dashboard' }, { id: 'approvals', label: 'Approval Queue' }, { id: 'cards', label: 'Corporate Cards' }] },
+    { key: 'sign', id: 'sign', title: 'Sign (E-Signature)', icon: FileSignature, color: 'text-teal-600 dark:text-teal-400', subViews: [{ id: 'overview', label: 'Sign Documents' }, { id: 'builder', label: 'Prepare Agreement' }] },
+    { key: 'equity', id: 'equity', title: 'Equity & Cap Table', icon: PieChart, color: 'text-amber-600 dark:text-amber-400', subViews: [{ id: 'overview', label: 'Cap Table Summary' }, { id: 'cap-table', label: 'Shareholders' }, { id: 'dilution', label: 'Dilution Simulator' }] },
+    { key: 'esg', id: 'esg', title: 'ESG & Carbon', icon: Leaf, color: 'text-emerald-600 dark:text-emerald-400', subViews: [{ id: 'overview', label: 'ESG Hub Scorecard' }, { id: 'carbon', label: 'Carbon Calculator' }] },
   ];
 
   const rawHrModules = [
-    { key: 'employees', id: 'employees', title: 'Employees', icon: Users, color: 'text-orange-400', subViews: [{ id: 'overview', label: 'Employee Directory' }, { id: 'org-chart', label: 'Organization Chart' }] },
-    { key: 'attendance', id: 'attendance', title: 'Attendances', icon: Clock, color: 'text-cyan-400', subViews: [{ id: 'overview', label: 'Who\'s Working Board' }, { id: 'log', label: 'Attendance Log' }, { id: 'kiosk', label: 'Kiosk Mode' }] },
-    { key: 'recruitment', id: 'recruitment', title: 'Recruitment (ATS)', icon: UserPlus, color: 'text-pink-400', subViews: [{ id: 'overview', label: 'Recruitment Hub' }, { id: 'kanban', label: 'Candidate Pipeline' }, { id: 'jobs', label: 'Job Openings' }] },
-    { key: 'time_off', id: 'time-off', title: 'Time Off & Leave', icon: CalendarIcon, color: 'text-purple-400', subViews: [{ id: 'overview', label: 'Leave Dashboard' }, { id: 'requests', label: 'Pending Approvals' }, { id: 'calendar', label: 'Team Leave Calendar' }] },
-    { key: 'appraisals', id: 'appraisals', title: 'Appraisals & OKRs', icon: Award, color: 'text-yellow-400', subViews: [{ id: 'overview', label: 'Appraisals Hub' }, { id: 'goals', label: 'Goals & OKRs' }] },
-    { key: 'fleet', id: 'fleet', title: 'Fleet Management', icon: Car, color: 'text-blue-400', subViews: [{ id: 'overview', label: 'Vehicles Directory' }, { id: 'maintenance', label: 'Maintenance Schedule' }] },
-    { key: 'payroll', id: 'payroll', title: 'Payroll Processing', icon: Wallet, color: 'text-emerald-400', subViews: [{ id: 'overview', label: 'Payroll Control Center' }, { id: 'runs', label: 'Monthly Runs' }, { id: 'payslips', label: 'Payslip Generator' }] },
+    { key: 'employees', id: 'employees', title: 'Employees', icon: Users, color: 'text-amber-600 dark:text-amber-400', subViews: [{ id: 'overview', label: 'Employee Directory' }, { id: 'org-chart', label: 'Organization Chart' }] },
+    { key: 'attendance', id: 'attendance', title: 'Attendances', icon: Clock, color: 'text-cyan-600 dark:text-cyan-400', subViews: [{ id: 'overview', label: 'Who\'s Working Board' }, { id: 'log', label: 'Attendance Log' }, { id: 'kiosk', label: 'Kiosk Mode' }] },
+    { key: 'recruitment', id: 'recruitment', title: 'Recruitment (ATS)', icon: UserPlus, color: 'text-rose-600 dark:text-rose-400', subViews: [{ id: 'overview', label: 'Recruitment Hub' }, { id: 'kanban', label: 'Candidate Pipeline' }, { id: 'jobs', label: 'Job Openings' }] },
+    { key: 'time_off', id: 'time-off', title: 'Time Off & Leave', icon: CalendarIcon, color: 'text-purple-600 dark:text-purple-400', subViews: [{ id: 'overview', label: 'Leave Dashboard' }, { id: 'requests', label: 'Pending Approvals' }, { id: 'calendar', label: 'Team Leave Calendar' }] },
+    { key: 'appraisals', id: 'appraisals', title: 'Appraisals & OKRs', icon: Award, color: 'text-amber-600 dark:text-amber-400', subViews: [{ id: 'overview', label: 'Appraisals Hub' }, { id: 'goals', label: 'Goals & OKRs' }] },
+    { key: 'fleet', id: 'fleet', title: 'Fleet Management', icon: Car, color: 'text-blue-600 dark:text-blue-400', subViews: [{ id: 'overview', label: 'Vehicles Directory' }, { id: 'maintenance', label: 'Maintenance Schedule' }] },
+    { key: 'payroll', id: 'payroll', title: 'Payroll Processing', icon: Wallet, color: 'text-emerald-600 dark:text-emerald-400', subViews: [{ id: 'overview', label: 'Payroll Control Center' }, { id: 'runs', label: 'Monthly Runs' }, { id: 'payslips', label: 'Payslip Generator' }] },
   ];
 
   const rawMarketingModules = [
-    { key: 'email_marketing', id: 'email', title: 'Email Marketing', icon: Mail, color: 'text-rose-400', subViews: [{ id: 'overview', label: 'Email Campaigns' }, { id: 'new', label: 'Campaign Wizard' }, { id: 'templates', label: 'Email Templates' }] },
-    { key: 'sms_marketing', id: 'sms', title: 'SMS Marketing', icon: MessageSquare, color: 'text-indigo-400', subViews: [{ id: 'overview', label: 'SMS Campaigns' }, { id: 'new', label: 'Create SMS' }] },
-    { key: 'surveys', id: 'surveys', title: 'Surveys & Forms', icon: ClipboardList, color: 'text-amber-400', subViews: [{ id: 'overview', label: 'Active Surveys' }, { id: 'new', label: 'Form Builder' }] },
-    { key: 'social_marketing', id: 'social', title: 'Social Marketing', icon: Share2, color: 'text-cyan-400', subViews: [{ id: 'overview', label: 'Social Content Calendar' }, { id: 'new', label: 'Compose Post' }, { id: 'accounts', label: 'Connected Accounts' }] },
+    { key: 'email_marketing', id: 'email', title: 'Email Marketing', icon: Mail, color: 'text-rose-600 dark:text-rose-400', subViews: [{ id: 'overview', label: 'Email Campaigns' }, { id: 'new', label: 'Campaign Wizard' }, { id: 'templates', label: 'Email Templates' }] },
+    { key: 'sms_marketing', id: 'sms', title: 'SMS Marketing', icon: MessageSquare, color: 'text-indigo-600 dark:text-indigo-400', subViews: [{ id: 'overview', label: 'SMS Campaigns' }, { id: 'new', label: 'Create SMS' }] },
+    { key: 'surveys', id: 'surveys', title: 'Surveys & Forms', icon: ClipboardList, color: 'text-amber-600 dark:text-amber-400', subViews: [{ id: 'overview', label: 'Active Surveys' }, { id: 'new', label: 'Form Builder' }] },
+    { key: 'social_marketing', id: 'social', title: 'Social Marketing', icon: Share2, color: 'text-sky-600 dark:text-sky-400', subViews: [{ id: 'overview', label: 'Social Content Calendar' }, { id: 'new', label: 'Compose Post' }, { id: 'accounts', label: 'Connected Accounts' }] },
   ];
 
   const financeModules = rawFinanceModules.filter((m) => activeServices.includes(m.key));
@@ -93,22 +93,22 @@ export const Sidebar: React.FC = () => {
     const isOpen = expandedCategory === categoryKey;
 
     return (
-      <div className="space-y-1">
+      <div className="space-y-0.5">
         <button
           onClick={() => setExpandedCategory(isOpen ? null : categoryKey)}
-          className="w-full p-2.5 rounded-2xl flex items-center justify-between text-xs font-bold text-slate-300 hover:bg-slate-900/80 transition-colors"
+          className="w-full px-2.5 py-1.5 rounded-xl flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100/70 dark:hover:bg-slate-800/50 transition-colors"
         >
           <span className="flex items-center gap-2">
             <span className={`w-2 h-2 rounded-full ${badgeColor}`} />
-            {!isSidebarCollapsed && <span className="uppercase tracking-wider font-mono text-[11px]">{title}</span>}
+            {!isSidebarCollapsed && <span className="uppercase tracking-wider text-[11px] font-medium">{title}</span>}
           </span>
           {!isSidebarCollapsed && (
-            isOpen ? <ChevronDown className="w-3.5 h-3.5 text-slate-500" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-500" />
+            isOpen ? <ChevronDown className="w-3.5 h-3.5 text-slate-400" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
           )}
         </button>
 
         {(!isSidebarCollapsed && isOpen) && (
-          <div className="space-y-1 ps-2">
+          <div className="space-y-0.5 ps-1.5">
             {modules.map((mod) => {
               const Icon = mod.icon;
               const customIcon = getServiceCustomIcon(categoryKey, mod.title, mod.key);
@@ -116,16 +116,18 @@ export const Sidebar: React.FC = () => {
               const isModActive = activeApp === mod.id;
 
               return (
-                <div key={mod.id} className="space-y-1">
+                <div key={mod.id} className="space-y-0.5">
                   <button
                     onClick={() => {
-                      navigate(mod.id as AppView, 'overview');
+                      if (!isModActive) {
+                        navigate(mod.id as AppView, 'overview');
+                      }
                       setExpandedApp(isModExpanded ? null : mod.id);
                     }}
-                    className={`w-full p-2.5 rounded-xl flex items-center justify-between text-xs font-semibold transition-all ${
+                    className={`w-full px-2.5 py-2 rounded-xl flex items-center justify-between text-xs font-medium transition-all ${
                       isModActive
-                        ? 'bg-slate-900 text-slate-100 border border-slate-800 shadow-md font-bold'
-                        : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/50'
+                        ? 'bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-400 font-semibold border-s-2 border-blue-600'
+                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-slate-800/40'
                     }`}
                   >
                     <div className="flex items-center gap-2.5">
@@ -141,22 +143,22 @@ export const Sidebar: React.FC = () => {
                       <span>{mod.title}</span>
                     </div>
                     {isModExpanded ? (
-                      <ChevronDown className="w-3 h-3 text-slate-500" />
+                      <ChevronDown className="w-3 h-3 text-slate-400" />
                     ) : (
-                      <ChevronRight className="w-3 h-3 text-slate-500" />
+                      <ChevronRight className="w-3 h-3 text-slate-400" />
                     )}
                   </button>
 
                   {isModExpanded && (
-                    <div className="ps-8 pe-2 py-1 space-y-1 border-s-2 border-slate-800/80 ms-4">
+                    <div className="ps-7 pe-2 py-0.5 space-y-0.5 border-s border-slate-200 dark:border-slate-800 ms-3.5">
                       {mod.subViews.map((sub: any) => (
                         <button
                           key={sub.id}
                           onClick={() => navigate(mod.id as AppView, sub.id)}
-                          className={`w-full py-1 px-2.5 rounded-lg text-start text-[11px] transition-colors ${
+                          className={`w-full py-1 px-2 rounded-lg text-start text-[11px] transition-colors ${
                             isModActive && activeSubView === sub.id
-                              ? 'text-cyan-400 font-bold bg-cyan-500/10'
-                              : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/40'
+                              ? 'text-blue-700 dark:text-blue-400 font-semibold bg-blue-50/80 dark:bg-blue-950/40'
+                              : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100/50 dark:hover:bg-slate-800/30'
                           }`}
                         >
                           {sub.label}
@@ -175,28 +177,26 @@ export const Sidebar: React.FC = () => {
 
   return (
     <aside
-      className={`sticky top-0 h-screen shrink-0 z-30 bg-slate-950/95 border-e border-slate-800/90 backdrop-blur-xl flex flex-col justify-between transition-all duration-300 ${
-        isSidebarCollapsed ? 'w-20' : 'w-72'
+      className={`sticky top-0 h-screen shrink-0 z-30 bg-white dark:bg-slate-900 border-e border-slate-200/80 dark:border-slate-800 flex flex-col justify-between transition-all duration-300 ${
+        isSidebarCollapsed ? 'w-20' : 'w-64'
       }`}
     >
-      <div className="space-y-5 p-4">
+      <div className="space-y-4 p-3.5 overflow-y-auto">
         {/* Top Brand Logo */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between px-1">
           <div
             onClick={() => navigate('launchpad')}
             className="flex items-center gap-3 cursor-pointer group"
           >
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-cyan-500 via-indigo-500 to-emerald-400 p-0.5 shadow-lg shadow-cyan-500/20 group-hover:scale-105 transition-transform">
-              <div className="w-full h-full rounded-[14px] bg-slate-950 flex items-center justify-center font-black text-cyan-400 text-lg tracking-tighter">
-                N
-              </div>
+            <div className="w-9 h-9 rounded-xl bg-blue-700 text-white flex items-center justify-center font-black text-base shadow-xs group-hover:bg-blue-800 transition-colors">
+              N
             </div>
             {!isSidebarCollapsed && (
               <div>
-                <div className="flex items-center gap-1.5 font-black text-base tracking-tight text-slate-100 font-heading">
-                  NextAura <Sparkles className="w-3.5 h-3.5 text-cyan-400 animate-pulse" />
+                <div className="flex items-center gap-1.5 font-semibold text-sm tracking-tight text-slate-900 dark:text-slate-100 font-heading">
+                  NextAura <Sparkles className="w-3 h-3 text-blue-600 dark:text-blue-400" />
                 </div>
-                <div className="text-[10px] uppercase font-bold tracking-widest text-slate-500">
+                <div className="text-[10px] font-medium tracking-wide text-slate-500 dark:text-slate-400">
                   Business OS
                 </div>
               </div>
@@ -209,21 +209,21 @@ export const Sidebar: React.FC = () => {
           <div className="relative">
             <button
               onClick={() => setIsOrgDropdownOpen(!isOrgDropdownOpen)}
-              className="w-full p-3 rounded-2xl bg-slate-900/90 hover:bg-slate-900 border border-slate-800/90 flex items-center justify-between transition-colors shadow-inner"
+              className="w-full p-2.5 rounded-xl bg-slate-50 hover:bg-slate-100 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-between transition-colors"
             >
-              <div className="flex items-center gap-2.5 overflow-hidden">
-                <span className="text-base">{currentOrg.logo}</span>
+              <div className="flex items-center gap-2 overflow-hidden">
+                <span className="text-sm">{currentOrg.logo}</span>
                 <div className="text-start truncate">
-                  <div className="text-xs font-bold text-slate-100 truncate">{currentOrg.name}</div>
-                  <div className="text-[10px] text-slate-400 font-mono">{currentOrg.baseCurrency} Workspace</div>
+                  <div className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate">{currentOrg.name}</div>
+                  <div className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">{currentOrg.baseCurrency} Workspace</div>
                 </div>
               </div>
-              <ChevronDown className="w-4 h-4 text-slate-400 shrink-0" />
+              <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
             </button>
 
             {isOrgDropdownOpen && (
-              <div className="absolute top-full start-0 w-full mt-2 p-2 rounded-2xl bg-slate-900 border border-slate-800 shadow-2xl z-50 space-y-1">
-                <div className="text-[10px] uppercase font-bold text-slate-500 px-3 py-1">Switch Workspace</div>
+              <div className="absolute top-full start-0 w-full mt-1.5 p-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-lg z-50 space-y-0.5">
+                <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-2 py-1">Switch Workspace</div>
                 {organizations.map((org) => (
                   <button
                     key={org.id}
@@ -231,17 +231,17 @@ export const Sidebar: React.FC = () => {
                       switchOrg(org.id);
                       setIsOrgDropdownOpen(false);
                     }}
-                    className={`w-full p-2.5 rounded-xl flex items-center justify-between text-xs font-semibold transition-colors ${
+                    className={`w-full p-2 rounded-lg flex items-center justify-between text-xs font-medium transition-colors ${
                       currentOrg.id === org.id
-                        ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20'
-                        : 'text-slate-300 hover:bg-slate-800'
+                        ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 font-semibold'
+                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
                     }`}
                   >
                     <span className="flex items-center gap-2">
                       <span>{org.logo}</span>
                       {org.name}
                     </span>
-                    <span className="text-[10px] font-mono uppercase">{org.baseCurrency}</span>
+                    <span className="text-[10px] font-mono text-slate-400">{org.baseCurrency}</span>
                   </button>
                 ))}
               </div>
@@ -249,171 +249,155 @@ export const Sidebar: React.FC = () => {
           </div>
         )}
 
-        {/* Navigation Menu */}
-        <div className="space-y-1 max-h-[calc(100vh-270px)] overflow-y-auto pr-1">
-          {/* Executive Launchpad */}
-          <button
-            onClick={() => navigate('launchpad')}
-            className={`w-full p-2.5 rounded-2xl flex items-center justify-between text-xs font-bold transition-all ${
-              activeApp === 'launchpad'
-                ? 'bg-gradient-to-r from-cyan-500/20 to-indigo-500/20 text-cyan-400 border border-cyan-500/30 shadow-lg'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <LayoutGrid className="w-4 h-4 text-cyan-400" />
-              {!isSidebarCollapsed && <span>NextAura Apps Launchpad</span>}
-            </div>
-          </button>
+        {/* Navigation Sections */}
+        <div className="space-y-3 pt-1">
+          {/* Main Apps & Overview */}
+          <div className="space-y-0.5">
+            <button
+              onClick={() => navigate('home')}
+              className={`w-full px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-xs font-medium transition-all ${
+                activeApp === 'home'
+                  ? 'bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-400 font-semibold border-s-2 border-blue-600'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-slate-800/40'
+              }`}
+            >
+              <Home className="w-4 h-4 text-slate-500" />
+              {!isSidebarCollapsed && <span>Workspace Home</span>}
+            </button>
 
-          {/* Executive Overview */}
-          <button
-            onClick={() => navigate('home')}
-            className={`w-full p-2.5 rounded-2xl flex items-center gap-3 text-xs font-bold transition-all ${
-              activeApp === 'home'
-                ? 'bg-slate-900 text-slate-100 border border-slate-800 shadow-md'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
-            }`}
-          >
-            <Home className="w-4 h-4 text-slate-400" />
-            {!isSidebarCollapsed && <span>Executive Overview</span>}
-          </button>
+            <button
+              onClick={() => navigate('launchpad')}
+              className={`w-full px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-xs font-medium transition-all ${
+                activeApp === 'launchpad'
+                  ? 'bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-400 font-semibold border-s-2 border-blue-600'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-slate-800/40'
+              }`}
+            >
+              <LayoutGrid className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              {!isSidebarCollapsed && <span>Apps Launchpad</span>}
+            </button>
+          </div>
 
-          {/* HR Overview Direct Link */}
-          <button
-            onClick={() => navigate('hr')}
-            className={`w-full p-2.5 rounded-2xl flex items-center gap-3 text-xs font-bold transition-all ${
-              activeApp === 'hr'
-                ? 'bg-slate-900 text-slate-100 border border-slate-800 shadow-md'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
-            }`}
-          >
-            <Users className="w-4 h-4 text-orange-400" />
-            {!isSidebarCollapsed && <span>HR Category Hub</span>}
-          </button>
-
-          {/* Marketing Overview Direct Link */}
-          <button
-            onClick={() => navigate('marketing')}
-            className={`w-full p-2.5 rounded-2xl flex items-center gap-3 text-xs font-bold transition-all ${
-              activeApp === 'marketing'
-                ? 'bg-slate-900 text-slate-100 border border-slate-800 shadow-md'
-                : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900/60'
-            }`}
-          >
-            <Mail className="w-4 h-4 text-rose-400" />
-            {!isSidebarCollapsed && <span>Marketing Category Hub</span>}
-          </button>
-
-          <div className="pt-2 pb-1">
+          <div className="pt-1">
             {!isSidebarCollapsed && (
-              <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 px-2">
-                Business Categories
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 px-2 pb-1">
+                Business Operations
               </div>
             )}
           </div>
 
           {/* 3 Major Category Groups */}
-          {renderModuleGroup('Finance', 'finance', financeModules, 'bg-azure-400')}
-          {renderModuleGroup('Human Resources', 'hr', hrModules, 'bg-orange-400')}
-          {renderModuleGroup('Marketing', 'marketing', marketingModules, 'bg-rose-400')}
+          {renderModuleGroup('Finance', 'finance', financeModules, 'bg-indigo-500')}
+          {renderModuleGroup('Human Resources', 'hr', hrModules, 'bg-amber-500')}
+          {renderModuleGroup('Marketing', 'marketing', marketingModules, 'bg-rose-500')}
 
-          <div className="pt-3 pb-1">
+          <div className="pt-1">
             {!isSidebarCollapsed && (
-              <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 px-2">
+              <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 px-2 pb-1">
                 Global Platform
               </div>
             )}
           </div>
 
-          <button
-            onClick={() => navigate('calendar')}
-            className={`w-full p-2.5 rounded-xl flex items-center gap-3 text-xs font-bold transition-all ${
-              activeApp === 'calendar' ? 'bg-slate-900 text-slate-100 border border-slate-800' : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <CalendarIcon className="w-4 h-4 text-cyan-400" />
-            {!isSidebarCollapsed && <span>Global Calendar</span>}
-          </button>
+          <div className="space-y-0.5">
+            <button
+              onClick={() => navigate('calendar')}
+              className={`w-full px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-xs font-medium transition-all ${
+                activeApp === 'calendar'
+                  ? 'bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-400 font-semibold border-s-2 border-blue-600'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-slate-800/40'
+              }`}
+            >
+              <CalendarIcon className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
+              {!isSidebarCollapsed && <span>Global Calendar</span>}
+            </button>
 
-          <button
-            onClick={() => navigate('approvals')}
-            className={`w-full p-2.5 rounded-xl flex items-center gap-3 text-xs font-bold transition-all ${
-              activeApp === 'approvals' ? 'bg-slate-900 text-slate-100 border border-slate-800' : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-            {!isSidebarCollapsed && <span>Central Approvals</span>}
-          </button>
+            <button
+              onClick={() => navigate('approvals')}
+              className={`w-full px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-xs font-medium transition-all ${
+                activeApp === 'approvals'
+                  ? 'bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-400 font-semibold border-s-2 border-blue-600'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-slate-800/40'
+              }`}
+            >
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+              {!isSidebarCollapsed && <span>Central Approvals</span>}
+            </button>
 
-          <button
-            onClick={() => navigate('contacts')}
-            className={`w-full p-2.5 rounded-xl flex items-center gap-3 text-xs font-bold transition-all ${
-              activeApp === 'contacts' ? 'bg-slate-900 text-slate-100 border border-slate-800' : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            {contactsCustomIcon ? (
-              <img src={contactsCustomIcon} alt="Contacts CRM icon" className="w-4 h-4 object-contain select-none pointer-events-none" />
-            ) : (
-              <Users className="w-4 h-4 text-indigo-400" />
-            )}
-            {!isSidebarCollapsed && <span>Contacts CRM</span>}
-          </button>
+            <button
+              onClick={() => navigate('contacts')}
+              className={`w-full px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-xs font-medium transition-all ${
+                activeApp === 'contacts'
+                  ? 'bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-400 font-semibold border-s-2 border-blue-600'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-slate-800/40'
+              }`}
+            >
+              {contactsCustomIcon ? (
+                <img src={contactsCustomIcon} alt="Contacts CRM icon" className="w-4 h-4 object-contain select-none pointer-events-none" />
+              ) : (
+                <Users className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
+              )}
+              {!isSidebarCollapsed && <span>Contacts CRM</span>}
+            </button>
 
-          <button
-            onClick={() => navigate('documents')}
-            className={`w-full p-2.5 rounded-xl flex items-center gap-3 text-xs font-bold transition-all ${
-              activeApp === 'documents' ? 'bg-slate-900 text-slate-100 border border-slate-800' : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            {documentsCustomIcon ? (
-              <img src={documentsCustomIcon} alt="Document Vault icon" className="w-4 h-4 object-contain select-none pointer-events-none" />
-            ) : (
-              <FolderKanban className="w-4 h-4 text-slate-400" />
-            )}
-            {!isSidebarCollapsed && <span>Document Vault</span>}
-          </button>
+            <button
+              onClick={() => navigate('documents')}
+              className={`w-full px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-xs font-medium transition-all ${
+                activeApp === 'documents'
+                  ? 'bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-400 font-semibold border-s-2 border-blue-600'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-slate-800/40'
+              }`}
+            >
+              {documentsCustomIcon ? (
+                <img src={documentsCustomIcon} alt="Document Vault icon" className="w-4 h-4 object-contain select-none pointer-events-none" />
+              ) : (
+                <FolderKanban className="w-4 h-4 text-slate-500" />
+              )}
+              {!isSidebarCollapsed && <span>Document Vault</span>}
+            </button>
 
-          <button
-            onClick={() => navigate('analytics')}
-            className={`w-full p-2.5 rounded-xl flex items-center gap-3 text-xs font-bold transition-all ${
-              activeApp === 'analytics' ? 'bg-slate-900 text-slate-100 border border-slate-800' : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            {analyticsCustomIcon ? (
-              <img src={analyticsCustomIcon} alt="Analytics Center icon" className="w-4 h-4 object-contain select-none pointer-events-none" />
-            ) : (
-              <BarChart3 className="w-4 h-4 text-slate-400" />
-            )}
-            {!isSidebarCollapsed && <span>Analytics Center</span>}
-          </button>
+            <button
+              onClick={() => navigate('analytics')}
+              className={`w-full px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-xs font-medium transition-all ${
+                activeApp === 'analytics'
+                  ? 'bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-400 font-semibold border-s-2 border-blue-600'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-slate-800/40'
+              }`}
+            >
+              {analyticsCustomIcon ? (
+                <img src={analyticsCustomIcon} alt="Analytics Center icon" className="w-4 h-4 object-contain select-none pointer-events-none" />
+              ) : (
+                <BarChart3 className="w-4 h-4 text-slate-500" />
+              )}
+              {!isSidebarCollapsed && <span>Analytics Center</span>}
+            </button>
 
-          <button
-            onClick={() => navigate('settings', 'services')}
-            className={`w-full p-2.5 rounded-xl flex items-center gap-3 text-xs font-bold transition-all ${
-              activeApp === 'settings' && activeSubView === 'services'
-                ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/30'
-                : 'bg-cyan-500/10 text-cyan-400 hover:bg-cyan-500/20 border border-cyan-500/20'
-            }`}
-          >
-            <Plus className="w-4 h-4 text-cyan-400" />
-            {!isSidebarCollapsed && <span>+ Add Services</span>}
-          </button>
+            <button
+              onClick={() => navigate('settings', 'services')}
+              className={`w-full px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-xs font-medium transition-all ${
+                activeApp === 'settings' && activeSubView === 'services'
+                  ? 'bg-blue-50 text-blue-700 dark:bg-slate-800 dark:text-blue-400 font-semibold border-s-2 border-blue-600'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-slate-800/40'
+              }`}
+            >
+              <Plus className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+              {!isSidebarCollapsed && <span>+ Add Services</span>}
+            </button>
 
-          <button
-            onClick={() => navigate('settings')}
-            className={`w-full p-2.5 rounded-xl flex items-center gap-3 text-xs font-bold transition-all ${
-              activeApp === 'settings' && activeSubView !== 'services' && activeSubView !== 'admin-requests'
-                ? 'bg-slate-900 text-slate-100 border border-slate-800'
-                : 'text-slate-400 hover:text-slate-200'
-            }`}
-          >
-            <Settings className="w-4 h-4 text-slate-400" />
-            {!isSidebarCollapsed && <span>Settings</span>}
-          </button>
+            <button
+              onClick={() => navigate('settings')}
+              className={`w-full px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-xs font-medium transition-all ${
+                activeApp === 'settings' && activeSubView !== 'services' && activeSubView !== 'admin-requests'
+                  ? 'bg-blue-50 dark:bg-slate-800 text-blue-700 dark:text-blue-400 font-semibold border-s-2 border-blue-600'
+                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-slate-800/40'
+              }`}
+            >
+              <Settings className="w-4 h-4 text-slate-500" />
+              {!isSidebarCollapsed && <span>Settings</span>}
+            </button>
+          </div>
         </div>
       </div>
     </aside>
   );
 };
-

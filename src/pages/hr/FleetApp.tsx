@@ -4,6 +4,8 @@ import { useApp } from '../../context/AppContext';
 import { PageHeader } from '../../components/common/PageHeader';
 import { StatCard } from '../../components/common/StatCard';
 import { Modal } from '../../components/common/Modal';
+import { StatusBadge } from '../../components/common/StatusBadge';
+import { Button } from '../../components/common/Button';
 
 export const FleetApp: React.FC = () => {
   const { vehicles, vehicleMaintenance, createVehicle, addVehicleMaintenance } = useApp();
@@ -65,35 +67,37 @@ export const FleetApp: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 max-w-7xl mx-auto">
       <PageHeader
         title="Fleet Vehicle Management"
         subtitle="Manage company vehicles, odometer logs, fuel efficiency & service maintenance logs."
         actions={
-          <div className="flex items-center gap-3">
-            <button
+          <div className="flex items-center gap-2.5">
+            <Button
               onClick={() => {
                 if (vehicles.length > 0) setMaintVehicleId(vehicles[0].id);
                 setMaintModalOpen(true);
               }}
-              className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold flex items-center gap-1.5"
+              variant="secondary"
+              size="sm"
+              icon={<Wrench className="w-4 h-4" />}
             >
-              <Wrench className="w-4 h-4 text-blue-400" />
               Add Service Log
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => setModalOpen(true)}
-              className="px-4 py-2.5 rounded-xl bg-blue-500 hover:bg-blue-400 text-slate-950 font-bold text-xs shadow-lg shadow-blue-500/20 flex items-center gap-1.5"
+              variant="primary"
+              size="sm"
+              icon={<Plus className="w-4 h-4" />}
             >
-              <Plus className="w-4 h-4 stroke-[3]" />
               Add Vehicle
-            </button>
+            </Button>
           </div>
         }
       />
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard title="Total Fleet Vehicles" value={vehicles.length} comparisonText="company assets" accentColor="azure" />
         <StatCard title="Active & Assigned" value={activeCount} change={0} accentColor="emerald" />
         <StatCard title="Monthly Fleet Cost" value={totalFleetCost} isCurrency change={-2.4} accentColor="indigo" />
@@ -101,35 +105,33 @@ export const FleetApp: React.FC = () => {
       </div>
 
       {/* Vehicle Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {vehicles.map((v) => (
-          <div key={v.id} className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
+          <div key={v.id} className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
             <div className="flex justify-between items-start">
-              <div className="p-3 rounded-2xl bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                <Car className="w-6 h-6" />
+              <div className="p-3 rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 border border-blue-200/60 dark:border-blue-800">
+                <Car className="w-5 h-5" />
               </div>
-              <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] font-bold">
-                {v.status}
-              </span>
+              <StatusBadge status={v.status} />
             </div>
 
             <div>
-              <h3 className="text-base font-bold text-slate-100 font-heading">{v.name}</h3>
-              <div className="text-xs text-slate-400">{v.make} {v.model} ({v.year})</div>
+              <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">{v.name}</h3>
+              <div className="text-xs text-slate-500">{v.make} {v.model} ({v.year})</div>
             </div>
 
-            <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 space-y-2 text-xs">
+            <div className="p-3.5 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 space-y-2 text-xs">
               <div className="flex justify-between">
-                <span className="text-slate-500">License Plate</span>
-                <span className="font-mono font-bold text-slate-200">{v.licensePlate}</span>
+                <span className="text-slate-400">License Plate</span>
+                <span className="font-mono font-semibold text-slate-900 dark:text-slate-100">{v.licensePlate}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Assigned Driver</span>
-                <span className="font-semibold text-blue-400">{v.assignedEmployeeName || 'Unassigned'}</span>
+                <span className="text-slate-400">Assigned Driver</span>
+                <span className="font-semibold text-blue-600 dark:text-blue-400">{v.assignedEmployeeName || 'Unassigned'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-500">Odometer</span>
-                <span className="font-mono font-bold text-slate-100">{v.odometerKm.toLocaleString()} km</span>
+                <span className="text-slate-400">Odometer</span>
+                <span className="font-mono font-semibold text-slate-900 dark:text-slate-100">{v.odometerKm.toLocaleString()} km</span>
               </div>
             </div>
           </div>
@@ -137,23 +139,23 @@ export const FleetApp: React.FC = () => {
       </div>
 
       {/* Maintenance Logs & Accounting Connection */}
-      <div className="rounded-3xl bg-slate-900 border border-slate-800 shadow-xl p-6 space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-          <h4 className="text-sm font-bold text-slate-100 font-heading">Maintenance & Service Records</h4>
-          <span className="text-[10px] text-emerald-400 font-mono font-bold">AUTOMATIC ACCOUNTING EXPENSE LINKED</span>
+      <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm p-6 space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
+          <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Maintenance & Service Records</h4>
+          <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono font-semibold">AUTOMATIC ACCOUNTING EXPENSE LINKED</span>
         </div>
 
         <div className="space-y-3">
           {vehicleMaintenance.map((m) => (
-            <div key={m.id} className="p-4 rounded-2xl bg-slate-950 border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
+            <div key={m.id} className="p-4 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
               <div>
-                <div className="font-bold text-slate-100">{m.vehicleName} — {m.type}</div>
-                <div className="text-[10px] text-slate-400">{m.vendor} • Date: {m.date}</div>
+                <div className="font-semibold text-slate-900 dark:text-slate-100">{m.vehicleName} — {m.type}</div>
+                <div className="text-[11px] text-slate-500">{m.vendor} • Date: {m.date}</div>
               </div>
 
               <div className="flex items-center gap-4">
-                <span className="font-mono font-bold text-slate-100 text-sm">${m.cost.toLocaleString()}</span>
-                <span className="px-3 py-1 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold text-[11px]">
+                <span className="font-mono font-bold text-slate-900 dark:text-slate-100 text-sm">${m.cost.toLocaleString()}</span>
+                <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-medium text-[11px]">
                   Posted to Expenses
                 </span>
               </div>
@@ -171,31 +173,31 @@ export const FleetApp: React.FC = () => {
           subtitle="Register company vehicle asset and assign primary driver."
           maxWidth="md"
         >
-          <div className="space-y-4 text-xs text-slate-300">
+          <div className="space-y-4 text-xs text-slate-600 dark:text-slate-300">
             <div>
-              <label className="block text-slate-400 mb-1">Vehicle Name / Label</label>
-              <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Executive Tesla Model Y" className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100" />
+              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Vehicle Name / Label</label>
+              <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Executive Tesla Model Y" className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-xs" />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-slate-400 mb-1">Make & Model</label>
-                <input type="text" value={`${make} ${model}`} onChange={(e) => setModel(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200" />
+                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Make & Model</label>
+                <input type="text" value={`${make} ${model}`} onChange={(e) => setModel(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-xs" />
               </div>
               <div>
-                <label className="block text-slate-400 mb-1">License Plate</label>
-                <input type="text" value={licensePlate} onChange={(e) => setLicensePlate(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-blue-400 font-bold" />
+                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">License Plate</label>
+                <input type="text" value={licensePlate} onChange={(e) => setLicensePlate(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 font-bold text-xs" />
               </div>
             </div>
 
             <div>
-              <label className="block text-slate-400 mb-1">Assigned Driver Name</label>
-              <input type="text" value={assignedEmployeeName} onChange={(e) => setAssignedEmployeeName(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200" />
+              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Assigned Driver Name</label>
+              <input type="text" value={assignedEmployeeName} onChange={(e) => setAssignedEmployeeName(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-xs" />
             </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
-              <button onClick={() => setModalOpen(false)} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-200">Cancel</button>
-              <button onClick={handleCreate} className="px-5 py-2 rounded-xl bg-blue-500 text-slate-950 font-bold shadow-lg shadow-blue-500/20">Register Vehicle</button>
+            <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-200/80 dark:border-slate-800">
+              <Button onClick={() => setModalOpen(false)} variant="ghost" size="sm">Cancel</Button>
+              <Button onClick={handleCreate} variant="primary" size="sm">Register Vehicle</Button>
             </div>
           </div>
         </Modal>
@@ -210,10 +212,10 @@ export const FleetApp: React.FC = () => {
           subtitle="Records maintenance & automatically posts expense to Accounting."
           maxWidth="md"
         >
-          <div className="space-y-4 text-xs text-slate-300">
+          <div className="space-y-4 text-xs text-slate-600 dark:text-slate-300">
             <div>
-              <label className="block text-slate-400 mb-1">Select Fleet Vehicle</label>
-              <select value={maintVehicleId} onChange={(e) => setMaintVehicleId(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 font-semibold">
+              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Select Fleet Vehicle</label>
+              <select value={maintVehicleId} onChange={(e) => setMaintVehicleId(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-medium text-xs">
                 {vehicles.map((v) => (
                   <option key={v.id} value={v.id}>{v.name} ({v.licensePlate})</option>
                 ))}
@@ -222,8 +224,8 @@ export const FleetApp: React.FC = () => {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-slate-400 mb-1">Service Type</label>
-                <select value={maintType} onChange={(e) => setMaintType(e.target.value as any)} className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-200">
+                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Service Type</label>
+                <select value={maintType} onChange={(e) => setMaintType(e.target.value as any)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-xs">
                   <option value="Oil Change">Oil Change</option>
                   <option value="Tires">Tires</option>
                   <option value="Inspection">Inspection</option>
@@ -231,25 +233,25 @@ export const FleetApp: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-slate-400 mb-1">Service Cost ($)</label>
-                <input type="number" value={maintCost} onChange={(e) => setMaintCost(Number(e.target.value))} className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-emerald-400 font-mono font-bold" />
+                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Service Cost ($)</label>
+                <input type="number" value={maintCost} onChange={(e) => setMaintCost(Number(e.target.value))} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 font-mono font-bold text-xs" />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-slate-400 mb-1">Vendor Name</label>
-                <input type="text" value={maintVendor} onChange={(e) => setMaintVendor(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100" />
+                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Vendor Name</label>
+                <input type="text" value={maintVendor} onChange={(e) => setMaintVendor(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-xs" />
               </div>
               <div>
-                <label className="block text-slate-400 mb-1">Current Odometer (km)</label>
-                <input type="number" value={maintOdometer} onChange={(e) => setMaintOdometer(Number(e.target.value))} className="w-full px-3.5 py-2 rounded-xl bg-slate-950 border border-slate-800 text-slate-100 font-mono" />
+                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Current Odometer (km)</label>
+                <input type="number" value={maintOdometer} onChange={(e) => setMaintOdometer(Number(e.target.value))} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-mono text-xs" />
               </div>
             </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
-              <button onClick={() => setMaintModalOpen(false)} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-200">Cancel</button>
-              <button onClick={handleAddMaintenance} className="px-5 py-2 rounded-xl bg-blue-500 text-slate-950 font-bold shadow-lg shadow-blue-500/20">Post Service Log & Expense</button>
+            <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-200/80 dark:border-slate-800">
+              <Button onClick={() => setMaintModalOpen(false)} variant="ghost" size="sm">Cancel</Button>
+              <Button onClick={handleAddMaintenance} variant="primary" size="sm">Post Service Log & Expense</Button>
             </div>
           </div>
         </Modal>

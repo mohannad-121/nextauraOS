@@ -1,18 +1,18 @@
 import React, { useState } from 'react';
-import { Plus, Search, Eye } from 'lucide-react';
+import { Plus, Search, Eye, FileText } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { PageHeader } from '../../components/common/PageHeader';
 import { StatCard } from '../../components/common/StatCard';
 import { StatusBadge } from '../../components/common/StatusBadge';
+import { EmptyState } from '../../components/common/EmptyState';
 import { Modal } from '../../components/common/Modal';
-import { formatDate } from '../../utils/formatters';
+import { formatDate, formatCurrency } from '../../utils/formatters';
 import type { Invoice } from '../../types';
 
 export const InvoicingDashboard: React.FC = () => {
   const { navigate, invoices, updateInvoiceStatus } = useApp();
   const [search, setSearch] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
-
   const [detailModalInvoice, setDetailModalInvoice] = useState<Invoice | null>(null);
 
   const totalInvoiced = invoices.reduce((acc, curr) => acc + curr.total, 0);
@@ -29,51 +29,52 @@ export const InvoicingDashboard: React.FC = () => {
   });
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <PageHeader
+        category="Finance"
         title="Invoicing Management"
-        subtitle="Create, send, and track customer invoices, recurring schedules, and collections."
+        subtitle="Create, send, and track customer invoices, recurring schedules, and receivables."
         actions={
           <button
             onClick={() => navigate('invoicing', 'new-invoice')}
-            className="px-4 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/20 flex items-center gap-1.5"
+            className="px-4 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-500 text-white font-medium text-xs shadow-xs flex items-center gap-1.5 transition-colors"
           >
-            <Plus className="w-4 h-4 stroke-[3]" />
-            Create Invoice
+            <Plus className="w-4 h-4" />
+            <span>Create Invoice</span>
           </button>
         }
       />
 
-      {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-        <StatCard title="Total Invoiced" value={totalInvoiced} isCurrency change={14.2} accentColor="azure" />
-        <StatCard title="Paid Collections" value={paidTotal} isCurrency change={18.0} accentColor="emerald" />
-        <StatCard title="Outstanding Balance" value={outstandingTotal} isCurrency change={-2.4} accentColor="cyan" />
-        <StatCard title="Overdue Invoices" value={overdueTotal} isCurrency change={12.0} accentColor="rose" />
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <StatCard title="Total Invoiced" value={totalInvoiced} isCurrency accentColor="indigo" />
+        <StatCard title="Paid Collections" value={paidTotal} isCurrency accentColor="emerald" />
+        <StatCard title="Outstanding Balance" value={outstandingTotal} isCurrency accentColor="azure" />
+        <StatCard title="Overdue Invoices" value={overdueTotal} isCurrency accentColor="rose" />
       </div>
 
       {/* Filter & Search Toolbar */}
-      <div className="p-4 rounded-2xl bg-slate-900/90 border border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search invoice number, customer..."
-            className="w-full pl-10 pr-4 py-2 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none focus:border-cyan-500"
+            className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600"
           />
         </div>
 
-        <div className="flex items-center gap-2 overflow-x-auto w-full sm:w-auto">
+        <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl overflow-x-auto w-full sm:w-auto">
           {['all', 'draft', 'sent', 'overdue', 'paid'].map((st) => (
             <button
               key={st}
               onClick={() => setSelectedStatus(st)}
-              className={`px-3 py-1.5 rounded-lg text-xs font-semibold uppercase tracking-wider transition-colors ${
+              className={`px-3 py-1 rounded-lg text-xs font-medium capitalize transition-colors ${
                 selectedStatus === st
-                  ? 'bg-slate-800 text-cyan-400 border border-slate-700'
-                  : 'text-slate-400 hover:text-slate-200'
+                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-xs font-semibold'
+                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
               }`}
             >
               {st}
@@ -82,61 +83,54 @@ export const InvoicingDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Invoices Data Table / Empty State */}
+      {/* Table / Empty State */}
       {filteredInvoices.length === 0 ? (
-        <div className="p-12 text-center rounded-3xl bg-slate-900 border border-slate-800 text-slate-400 space-y-4">
-          <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 flex items-center justify-center mx-auto">
-            <Plus className="w-6 h-6" />
-          </div>
-          <div>
-            <h3 className="text-base font-bold text-slate-200 font-heading">No Invoices Found</h3>
-            <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
-              {search || selectedStatus !== 'all'
-                ? 'No invoices match your current search or filter criteria.'
-                : 'Your organization has no invoices yet. Create your first invoice now.'}
-            </p>
-          </div>
-          <button
-            onClick={() => navigate('invoicing', 'new-invoice')}
-            className="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-lg inline-flex items-center gap-1.5"
-          >
-            <Plus className="w-4 h-4 stroke-[3]" />
-            Create Invoice
-          </button>
-        </div>
+        <EmptyState
+          icon={FileText}
+          title={search || selectedStatus !== 'all' ? 'No invoices match your filter' : 'No invoices yet'}
+          description={
+            search || selectedStatus !== 'all'
+              ? 'Try clearing your search term or selecting a different status filter.'
+              : 'Create your first invoice to start tracking customer receivables and revenue.'
+          }
+          actionLabel="Create Invoice"
+          onAction={() => navigate('invoicing', 'new-invoice')}
+          secondaryActionLabel={search || selectedStatus !== 'all' ? 'Clear Filters' : undefined}
+          onSecondaryAction={() => { setSearch(''); setSelectedStatus('all'); }}
+        />
       ) : (
-        <div className="rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl overflow-hidden">
+        <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-start text-xs">
-              <thead className="bg-slate-950/80 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800">
+              <thead className="bg-slate-50 dark:bg-slate-800/80 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200/80 dark:border-slate-800">
                 <tr>
-                  <th className="p-4 text-start">Invoice</th>
-                  <th className="p-4 text-start">Customer</th>
-                  <th className="p-4 text-start">Issue Date</th>
-                  <th className="p-4 text-start">Due Date</th>
-                  <th className="p-4 text-end">Total</th>
-                  <th className="p-4 text-end">Amount Due</th>
-                  <th className="p-4 text-center">Status</th>
-                  <th className="p-4 text-center">Actions</th>
+                  <th className="p-3.5 text-start">Invoice</th>
+                  <th className="p-3.5 text-start">Customer</th>
+                  <th className="p-3.5 text-start">Issue Date</th>
+                  <th className="p-3.5 text-start">Due Date</th>
+                  <th className="p-3.5 text-end">Total</th>
+                  <th className="p-3.5 text-end">Amount Due</th>
+                  <th className="p-3.5 text-center">Status</th>
+                  <th className="p-3.5 text-center">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/60 font-medium">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
                 {filteredInvoices.map((inv) => (
-                  <tr key={inv.id} className="hover:bg-slate-800/40 transition-colors">
-                    <td className="p-4 font-mono font-bold text-cyan-400">{inv.number}</td>
-                    <td className="p-4 font-semibold text-slate-200">{inv.customerName}</td>
-                    <td className="p-4 text-slate-400">{formatDate(inv.issueDate)}</td>
-                    <td className="p-4 text-slate-400">{formatDate(inv.dueDate)}</td>
-                    <td className="p-4 text-end font-bold text-slate-100">${inv.total.toLocaleString()}</td>
-                    <td className="p-4 text-end font-bold text-cyan-400">${inv.amountDue.toLocaleString()}</td>
-                    <td className="p-4 text-center">
+                  <tr key={inv.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                    <td className="p-3.5 font-mono font-semibold text-blue-700 dark:text-blue-400">{inv.number}</td>
+                    <td className="p-3.5 font-semibold text-slate-900 dark:text-slate-100">{inv.customerName}</td>
+                    <td className="p-3.5 text-slate-500 dark:text-slate-400">{formatDate(inv.issueDate)}</td>
+                    <td className="p-3.5 text-slate-500 dark:text-slate-400">{formatDate(inv.dueDate)}</td>
+                    <td className="p-3.5 text-end font-semibold text-slate-900 dark:text-slate-100 tabular-nums">{formatCurrency(inv.total, inv.currency)}</td>
+                    <td className="p-3.5 text-end font-semibold text-blue-700 dark:text-blue-400 tabular-nums">{formatCurrency(inv.amountDue, inv.currency)}</td>
+                    <td className="p-3.5 text-center">
                       <StatusBadge status={inv.status} />
                     </td>
-                    <td className="p-4 text-center">
-                      <div className="flex items-center justify-center gap-2">
+                    <td className="p-3.5 text-center">
+                      <div className="flex items-center justify-center gap-1.5">
                         <button
                           onClick={() => setDetailModalInvoice(inv)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
                           title="View Detail"
                         >
                           <Eye className="w-4 h-4" />
@@ -144,7 +138,7 @@ export const InvoicingDashboard: React.FC = () => {
                         {inv.status !== 'Paid' && (
                           <button
                             onClick={() => updateInvoiceStatus(inv.id, 'Paid')}
-                            className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 text-[11px] font-bold"
+                            className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 text-[11px] font-medium transition-colors"
                           >
                             Mark Paid
                           </button>
@@ -168,36 +162,36 @@ export const InvoicingDashboard: React.FC = () => {
           subtitle={`Billed to ${detailModalInvoice.customerName}`}
           maxWidth="2xl"
         >
-          <div className="space-y-6 text-xs text-slate-300">
-            <div className="flex items-center justify-between p-4 rounded-2xl bg-slate-950 border border-slate-800">
+          <div className="space-y-5 text-xs text-slate-700 dark:text-slate-300">
+            <div className="flex items-center justify-between p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700">
               <div>
-                <div className="text-[10px] text-slate-500 uppercase">Status</div>
-                <StatusBadge status={detailModalInvoice.status} />
+                <div className="text-[10px] text-slate-400 uppercase font-semibold">Status</div>
+                <div className="mt-1"><StatusBadge status={detailModalInvoice.status} /></div>
               </div>
               <div className="text-end">
-                <div className="text-[10px] text-slate-500 uppercase">Total Amount</div>
-                <div className="text-lg font-bold text-slate-100">${detailModalInvoice.total.toLocaleString()}</div>
+                <div className="text-[10px] text-slate-400 uppercase font-semibold">Total Amount</div>
+                <div className="text-lg font-bold text-slate-900 dark:text-slate-100 tabular-nums">{formatCurrency(detailModalInvoice.total, detailModalInvoice.currency)}</div>
               </div>
             </div>
 
             {/* Line Items */}
             <div className="space-y-2">
-              <h4 className="font-bold text-slate-200">Line Items</h4>
+              <h4 className="font-semibold text-slate-900 dark:text-slate-100">Line Items</h4>
               {detailModalInvoice.items.map((itm) => (
-                <div key={itm.id} className="p-3 rounded-xl bg-slate-950 border border-slate-800 flex justify-between">
+                <div key={itm.id} className="p-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 flex justify-between">
                   <div>
-                    <div className="font-semibold text-slate-200">{itm.description}</div>
-                    <div className="text-[10px] text-slate-400">Qty: {itm.quantity} × ${itm.unitPrice}</div>
+                    <div className="font-medium text-slate-900 dark:text-slate-100">{itm.description}</div>
+                    <div className="text-[11px] text-slate-500">Qty: {itm.quantity} × {formatCurrency(itm.unitPrice, detailModalInvoice.currency)}</div>
                   </div>
-                  <div className="font-bold text-slate-100">${itm.amount.toLocaleString()}</div>
+                  <div className="font-semibold text-slate-900 dark:text-slate-100 tabular-nums">{formatCurrency(itm.amount, detailModalInvoice.currency)}</div>
                 </div>
               ))}
             </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
+            <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-100 dark:border-slate-800">
               <button
                 onClick={() => setDetailModalInvoice(null)}
-                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200"
+                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-xs font-medium text-slate-700 dark:text-slate-200 transition-colors"
               >
                 Close
               </button>

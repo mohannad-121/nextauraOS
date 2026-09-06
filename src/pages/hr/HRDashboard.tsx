@@ -25,6 +25,8 @@ import {
 import { useApp } from '../../context/AppContext';
 import { PageHeader } from '../../components/common/PageHeader';
 import { StatCard } from '../../components/common/StatCard';
+import { StatusBadge } from '../../components/common/StatusBadge';
+import { Button } from '../../components/common/Button';
 
 export const HRDashboard: React.FC = () => {
   const { navigate, employees, attendanceRecords, candidates, timeOffRequests, payrollRuns, vehicles, appraisals } = useApp();
@@ -57,31 +59,33 @@ export const HRDashboard: React.FC = () => {
   }, [employees]);
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 max-w-7xl mx-auto">
       <PageHeader
         title="NextAura Human Resources"
         subtitle="Manage your workforce from hiring and onboarding to attendance, performance, fleet & payroll."
         actions={
-          <div className="flex items-center gap-3">
-            <button
+          <div className="flex items-center gap-2.5">
+            <Button
               onClick={() => navigate('employees', 'overview')}
-              className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold"
+              variant="secondary"
+              size="sm"
             >
               Employee Directory
-            </button>
-            <button
+            </Button>
+            <Button
               onClick={() => navigate('recruitment', 'overview')}
-              className="px-4 py-2.5 rounded-xl bg-orange-500 hover:bg-orange-400 text-slate-950 font-bold text-xs shadow-lg shadow-orange-500/20 flex items-center gap-1.5"
+              variant="primary"
+              size="sm"
+              icon={<UserPlus className="w-4 h-4" />}
             >
-              <UserPlus className="w-4 h-4 stroke-[3]" />
               Open Recruitment ATS
-            </button>
+            </Button>
           </div>
         }
       />
 
       {/* Top HR Executive KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Total Workforce"
           value={activeEmployees.length}
@@ -97,7 +101,7 @@ export const HRDashboard: React.FC = () => {
           change={0}
           comparisonText={`${checkedInCount} checked in today`}
           icon={Clock}
-          accentColor="cyan"
+          accentColor="azure"
           onClick={() => navigate('attendance', 'overview')}
         />
         <StatCard
@@ -122,11 +126,11 @@ export const HRDashboard: React.FC = () => {
       {/* Row 2: Headcount Growth Chart + HR Actionable Alerts */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Headcount Chart */}
-        <div className="lg:col-span-2 p-6 rounded-3xl bg-slate-900/90 border border-slate-800/90 shadow-xl space-y-4">
+        <div className="lg:col-span-2 p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
             <div>
-              <h3 className="text-base font-bold text-slate-100 font-heading">Headcount Growth & Hiring Rate</h3>
-              <p className="text-xs text-slate-400">Total active employees over time</p>
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Headcount Growth & Hiring Rate</h3>
+              <p className="text-xs text-slate-500">Total active employees over time</p>
             </div>
           </div>
 
@@ -136,48 +140,48 @@ export const HRDashboard: React.FC = () => {
                 <AreaChart data={headcountData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorHeadcount" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#f97316" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#f97316" stopOpacity={0} />
+                      <stop offset="5%" stopColor="#2563eb" stopOpacity={0.2} />
+                      <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
                     </linearGradient>
                   </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                  <XAxis dataKey="month" stroke="#64748b" fontSize={11} />
-                  <YAxis stroke="#64748b" fontSize={11} />
-                  <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px' }} />
-                  <Area type="monotone" dataKey="employees" stroke="#f97316" strokeWidth={2} fillOpacity={1} fill="url(#colorHeadcount)" />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="month" stroke="#94a3b8" fontSize={11} />
+                  <YAxis stroke="#94a3b8" fontSize={11} />
+                  <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '12px', boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)' }} />
+                  <Area type="monotone" dataKey="employees" stroke="#2563eb" strokeWidth={2} fillOpacity={1} fill="url(#colorHeadcount)" />
                 </AreaChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full w-full flex flex-col items-center justify-center text-slate-500 text-xs">
-                <Building2 className="w-8 h-8 text-slate-600 mb-2" />
-                <p className="font-semibold text-slate-300">No workforce headcount data available yet.</p>
-                <p className="text-[11px] text-slate-500 mt-1">Add employees to generate workforce growth charts.</p>
+              <div className="h-full w-full flex flex-col items-center justify-center text-slate-400 text-xs">
+                <Building2 className="w-8 h-8 text-slate-300 dark:text-slate-700 mb-2" />
+                <p className="font-medium text-slate-600 dark:text-slate-400">No workforce headcount data available yet.</p>
+                <p className="text-[11px] text-slate-400 mt-1">Add employees to generate workforce growth charts.</p>
               </div>
             )}
           </div>
         </div>
 
         {/* HR Actionable Alerts */}
-        <div className="p-6 rounded-3xl bg-gradient-to-b from-slate-900 via-slate-900 to-slate-950 border border-slate-800 shadow-xl space-y-4 flex flex-col justify-between">
+        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4 flex flex-col justify-between">
           <div>
-            <div className="flex items-center gap-2 text-orange-400 text-xs font-bold uppercase tracking-wider">
-              <Sparkles className="w-4 h-4" />
+            <div className="flex items-center gap-1.5 text-blue-600 dark:text-blue-400 text-xs font-semibold uppercase tracking-wider">
+              <Sparkles className="w-3.5 h-3.5" />
               HR Action Center Alerts
             </div>
-            <h3 className="text-base font-bold text-slate-100 font-heading mt-1">Pending HR Tasks</h3>
+            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mt-1">Pending HR Tasks</h3>
 
-            <div className="mt-4 space-y-3">
+            <div className="mt-4 space-y-2.5">
               {pendingLeaveCount > 0 && (
                 <div
                   onClick={() => navigate('time-off', 'overview')}
-                  className="p-3.5 rounded-2xl bg-slate-950/80 border border-purple-500/20 hover:border-purple-500/40 cursor-pointer transition-colors flex items-start gap-3"
+                  className="p-3.5 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-500 cursor-pointer transition-colors flex items-start gap-3"
                 >
-                  <div className="p-1.5 rounded-lg bg-purple-500/10 text-purple-400 shrink-0 mt-0.5">
+                  <div className="p-1.5 rounded-lg bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 shrink-0 mt-0.5">
                     <Calendar className="w-3.5 h-3.5" />
                   </div>
                   <div>
-                    <div className="text-xs font-semibold text-slate-200">{pendingLeaveCount} Time-Off Requests</div>
-                    <p className="text-[11px] text-slate-400 mt-0.5">Time-off requests awaiting manager review.</p>
+                    <div className="text-xs font-semibold text-slate-900 dark:text-slate-100">{pendingLeaveCount} Time-Off Requests</div>
+                    <p className="text-[11px] text-slate-500 mt-0.5">Time-off requests awaiting manager review.</p>
                   </div>
                 </div>
               )}
@@ -185,14 +189,14 @@ export const HRDashboard: React.FC = () => {
               {appraisals.length > 0 && (
                 <div
                   onClick={() => navigate('appraisals', 'overview')}
-                  className="p-3.5 rounded-2xl bg-slate-950/80 border border-yellow-500/20 hover:border-yellow-500/40 cursor-pointer transition-colors flex items-start gap-3"
+                  className="p-3.5 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 hover:border-amber-400 dark:hover:border-amber-500 cursor-pointer transition-colors flex items-start gap-3"
                 >
-                  <div className="p-1.5 rounded-lg bg-yellow-500/10 text-yellow-400 shrink-0 mt-0.5">
+                  <div className="p-1.5 rounded-lg bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400 shrink-0 mt-0.5">
                     <Award className="w-3.5 h-3.5" />
                   </div>
                   <div>
-                    <div className="text-xs font-semibold text-slate-200">{appraisals.length} Appraisal Reviews</div>
-                    <p className="text-[11px] text-slate-400 mt-0.5">Performance reviews active in cycle.</p>
+                    <div className="text-xs font-semibold text-slate-900 dark:text-slate-100">{appraisals.length} Appraisal Reviews</div>
+                    <p className="text-[11px] text-slate-500 mt-0.5">Performance reviews active in cycle.</p>
                   </div>
                 </div>
               )}
@@ -200,69 +204,71 @@ export const HRDashboard: React.FC = () => {
               {vehicles.length > 0 && (
                 <div
                   onClick={() => navigate('fleet', 'overview')}
-                  className="p-3.5 rounded-2xl bg-slate-950/80 border border-amber-500/20 hover:border-amber-500/40 cursor-pointer transition-colors flex items-start gap-3"
+                  className="p-3.5 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 hover:border-slate-400 cursor-pointer transition-colors flex items-start gap-3"
                 >
-                  <div className="p-1.5 rounded-lg bg-amber-500/10 text-amber-400 shrink-0 mt-0.5">
+                  <div className="p-1.5 rounded-lg bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 shrink-0 mt-0.5">
                     <AlertTriangle className="w-3.5 h-3.5" />
                   </div>
                   <div>
-                    <div className="text-xs font-semibold text-slate-200">{vehicles.length} Active Vehicles</div>
-                    <p className="text-[11px] text-slate-400 mt-0.5">Corporate fleet vehicles logged.</p>
+                    <div className="text-xs font-semibold text-slate-900 dark:text-slate-100">{vehicles.length} Active Vehicles</div>
+                    <p className="text-[11px] text-slate-500 mt-0.5">Corporate fleet vehicles logged.</p>
                   </div>
                 </div>
               )}
 
               {pendingLeaveCount === 0 && appraisals.length === 0 && vehicles.length === 0 && (
-                <div className="p-4 text-center text-xs text-slate-500 bg-slate-950/40 rounded-2xl border border-slate-800/40">
+                <div className="p-4 text-center text-xs text-slate-400 bg-slate-50/50 dark:bg-slate-800/40 rounded-xl border border-slate-200/60 dark:border-slate-800">
                   No pending HR alerts
                 </div>
               )}
             </div>
           </div>
 
-          <button
+          <Button
             onClick={() => navigate('payroll', 'overview')}
-            className="w-full py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 transition-colors flex items-center justify-center gap-2"
+            variant="secondary"
+            size="sm"
+            className="w-full"
+            icon={<Wallet className="w-4 h-4" />}
           >
             Review Payroll Run
-            <Wallet className="w-3.5 h-3.5 text-emerald-400" />
-          </button>
+          </Button>
         </div>
       </div>
 
       {/* Row 3: Department Breakdown & Vehicles */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
-          <h3 className="text-base font-bold text-slate-100 font-heading">Department Staff Breakdown</h3>
+        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
+          <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Department Staff Breakdown</h3>
           <div className="h-60 w-full pt-4">
             {deptBreakdown.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={deptBreakdown}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-                  <XAxis dataKey="dept" stroke="#64748b" fontSize={11} />
-                  <YAxis stroke="#64748b" fontSize={11} />
-                  <Tooltip contentStyle={{ backgroundColor: '#0f172a', borderColor: '#334155', borderRadius: '12px' }} />
-                  <Bar dataKey="count" fill="#f97316" radius={[6, 6, 0, 0]} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                  <XAxis dataKey="dept" stroke="#94a3b8" fontSize={11} />
+                  <YAxis stroke="#94a3b8" fontSize={11} />
+                  <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '12px' }} />
+                  <Bar dataKey="count" fill="#2563eb" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-full w-full flex flex-col items-center justify-center text-slate-500 text-xs">
-                <Building2 className="w-8 h-8 text-slate-600 mb-2" />
-                <p className="font-semibold text-slate-300">No department data available yet.</p>
+              <div className="h-full w-full flex flex-col items-center justify-center text-slate-400 text-xs">
+                <Building2 className="w-8 h-8 text-slate-300 dark:text-slate-700 mb-2" />
+                <p className="font-medium text-slate-600 dark:text-slate-400">No department data available yet.</p>
               </div>
             )}
           </div>
         </div>
 
-        <div className="p-6 rounded-3xl bg-slate-900 border border-slate-800 shadow-xl space-y-4">
+        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Car className="w-5 h-5 text-blue-400" />
-              <h3 className="text-base font-bold text-slate-100 font-heading">Active Corporate Fleet Vehicles</h3>
+              <Car className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Active Corporate Fleet Vehicles</h3>
             </div>
             <button
               onClick={() => navigate('fleet', 'overview')}
-              className="text-xs text-blue-400 font-bold hover:underline"
+              className="text-xs text-blue-600 dark:text-blue-400 font-medium hover:underline"
             >
               View Fleet ({vehicles.length})
             </button>
@@ -271,21 +277,19 @@ export const HRDashboard: React.FC = () => {
           <div className="space-y-3">
             {vehicles.length > 0 ? (
               vehicles.map((v) => (
-                <div key={v.id} className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800 flex items-center justify-between text-xs">
+                <div key={v.id} className="p-3.5 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 flex items-center justify-between text-xs">
                   <div>
-                    <div className="font-bold text-slate-100">{v.name}</div>
-                    <div className="text-[10px] text-slate-400">{v.make} {v.model} • License: {v.licensePlate}</div>
+                    <div className="font-semibold text-slate-900 dark:text-slate-100">{v.name}</div>
+                    <div className="text-[11px] text-slate-500">{v.make} {v.model} • License: {v.licensePlate}</div>
                   </div>
-                  <div className="text-end">
-                    <div className="font-bold text-slate-200">{v.assignedEmployeeName || 'Unassigned'}</div>
-                    <span className="px-2 py-0.5 text-[10px] font-bold rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20">
-                      {v.status}
-                    </span>
+                  <div className="text-right">
+                    <div className="font-medium text-slate-800 dark:text-slate-200">{v.assignedEmployeeName || 'Unassigned'}</div>
+                    <StatusBadge status={v.status} />
                   </div>
                 </div>
               ))
             ) : (
-              <div className="p-4 text-center text-xs text-slate-500 bg-slate-950/40 rounded-2xl border border-slate-800/40">
+              <div className="p-4 text-center text-xs text-slate-400 bg-slate-50/50 dark:bg-slate-800/40 rounded-xl border border-slate-200/60 dark:border-slate-800">
                 No corporate vehicles registered
               </div>
             )}
