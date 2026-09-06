@@ -4,21 +4,13 @@ NextAura is a multi-tenant business application suite built with React, TypeScri
 
 ## NextAura AI
 
-The `nextaura-ai` Supabase Edge Function is the only AI provider boundary. It verifies the signed-in user, confirms active organization membership, queries business data through a user-scoped Supabase client so RLS remains active, applies an additional role-aware data policy, and calls the OpenAI Responses API with response storage disabled.
+NextAura AI runs on a deterministic local intelligence engine. It uses a structured product knowledge base, intent and keyword scoring, typo-tolerant matching, conversation context, page awareness, response templates, and safe navigation actions. It does not require a model service or an AI credential.
 
-Required Edge Function secrets:
-
-```text
-OPENAI_API_KEY=...
-NEXTAURA_AI_MODEL=gpt-5.6-luna
-```
-
-`NEXTAURA_AI_MODEL` is optional. The provider is intentionally unavailable until `OPENAI_API_KEY` is configured server-side. Never add an AI provider key to a `VITE_*` variable.
+The authenticated `nextaura-ai` Supabase Edge Function is the secure data boundary. It verifies the signed-in user, confirms active organization membership, and queries only role-permitted workspace records through a user-scoped Supabase client so Row Level Security remains active. The local engine combines that tenant-scoped context with its product knowledge and returns the answer, sources, suggested follow-ups, navigation actions, intent, confidence, and conversation context.
 
 Deploy after authenticating the Supabase CLI against the intended project:
 
 ```bash
-supabase secrets set OPENAI_API_KEY=... NEXTAURA_AI_MODEL=gpt-5.6-luna
 supabase functions deploy nextaura-ai
 ```
 
@@ -36,6 +28,7 @@ npm run dev
 Quality gates:
 
 ```bash
+npm run test:ai
 npm run lint
 npm run build
 ```

@@ -54,8 +54,9 @@ import { SettingsPage } from './pages/settings/SettingsPage';
 import { CustomerServicesPage } from './pages/settings/CustomerServicesPage';
 import { AdminServiceRequests } from './pages/admin/AdminServiceRequests';
 import { AuthScreens } from './pages/auth/AuthScreens';
-import { NextAuraAI } from './pages/ai/NextAuraAI';
 import { PricingPage, PublicPricingPage } from './pages/PricingPage';
+
+const NextAuraAI = React.lazy(() => import('./pages/ai/NextAuraAI').then((module) => ({ default: module.NextAuraAI })));
 
 const AppContent: React.FC = () => {
   const { activeApp, activeSubView, signDocuments, navigate, currentOrg, user } = useApp();
@@ -164,7 +165,11 @@ const AppContent: React.FC = () => {
         return <AnalyticsCenter />;
 
       case 'ai':
-        return <NextAuraAI key={`${currentOrg.id}:${user.id}`} />;
+        return (
+          <React.Suspense fallback={<div className="flex min-h-[50vh] items-center justify-center text-sm text-slate-500">Opening NextAura AI…</div>}>
+            <NextAuraAI key={`${currentOrg.id}:${user.id}`} />
+          </React.Suspense>
+        );
 
       case 'pricing':
         return <PricingPage />;

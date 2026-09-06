@@ -1,15 +1,14 @@
 import { serve } from "https://deno.land/std@0.224.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.114.0";
-import { getAIProvider, type ProviderMessage } from "../_shared/aiProvider.ts";
-import {
-  findRelevantKnowledge,
-  serializeKnowledge,
-} from "../_shared/nextauraKnowledge.ts";
+import { createLocalAIResponse } from "../../../src/ai/engine/responseEngine.ts";
+import type { LocalAIMessage, LocalAIResult } from "../../../src/ai/types.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Max-Age": "86400",
 };
 
 const jsonResponse = (body: unknown, status = 200) =>
@@ -557,27 +556,13 @@ const defaultSubviews: Record<string, string> = {
   payroll: "runs",
 };
 
-const parseProviderOutput = (
-  raw: string,
+const sanitizeLocalOutput = (
+  localResult: LocalAIResult,
   sources: RetrievedSource[],
   activeServices: string[],
 ) => {
-  const cleaned = raw
-    .replace(/^```(?:json)?\s*/i, "")
-    .replace(/\s*```$/, "")
-    .trim();
-  let parsed: any;
-  try {
-    parsed = JSON.parse(cleaned);
-  } catch {
-    parsed = { answer: raw, sourceKeys: [], actions: [] };
-  }
-
   const sourceMap = new Map(sources.map((source) => [source.key, source]));
-  const requestedSources = Array.isArray(parsed.sourceKeys)
-    ? parsed.sourceKeys
-    : [];
-  const safeSources = requestedSources
+  const safeSources = localResult.sourceKeys
     .map((key: unknown) =>
       typeof key === "string" ? sourceMap.get(key) : undefined,
     )
@@ -589,7 +574,7 @@ const parseProviderOutput = (
       detail: source.detail,
     }));
 
-  const safeActions = (Array.isArray(parsed.actions) ? parsed.actions : [])
+  const safeActions = localResult.actions
     .filter(
       (action: any) =>
         action &&
@@ -613,12 +598,17 @@ const parseProviderOutput = (
     }));
 
   return {
-    answer:
-      typeof parsed.answer === "string" && parsed.answer.trim()
-        ? parsed.answer.trim()
-        : raw,
+    answer: localResult.answer,
     sources: safeSources,
     actions: safeActions,
+    suggestions: localResult.suggestions.slice(0, 4).map((suggestion) => ({
+      label: suggestion.label.slice(0, 80),
+      prompt: suggestion.prompt.slice(0, 240),
+    })),
+    intent: localResult.intent,
+    confidence: localResult.confidence,
+    conversationContext: localResult.conversationContext,
+    engine: localResult.engine,
   };
 };
 
@@ -694,8 +684,12 @@ serve(async (req) => {
       typeof body.organizationId === "string" ? body.organizationId : "";
     const activeApp =
       typeof body.activeApp === "string" ? body.activeApp.slice(0, 64) : "ai";
+    const activeSubView =
+      typeof body.activeSubView === "string"
+        ? body.activeSubView.slice(0, 64)
+        : "overview";
     const incomingMessages = Array.isArray(body.messages) ? body.messages : [];
-    const messages: ProviderMessage[] = incomingMessages
+    const messages: LocalAIMessage[] = incomingMessages
       .filter(
         (message: any) =>
           (message?.role === "user" || message?.role === "assistant") &&
@@ -706,7 +700,7 @@ serve(async (req) => {
         role: message.role,
         content: message.content.trim().slice(0, 4000),
       }))
-      .filter((message: ProviderMessage) => message.content.length > 0);
+      .filter((message: LocalAIMessage) => message.content.length > 0);
 
     if (
       !organizationId ||
@@ -751,64 +745,31 @@ serve(async (req) => {
       .map((row: any) => row.service_key)
       .filter(Boolean);
     const role = membership.role || "Employee";
-    const query = messages[messages.length - 1].content.toLowerCase();
+    const query = messages[messages.length - 1].content;
+    const contextQuery = messages.slice(-6).map((message) => message.content).join(" ").toLowerCase();
     const { context, sources } = await buildWorkspaceContext(
       client,
       organizationId,
       role,
-      query,
+      contextQuery,
       activeServices,
     );
-    const knowledge = findRelevantKnowledge(query);
-    const provider = getAIProvider();
-
-    if (!provider) {
-      return jsonResponse(
-        {
-          success: false,
-          code: "PROVIDER_NOT_CONFIGURED",
-          error:
-            "NextAura AI has no configured server-side provider. Set OPENAI_API_KEY in Supabase Edge Function secrets.",
-        },
-        503,
-      );
-    }
-
     const organizationName =
       (membership as any).organizations?.name || "Current workspace";
-    const sourceKeys = sources.map((source) => source.key);
-    const instructions = `You are NextAura AI, a digital employee inside the NextAura business application suite.
-
-Answer accurately and concisely. Use a warm professional voice. Natural emoji may organize response sections, but never use them as controls. Understand follow-up questions from conversation history.
-
-SECURITY AND TRUTH RULES:
-- The authenticated member belongs to exactly the workspace below. Never imply access to any other organization.
-- Only use WORKSPACE_CONTEXT for claims about the user's organization. Never invent records, totals, dates, people, statuses, certifications, or insights.
-- Missing or empty data means you must say the data is unavailable or that there are no records in the retrieved context.
-- Respect ROLE and PERMISSION_NOTES. Payroll data is unavailable unless explicitly present.
-- Never claim an employee is absent merely because they lack an attendance row; only explicit Absent status supports that claim.
-- You may explain product workflows using PRODUCT_KNOWLEDGE.
-- Do not execute or claim to execute writes. Suggest navigation only. Destructive or approval actions require product confirmation outside AI.
-- Currency values must keep the currency provided by the record. If no currency is present, do not assume one.
-- Arrays labeled recent/retrieved can be limited. Use explicit *Counts fields for exact totals and do not present an array length as the full workspace total.
-
-Return ONLY JSON with this shape:
-{"answer":"Plain text with short sections and optional natural emoji","sourceKeys":["one of AVAILABLE_SOURCE_KEYS"],"actions":[{"label":"Open ...","app":"valid NextAura app id","subView":"optional subview"}]}
-Use at most 4 source keys and 3 navigation actions. Do not invent source keys.
-
-WORKSPACE: ${JSON.stringify({ id: organizationId, name: organizationName, role, activeApp })}
-PERMISSION_NOTES: ${JSON.stringify({ payrollVisible: hasRole(role, PAYROLL_ROLES), financeVisible: hasRole(role, FINANCE_ROLES), peopleOperationsVisible: hasRole(role, PEOPLE_ROLES), marketingVisible: hasRole(role, MARKETING_ROLES) })}
-AVAILABLE_SOURCE_KEYS: ${JSON.stringify(sourceKeys)}
-WORKSPACE_CONTEXT: ${JSON.stringify(context)}
-PRODUCT_KNOWLEDGE: ${serializeKnowledge(knowledge)}`;
-
-    const raw = await provider.generate(instructions, messages);
-    const result = parseProviderOutput(raw, sources, activeServices);
+    const localResult = createLocalAIResponse({
+      query,
+      messages,
+      activeApp,
+      activeSubView,
+      activeServices,
+      workspaceName: organizationName,
+      role,
+      workspaceContext: context,
+    });
+    const result = sanitizeLocalOutput(localResult, sources, activeServices);
     return jsonResponse({
       success: true,
       ...result,
-      provider: provider.name,
-      model: provider.model,
     });
   } catch (error: any) {
     console.error("[NextAura AI] request failed:", error?.message || error);

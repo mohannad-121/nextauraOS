@@ -144,6 +144,7 @@ interface AppContextType {
   // Navigation & Shell
   activeApp: AppView;
   activeSubView: string;
+  aiEntryContext: { app: AppView; subView: string };
   selectedResourceId?: string;
   navigate: (app: AppView, subView?: string, resourceId?: string) => void;
   goBack: () => void;
@@ -281,6 +282,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Navigation
   const [activeApp, setActiveApp] = useState<AppView>('launchpad');
   const [activeSubView, setActiveSubView] = useState<string>('overview');
+  const [aiEntryContext, setAIEntryContext] = useState<{ app: AppView; subView: string }>({
+    app: 'launchpad',
+    subView: 'overview',
+  });
   const [selectedResourceId, setSelectedResourceId] = useState<string | undefined>(undefined);
 
   // Shell State
@@ -614,6 +619,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [theme]);
 
   const navigate = (app: AppView, subView: string = 'overview', resourceId?: string) => {
+    if (app === 'ai' && activeApp !== 'ai') {
+      setAIEntryContext({ app: activeApp, subView: activeSubView });
+    }
     setActiveApp(app);
     setActiveSubView(subView);
     setSelectedResourceId(resourceId);
@@ -1101,6 +1109,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       value={{
         activeApp,
         activeSubView,
+        aiEntryContext,
         selectedResourceId,
         navigate,
         goBack,
