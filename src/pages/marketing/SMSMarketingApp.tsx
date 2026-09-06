@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Send, Smartphone, Plus } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { PageHeader } from '../../components/common/PageHeader';
-import { StatCard } from '../../components/common/StatCard';
 import { Modal } from '../../components/common/Modal';
 
 export const SMSMarketingApp: React.FC = () => {
@@ -50,8 +49,8 @@ export const SMSMarketingApp: React.FC = () => {
     <div className="space-y-6">
       <PageHeader
         category="Marketing"
-        title="SMS Marketing & Broadcast Messaging"
-        subtitle="Send targeted SMS broadcasts, inspect phone previews, character limits & short-link tracking."
+        title="SMS broadcasts"
+        subtitle="Write a concise message, choose its audience, and review delivery from one guided workspace."
         actions={
           <button
             onClick={() => setModalOpen(true)}
@@ -63,12 +62,12 @@ export const SMSMarketingApp: React.FC = () => {
         }
       />
 
-      {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Broadcasts Sent" value={smsCampaigns.length} comparisonText="active messages" accentColor="indigo" />
-        <StatCard title="Delivery Success Rate" value={avgDeliveryRate} accentColor="emerald" />
-        <StatCard title="Link Click Rate" value={avgClickRate} accentColor="rose" />
-        <StatCard title="Total SMS Subscribers" value={totalSMSSubscribers.toLocaleString()} comparisonText="opted in phone numbers" accentColor="amber" />
+      <div className="flex flex-wrap items-center gap-x-7 gap-y-3 rounded-2xl border border-slate-200/80 bg-white px-5 py-4 text-xs dark:border-slate-800 dark:bg-slate-900 sm:px-6">
+        <span className="font-medium text-slate-500">Broadcast register</span>
+        <span><span className="text-slate-500">Broadcasts</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-white">{smsCampaigns.length}</strong></span>
+        <span><span className="text-slate-500">Delivery</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-white">{avgDeliveryRate}</strong></span>
+        <span><span className="text-slate-500">Click rate</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-white">{avgClickRate}</strong></span>
+        <span><span className="text-slate-500">Audience</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-white">{totalSMSSubscribers.toLocaleString()}</strong></span>
       </div>
 
       {/* SMS Broadcast Composer & Phone Simulator */}
@@ -233,4 +232,3 @@ export const SMSMarketingApp: React.FC = () => {
     </div>
   );
 };
-

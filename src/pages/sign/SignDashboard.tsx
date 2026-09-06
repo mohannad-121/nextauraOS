@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { PageHeader } from '../../components/common/PageHeader';
-import { StatCard } from '../../components/common/StatCard';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { Modal } from '../../components/common/Modal';
 import { Button } from '../../components/common/Button';
@@ -20,8 +19,8 @@ export const SignDashboard: React.FC = () => {
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       <PageHeader
-        title="Electronic Signatures (Sign)"
-        subtitle="Prepare, send, and legally e-sign business agreements with audit trail certificates."
+        title="Signatures"
+        subtitle="Prepare agreements, send them for signature, and follow every document to completion."
         actions={
           <Button
             onClick={() => navigate('sign', 'builder')}
@@ -34,12 +33,11 @@ export const SignDashboard: React.FC = () => {
         }
       />
 
-      {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Total Agreements Sent" value={signDocuments.length} change={12.0} accentColor="teal" />
-        <StatCard title="Awaiting Signatures" value={activeDocs.length} change={0} comparisonText="active workflow" accentColor="amber" />
-        <StatCard title="Completed & Executed" value={completedDocs.length} change={25.0} accentColor="emerald" />
-        <StatCard title="Compliance Rate" value="100%" comparisonText="SOC2 & eIDAS valid" accentColor="azure" />
+      <div className="flex flex-wrap items-center gap-x-7 gap-y-3 rounded-2xl border border-slate-200/80 bg-white px-5 py-4 text-xs dark:border-slate-800 dark:bg-slate-900 sm:px-6">
+        <span className="font-medium text-slate-500">Document register</span>
+        <span><span className="text-slate-500">Total</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-white">{signDocuments.length}</strong></span>
+        <span><span className="text-slate-500">Awaiting signatures</span> <strong className="ms-1 font-semibold text-amber-800 dark:text-amber-300">{activeDocs.length}</strong></span>
+        <span><span className="text-slate-500">Completed</span> <strong className="ms-1 font-semibold text-emerald-700 dark:text-emerald-300">{completedDocs.length}</strong></span>
       </div>
 
       {/* Document List Table */}

@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Star, CheckCircle, Send } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { PageHeader } from '../../components/common/PageHeader';
-import { StatCard } from '../../components/common/StatCard';
 import { Modal } from '../../components/common/Modal';
 import { Avatar } from '../../components/common/Avatar';
 import { StatusBadge } from '../../components/common/StatusBadge';
@@ -33,16 +32,15 @@ export const AppraisalsApp: React.FC = () => {
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       <PageHeader
-        title="Appraisals & Performance OKRs"
-        subtitle="360° performance review cycles, employee goals/OKRs & department skills matrix."
+        title="Appraisals & goals"
+        subtitle="Run performance reviews, keep goals visible, and understand team skills."
       />
 
-      {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Active Review Cycle" value="Q3 2026" comparisonText="in progress" accentColor="amber" />
-        <StatCard title="Completed Reviews" value={`${appraisals.filter((a) => a.status === 'Completed').length} / ${appraisals.length}`} change={18.0} accentColor="emerald" />
-        <StatCard title="Company Goals on Track" value="85%" comparisonText={`${employeeGoals.length} goals active`} accentColor="blue" />
-        <StatCard title="Average Performance Rating" value="4.7 / 5" comparisonText="high performers" accentColor="slate" />
+      <div className="flex flex-wrap items-center gap-x-7 gap-y-3 rounded-2xl border border-slate-200/80 bg-white px-5 py-4 text-xs dark:border-slate-800 dark:bg-slate-900 sm:px-6">
+        <span className="font-medium text-slate-500">Performance workspace</span>
+        <span><span className="text-slate-500">Reviews</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-white">{appraisals.length}</strong></span>
+        <span><span className="text-slate-500">Completed</span> <strong className="ms-1 font-semibold text-emerald-700 dark:text-emerald-300">{appraisals.filter((item) => item.status === 'Completed').length}</strong></span>
+        <span><span className="text-slate-500">Goals</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-white">{employeeGoals.length}</strong></span>
       </div>
 
       {/* Segmented Navigation Tabs */}

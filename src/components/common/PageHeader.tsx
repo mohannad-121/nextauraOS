@@ -10,15 +10,15 @@ interface PageHeaderProps {
 
 export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, badge, category, actions }) => {
   return (
-    <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-8 pb-5 border-b border-slate-200/80 dark:border-slate-800">
+    <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-5 mb-8 pb-6 border-b border-slate-200/70 dark:border-slate-800">
       <div>
         {category && (
-          <div className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-1">
+          <div className="text-xs font-medium text-blue-700 dark:text-blue-300 mb-1.5">
             {category}
           </div>
         )}
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-slate-900 dark:text-slate-100 font-heading">
+          <h1 className="text-2xl sm:text-[1.75rem] leading-tight font-semibold tracking-tight text-slate-900 dark:text-slate-100 font-heading">
             {title}
           </h1>
           {badge && (
@@ -28,12 +28,12 @@ export const PageHeader: React.FC<PageHeaderProps> = ({ title, subtitle, badge, 
           )}
         </div>
         {subtitle && (
-          <p className="mt-1.5 text-sm text-slate-500 dark:text-slate-400 max-w-3xl leading-relaxed">
+          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400 max-w-2xl leading-relaxed">
             {subtitle}
           </p>
         )}
       </div>
       {actions && <div className="flex items-center gap-2.5 shrink-0 sm:pb-0.5">{actions}</div>}
-    </div>
+    </header>
   );
 };

@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Plus, Heart, MessageCircle, Repeat } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { PageHeader } from '../../components/common/PageHeader';
-import { StatCard } from '../../components/common/StatCard';
 import { Modal } from '../../components/common/Modal';
 
 export const SocialMarketingApp: React.FC = () => {
@@ -17,6 +16,8 @@ export const SocialMarketingApp: React.FC = () => {
 
   const [content, setContent] = useState('Supercharged to announce NextAura! Built for fast-growing enterprises managing Finance, HR & Marketing in one system. Check it out: https://nextaura.ai');
   const [scheduledFor, setScheduledFor] = useState('2026-09-10 14:00');
+  const scheduledPosts = socialPosts.filter((item) => item.status === 'Scheduled').length;
+  const totalFollowers = socialAccounts.reduce((total, item) => total + (item.followersCount || 0), 0);
 
   const handleCreate = () => {
     if (!content) return;
@@ -33,8 +34,8 @@ export const SocialMarketingApp: React.FC = () => {
     <div className="space-y-6">
       <PageHeader
         category="Marketing"
-        title="Social Media Marketing & Content Scheduler"
-        subtitle="Schedule posts across LinkedIn, Twitter/X, Instagram & Facebook from a unified content calendar."
+        title="Social content"
+        subtitle="Compose and schedule posts across your connected channels."
         actions={
           <button
             onClick={() => setModalOpen(true)}
@@ -46,12 +47,11 @@ export const SocialMarketingApp: React.FC = () => {
         }
       />
 
-      {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Connected Channels" value={socialAccounts.length} comparisonText="LinkedIn, Twitter, IG" accentColor="rose" />
-        <StatCard title="Posts Scheduled" value={socialPosts.length} accentColor="indigo" />
-        <StatCard title="Total Social Reach" value="48.2K" comparisonText="followers across channels" accentColor="emerald" />
-        <StatCard title="Avg Engagement Rate" value="6.4%" accentColor="amber" />
+      <div className="flex flex-wrap items-center gap-x-7 gap-y-3 rounded-2xl border border-slate-200/80 bg-white px-5 py-4 text-xs dark:border-slate-800 dark:bg-slate-900 sm:px-6">
+        <span className="font-medium text-slate-500">Social workspace</span>
+        <span><span className="text-slate-500">Connected channels</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-white">{socialAccounts.length}</strong></span>
+        <span><span className="text-slate-500">Scheduled posts</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-white">{scheduledPosts}</strong></span>
+        <span><span className="text-slate-500">Recorded followers</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-white">{totalFollowers.toLocaleString()}</strong></span>
       </div>
 
       {/* Connected Accounts */}
@@ -65,7 +65,7 @@ export const SocialMarketingApp: React.FC = () => {
                 <div className="text-[11px] text-blue-600 dark:text-blue-400 font-mono">{acc.handle || acc.accountName}</div>
               </div>
               <span className="px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 text-[10px] font-semibold">
-                {(acc.followersCount || 10000).toLocaleString()} Fans
+                {(acc.followersCount || 0).toLocaleString()} followers
               </span>
             </div>
           ))}
@@ -155,4 +155,3 @@ export const SocialMarketingApp: React.FC = () => {
     </div>
   );
 };
-

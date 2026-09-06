@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Plus, Send } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { PageHeader } from '../../components/common/PageHeader';
-import { StatCard } from '../../components/common/StatCard';
 import { Modal } from '../../components/common/Modal';
 
 export const SurveysApp: React.FC = () => {
@@ -35,8 +34,8 @@ export const SurveysApp: React.FC = () => {
     <div className="space-y-6">
       <PageHeader
         category="Marketing"
-        title="Surveys, NPS & Customer Feedback"
-        subtitle="Create multi-page CSAT forms, measure Net Promoter Score (NPS) & inspect real-time responses."
+        title="Surveys & feedback"
+        subtitle="Create customer surveys, collect responses, and review feedback in one place."
         actions={
           <button
             onClick={() => setModalOpen(true)}
@@ -48,12 +47,10 @@ export const SurveysApp: React.FC = () => {
         }
       />
 
-      {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Active Surveys" value={surveys.length} comparisonText="collecting feedback" accentColor="amber" />
-        <StatCard title="Net Promoter Score (NPS)" value="+64" accentColor="emerald" />
-        <StatCard title="Avg Customer CSAT" value="4.8 / 5" accentColor="indigo" />
-        <StatCard title="Total Form Responses" value={totalResponses.toLocaleString()} comparisonText="live responses collected" accentColor="rose" />
+      <div className="flex flex-wrap items-center gap-x-7 gap-y-3 rounded-2xl border border-slate-200/80 bg-white px-5 py-4 text-xs dark:border-slate-800 dark:bg-slate-900 sm:px-6">
+        <span className="font-medium text-slate-500">Feedback register</span>
+        <span><span className="text-slate-500">Surveys</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-white">{surveys.length}</strong></span>
+        <span><span className="text-slate-500">Responses</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-white">{totalResponses.toLocaleString()}</strong></span>
       </div>
 
       {/* Surveys List */}
@@ -153,4 +150,3 @@ export const SurveysApp: React.FC = () => {
     </div>
   );
 };
-

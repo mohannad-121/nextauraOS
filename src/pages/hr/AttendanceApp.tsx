@@ -7,7 +7,6 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { PageHeader } from '../../components/common/PageHeader';
-import { StatCard } from '../../components/common/StatCard';
 import { Avatar } from '../../components/common/Avatar';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { Button } from '../../components/common/Button';
@@ -140,8 +139,8 @@ export const AttendanceApp: React.FC = () => {
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       <PageHeader
-        title="Live Attendance & Time Tracking"
-        subtitle="Real-time employee check-ins, working hours timer, break management & attendance logs."
+        title="Attendance"
+        subtitle="Clock in, manage breaks, and review today's team attendance in one focused view."
         actions={
           <Button
             onClick={() => setIsKioskMode(true)}
@@ -198,14 +197,6 @@ export const AttendanceApp: React.FC = () => {
             {isCurrentlyWorking ? 'Clock Out' : 'Clock In Now'}
           </Button>
         </div>
-      </div>
-
-      {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Checked In Today" value={attendanceRecords.length} comparisonText="staff active" accentColor="azure" />
-        <StatCard title="On Time Rate" value="98.2%" change={1.4} accentColor="emerald" />
-        <StatCard title="Late Arrivals" value="1" comparisonText="this week" accentColor="amber" />
-        <StatCard title="Overtime Accrued" value="14.5 Hrs" comparisonText="month to date" accentColor="indigo" />
       </div>
 
       {/* Attendance Records Table */}

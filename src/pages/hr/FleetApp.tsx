@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Car, Plus, Wrench } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { PageHeader } from '../../components/common/PageHeader';
-import { StatCard } from '../../components/common/StatCard';
 import { Modal } from '../../components/common/Modal';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { Button } from '../../components/common/Button';
@@ -69,8 +68,8 @@ export const FleetApp: React.FC = () => {
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       <PageHeader
-        title="Fleet Vehicle Management"
-        subtitle="Manage company vehicles, odometer logs, fuel efficiency & service maintenance logs."
+        title="Fleet"
+        subtitle="Keep company vehicles, assignments, odometer records, and maintenance together."
         actions={
           <div className="flex items-center gap-2.5">
             <Button
@@ -96,12 +95,11 @@ export const FleetApp: React.FC = () => {
         }
       />
 
-      {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Total Fleet Vehicles" value={vehicles.length} comparisonText="company assets" accentColor="azure" />
-        <StatCard title="Active & Assigned" value={activeCount} change={0} accentColor="emerald" />
-        <StatCard title="Monthly Fleet Cost" value={totalFleetCost} isCurrency change={-2.4} accentColor="indigo" />
-        <StatCard title="Maintenance Due" value={1} comparisonText="service alert" accentColor="amber" />
+      <div className="flex flex-wrap items-center gap-x-7 gap-y-3 rounded-2xl border border-slate-200/80 bg-white px-5 py-4 text-xs dark:border-slate-800 dark:bg-slate-900 sm:px-6">
+        <span className="font-medium text-slate-500">Fleet register</span>
+        <span><span className="text-slate-500">Vehicles</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-white">{vehicles.length}</strong></span>
+        <span><span className="text-slate-500">Active or assigned</span> <strong className="ms-1 font-semibold text-emerald-700 dark:text-emerald-300">{activeCount}</strong></span>
+        <span><span className="text-slate-500">Monthly cost</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-white">${totalFleetCost.toLocaleString()}</strong></span>
       </div>
 
       {/* Vehicle Cards */}

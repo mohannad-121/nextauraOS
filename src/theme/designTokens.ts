@@ -1,124 +1,32 @@
-/**
- * NEXTAURA DESIGN SYSTEM TOKENS
- * Light-First Enterprise SaaS Design Tokens
- */
-
+/** NextAura's semantic light-first workspace tokens. */
 export const designTokens = {
   colors: {
-    // Canvas & Main Backgrounds
-    canvas: {
-      light: '#F8F9FA', // Warm soft porcelain off-white
-      subtle: '#F1F5F9', // Slightly deeper tone for sectioning
-    },
-    // Primary Content Surfaces
-    surface: {
-      card: '#FFFFFF',
-      hover: '#F8FAFC',
-      active: '#F1F5F9',
-      border: '#E2E8F0',
-      borderSubtle: '#F1F5F9',
-    },
-    // Typography Colors
-    text: {
-      primary: '#0F172A', // Slate 900
-      secondary: '#475569', // Slate 600
-      muted: '#64748B', // Slate 500
-      subtle: '#94A3B8', // Slate 400
-      inverse: '#FFFFFF',
-    },
-    // Primary Action Accent (Ink Blue / Indigo)
-    brand: {
-      primary: '#1E40AF', // Blue 800
-      primaryHover: '#1D4ED8', // Blue 700
-      primaryActive: '#1E3A8A', // Blue 900
-      lightBg: '#EFF6FF', // Blue 50
-      lightText: '#1E40AF',
-      lightBorder: '#DBEAFE',
-    },
-    // Category Identifiers (Subtle background fills + readable text)
+    canvas: { light: '#F7F7F4', subtle: '#F1F2ED' },
+    surface: { card: '#FFFFFF', hover: '#F5F7F3', active: '#EDF4F0', border: '#E3E6E1', borderSubtle: '#EDF0EC' },
+    text: { primary: '#202522', secondary: '#59625D', muted: '#78817C', subtle: '#98A09B', inverse: '#FFFFFF' },
+    brand: { primary: '#285143', primaryHover: '#203F35', primaryActive: '#19342B', lightBg: '#EDF4F0', lightText: '#285143', lightBorder: '#C9DACF' },
     categories: {
-      finance: {
-        bg: '#F5F3FF', // Violet 50
-        text: '#5B21B6', // Violet 800
-        border: '#DDD6FE', // Violet 200
-        accent: '#7C3AED',
-      },
-      hr: {
-        bg: '#FFFBEB', // Amber 50
-        text: '#92400E', // Amber 800
-        border: '#FDE68A', // Amber 200
-        accent: '#D97706',
-      },
-      marketing: {
-        bg: '#FFF1F2', // Rose 50
-        text: '#9F1239', // Rose 800
-        border: '#FECDD3', // Rose 200
-        accent: '#E11D48',
-      },
-      platform: {
-        bg: '#ECFDF5', // Emerald 50
-        text: '#065F46', // Emerald 800
-        border: '#A7F3D0', // Emerald 200
-        accent: '#059669',
-      },
+      finance: { bg: '#F1F6F3', text: '#285143', border: '#C9DACF', accent: '#356553' },
+      hr: { bg: '#FAF5E9', text: '#7A5C22', border: '#E8DAB9', accent: '#A47A2A' },
+      marketing: { bg: '#F9F0F0', text: '#865252', border: '#E9D1D1', accent: '#A96868' },
+      platform: { bg: '#F2F3F4', text: '#505C64', border: '#DDE1E3', accent: '#687982' },
     },
-    // Semantic Statuses (Quiet, desaturated)
     status: {
-      draft: {
-        bg: '#F8FAFC',
-        text: '#475569',
-        border: '#E2E8F0',
-      },
-      pending: {
-        bg: '#FFFBEB',
-        text: '#B45309',
-        border: '#FDE68A',
-      },
-      approved: {
-        bg: '#F0FDF4',
-        text: '#166534',
-        border: '#BBF7D0',
-      },
-      paid: {
-        bg: '#F0FDF4',
-        text: '#166534',
-        border: '#BBF7D0',
-      },
-      overdue: {
-        bg: '#FEF2F2',
-        text: '#991B1B',
-        border: '#FECACA',
-      },
-      active: {
-        bg: '#EFF6FF',
-        text: '#1E40AF',
-        border: '#BFDBFE',
-      },
-      inactive: {
-        bg: '#F8FAFC',
-        text: '#64748B',
-        border: '#E2E8F0',
-      },
+      draft: { bg: '#F5F6F4', text: '#59625D', border: '#E3E6E1' },
+      pending: { bg: '#FBF6E9', text: '#805F1D', border: '#EADBB1' },
+      approved: { bg: '#EDF6F0', text: '#376348', border: '#CDE1D3' },
+      paid: { bg: '#EDF6F0', text: '#376348', border: '#CDE1D3' },
+      overdue: { bg: '#FAEEEE', text: '#954747', border: '#EBCBCB' },
+      active: { bg: '#EDF4F0', text: '#285143', border: '#C9DACF' },
+      inactive: { bg: '#F5F6F4', text: '#78817C', border: '#E3E6E1' },
     },
   },
-  // Radiuses
-  radius: {
-    sm: '0.5rem', // 8px
-    md: '0.75rem', // 12px
-    lg: '1rem', // 16px
-    xl: '1.25rem', // 20px
-    full: '9999px',
-  },
-  // Shadows (Soft, low-opacity, restrained)
+  spacing: { pageX: 'clamp(1rem, 3vw, 2.5rem)', pageY: 'clamp(1.25rem, 3vw, 2.5rem)', section: '2rem', card: '1.5rem', field: '1rem' },
+  radius: { sm: '0.5rem', md: '0.75rem', lg: '1rem', xl: '1.25rem', full: '9999px' },
   shadows: {
-    card: '0 1px 3px 0 rgba(15, 23, 42, 0.03), 0 1px 2px -1px rgba(15, 23, 42, 0.03)',
-    dropdown: '0 4px 16px -2px rgba(15, 23, 42, 0.08), 0 2px 6px -1px rgba(15, 23, 42, 0.04)',
-    modal: '0 20px 25px -5px rgba(15, 23, 42, 0.08), 0 8px 10px -6px rgba(15, 23, 42, 0.04)',
+    card: '0 1px 2px rgba(26,35,30,.02), 0 8px 22px rgba(26,35,30,.02)',
+    dropdown: '0 14px 36px rgba(26,35,30,.10)',
+    modal: '0 24px 64px rgba(26,35,30,.15)',
   },
-  // Transitions
-  motion: {
-    fast: '150ms cubic-bezier(0.4, 0, 0.2, 1)',
-    normal: '200ms cubic-bezier(0.4, 0, 0.2, 1)',
-    slow: '300ms cubic-bezier(0.4, 0, 0.2, 1)',
-  },
+  motion: { fast: '150ms ease', normal: '180ms ease', slow: '260ms ease' },
 };

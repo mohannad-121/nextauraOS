@@ -47,22 +47,27 @@ export const Modal: React.FC<ModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto bg-slate-900/30 dark:bg-slate-950/75 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto bg-slate-900/25 dark:bg-slate-950/70 backdrop-blur-[2px] animate-in fade-in duration-200" onMouseDown={onClose}>
       <div
         className={`relative w-full ${maxWidthClasses[maxWidth]} my-auto rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/90 dark:border-slate-800 shadow-xl overflow-hidden flex flex-col max-h-[90vh]`}
-        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="modal-title"
+        onMouseDown={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4.5 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
           <div>
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 font-heading">{title}</h2>
+            <h2 id="modal-title" className="text-lg font-semibold text-slate-900 dark:text-slate-100 font-heading">{title}</h2>
             {subtitle && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{subtitle}</p>}
           </div>
           <button
+            type="button"
             onClick={onClose}
             className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+            aria-label="Close dialog"
           >
-            <X className="w-5 h-5" />
+            <X className="w-5 h-5" aria-hidden="true" />
           </button>
         </div>
 

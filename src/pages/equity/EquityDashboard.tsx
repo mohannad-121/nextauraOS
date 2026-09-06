@@ -2,7 +2,6 @@ import React from 'react';
 import { Plus, Sliders } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { PageHeader } from '../../components/common/PageHeader';
-import { StatCard } from '../../components/common/StatCard';
 import { formatCurrency } from '../../utils/formatters';
 
 export const EquityDashboard: React.FC = () => {
@@ -18,8 +17,8 @@ export const EquityDashboard: React.FC = () => {
     <div className="space-y-6">
       <PageHeader
         category="Finance"
-        title="Cap Table & Equity Management"
-        subtitle="Manage company ownership, option pools, funding rounds & dilution modeling."
+        title="Equity & cap table"
+        subtitle="Manage company ownership, option grants, and dilution planning with a clear record of every holder."
         actions={
           <div className="flex items-center gap-2.5">
             <button
@@ -40,12 +39,12 @@ export const EquityDashboard: React.FC = () => {
         }
       />
 
-      {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Total Capital Raised" value={valuationText} accentColor="amber" />
-        <StatCard title="Total Shares Issued" value={totalShares.toLocaleString()} comparisonText="fully diluted" accentColor="indigo" />
-        <StatCard title="Active Shareholders" value={shareholders.length} accentColor="emerald" />
-        <StatCard title="ESOP Option Pool" value={esopPercentage} comparisonText={`${esopOptionsCount.toLocaleString()} options`} accentColor="rose" />
+      <div className="flex flex-wrap items-center gap-x-7 gap-y-3 rounded-2xl border border-slate-200/80 bg-white px-5 py-4 text-xs dark:border-slate-800 dark:bg-slate-900 sm:px-6">
+        <span className="font-medium text-slate-500">Ownership summary</span>
+        <span><span className="text-slate-500">Capital raised</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-white">{valuationText}</strong></span>
+        <span><span className="text-slate-500">Shares</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-white">{totalShares.toLocaleString()}</strong></span>
+        <span><span className="text-slate-500">Shareholders</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-white">{shareholders.length}</strong></span>
+        <span><span className="text-slate-500">Option pool</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-white">{esopPercentage} · {esopOptionsCount.toLocaleString()}</strong></span>
       </div>
 
       {/* Cap Table Preview */}
@@ -86,4 +85,3 @@ export const EquityDashboard: React.FC = () => {
     </div>
   );
 };
-

@@ -2,7 +2,6 @@ import React from 'react';
 import { BookOpen, Scale, ArrowUpRight, CheckCircle, RefreshCw, Layers } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { PageHeader } from '../../components/common/PageHeader';
-import { StatCard } from '../../components/common/StatCard';
 import { formatCurrency } from '../../utils/formatters';
 
 export const AccountingDashboard: React.FC = () => {
@@ -18,8 +17,8 @@ export const AccountingDashboard: React.FC = () => {
     <div className="space-y-6">
       <PageHeader
         category="Finance"
-        title="Accounting Control Center"
-        subtitle="Double-entry general ledger, chart of accounts, bank reconciliation & automated financial statements."
+        title="Accounting"
+        subtitle="A structured workspace for the general ledger, reconciliation, and financial statements."
         actions={
           <div className="flex items-center gap-2.5">
             <button
@@ -55,12 +54,12 @@ export const AccountingDashboard: React.FC = () => {
         </span>
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Total Assets" value={totalAssets} isCurrency accentColor="indigo" />
-        <StatCard title="Total Liabilities" value={totalLiabilities} isCurrency accentColor="azure" />
-        <StatCard title="Total Revenue" value={totalRevenue} isCurrency accentColor="emerald" />
-        <StatCard title="Operating Expenses" value={totalExpenses} isCurrency accentColor="amber" />
+      <div className="flex flex-wrap items-center gap-x-7 gap-y-3 rounded-2xl border border-slate-200/80 bg-white px-5 py-4 text-xs dark:border-slate-800 dark:bg-slate-900 sm:px-6">
+        <span className="font-medium text-slate-500">Current balances</span>
+        <span><span className="text-slate-500">Assets</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-white">{formatCurrency(totalAssets)}</strong></span>
+        <span><span className="text-slate-500">Liabilities</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-white">{formatCurrency(totalLiabilities)}</strong></span>
+        <span><span className="text-slate-500">Revenue</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-white">{formatCurrency(totalRevenue)}</strong></span>
+        <span><span className="text-slate-500">Expenses</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-white">{formatCurrency(totalExpenses)}</strong></span>
       </div>
 
       {/* Module Shortcuts Grid */}

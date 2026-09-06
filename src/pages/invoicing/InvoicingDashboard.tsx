@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Plus, Search, Eye, FileText } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { PageHeader } from '../../components/common/PageHeader';
-import { StatCard } from '../../components/common/StatCard';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { EmptyState } from '../../components/common/EmptyState';
 import { Modal } from '../../components/common/Modal';
@@ -32,8 +31,8 @@ export const InvoicingDashboard: React.FC = () => {
     <div className="space-y-6">
       <PageHeader
         category="Finance"
-        title="Invoicing Management"
-        subtitle="Create, send, and track customer invoices, recurring schedules, and receivables."
+        title="Invoices"
+        subtitle="Create, send, and follow customer invoices from draft through payment."
         actions={
           <button
             onClick={() => navigate('invoicing', 'new-invoice')}
@@ -45,12 +44,12 @@ export const InvoicingDashboard: React.FC = () => {
         }
       />
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Total Invoiced" value={totalInvoiced} isCurrency accentColor="indigo" />
-        <StatCard title="Paid Collections" value={paidTotal} isCurrency accentColor="emerald" />
-        <StatCard title="Outstanding Balance" value={outstandingTotal} isCurrency accentColor="azure" />
-        <StatCard title="Overdue Invoices" value={overdueTotal} isCurrency accentColor="rose" />
+      <div className="flex flex-wrap items-center gap-x-7 gap-y-3 rounded-2xl border border-slate-200/80 bg-white px-5 py-4 text-xs dark:border-slate-800 dark:bg-slate-900 sm:px-6">
+        <span className="font-medium text-slate-500">Portfolio</span>
+        <span><span className="text-slate-500">Invoiced</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-white">{formatCurrency(totalInvoiced, 'USD')}</strong></span>
+        <span><span className="text-slate-500">Collected</span> <strong className="ms-1 font-semibold text-emerald-700 dark:text-emerald-300">{formatCurrency(paidTotal, 'USD')}</strong></span>
+        <span><span className="text-slate-500">Outstanding</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-white">{formatCurrency(outstandingTotal, 'USD')}</strong></span>
+        {overdueTotal > 0 && <span><span className="text-slate-500">Overdue</span> <strong className="ms-1 font-semibold text-rose-700 dark:text-rose-300">{formatCurrency(overdueTotal, 'USD')}</strong></span>}
       </div>
 
       {/* Filter & Search Toolbar */}

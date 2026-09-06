@@ -72,22 +72,22 @@ export const CommandPalette: React.FC = () => {
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-24 px-4 bg-slate-950/80 backdrop-blur-md">
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 sm:pt-24 px-4 bg-slate-900/25 dark:bg-slate-950/70 backdrop-blur-[2px]">
       <div className="fixed inset-0" onClick={() => setCommandPaletteOpen(false)} />
 
-      <div className="relative w-full max-w-2xl rounded-3xl bg-slate-900 border border-slate-800 shadow-2xl overflow-hidden z-10 space-y-4 p-4">
+      <div role="dialog" aria-modal="true" aria-label="Search workspace" className="relative w-full max-w-2xl rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-[0_24px_70px_rgba(26,35,30,.18)] overflow-hidden z-10 space-y-4 p-4">
         {/* Input */}
-        <div className="relative flex items-center border-b border-slate-800 pb-3">
-          <Search className="w-5 h-5 text-cyan-400 absolute left-3" />
+        <div className="relative flex items-center border-b border-slate-200 dark:border-slate-800 pb-3">
+          <Search className="w-5 h-5 text-blue-700 dark:text-blue-300 absolute start-3" />
           <input
             type="text"
             autoFocus
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search employees, candidates, invoices, campaigns, payroll, vehicles..."
-            className="w-full pl-11 pr-4 py-2 bg-transparent text-sm text-slate-100 placeholder-slate-500 focus:outline-none"
+            className="w-full ps-11 pe-4 py-2 bg-transparent text-sm text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none"
           />
-          <kbd className="hidden sm:inline-block px-2 py-0.5 text-[10px] font-mono text-slate-400 bg-slate-800 rounded border border-slate-700">
+          <kbd className="hidden sm:inline-block px-2 py-0.5 text-[10px] font-sans text-slate-400 bg-slate-50 dark:bg-slate-800 rounded border border-slate-200 dark:border-slate-700">
             ESC
           </kbd>
         </div>
@@ -97,7 +97,7 @@ export const CommandPalette: React.FC = () => {
           {/* Employees Match */}
           {filteredEmployees.length > 0 && (
             <div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-orange-400 mb-2 px-3">
+              <div className="text-[11px] font-semibold text-slate-500 mb-2 px-3">
                 Employees ({filteredEmployees.length})
               </div>
               <div className="space-y-1">
@@ -108,12 +108,12 @@ export const CommandPalette: React.FC = () => {
                       navigate('employees', 'overview', emp.id);
                       setCommandPaletteOpen(false);
                     }}
-                    className="w-full p-2.5 rounded-xl hover:bg-slate-800 flex items-center justify-between transition-colors text-slate-200"
+                    className="w-full p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-between transition-colors text-slate-700 dark:text-slate-200"
                   >
                     <div className="flex items-center gap-3">
                       <Avatar src={emp.avatar} name={emp.name} className="w-6 h-6 rounded-lg text-[10px]" />
                       <div>
-                        <div className="font-bold text-slate-100">{emp.name}</div>
+                        <div className="font-semibold text-slate-900 dark:text-slate-100">{emp.name}</div>
                         <div className="text-[10px] text-slate-400">{emp.jobTitle} • {emp.department}</div>
                       </div>
                     </div>
@@ -127,7 +127,7 @@ export const CommandPalette: React.FC = () => {
           {/* Candidates Match */}
           {filteredCandidates.length > 0 && (
             <div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-pink-400 mb-2 px-3">
+              <div className="text-[11px] font-semibold text-slate-500 mb-2 px-3">
                 ATS Candidates ({filteredCandidates.length})
               </div>
               <div className="space-y-1">
@@ -138,12 +138,12 @@ export const CommandPalette: React.FC = () => {
                       navigate('recruitment', 'kanban', cand.id);
                       setCommandPaletteOpen(false);
                     }}
-                    className="w-full p-2.5 rounded-xl hover:bg-slate-800 flex items-center justify-between transition-colors text-slate-200"
+                    className="w-full p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-between transition-colors text-slate-700 dark:text-slate-200"
                   >
                     <div className="flex items-center gap-3">
                       <UserPlus className="w-4 h-4 text-pink-400" />
                       <div>
-                        <div className="font-bold text-slate-100">{cand.name}</div>
+                        <div className="font-semibold text-slate-900 dark:text-slate-100">{cand.name}</div>
                         <div className="text-[10px] text-slate-400">{cand.appliedPositionTitle}</div>
                       </div>
                     </div>
@@ -157,7 +157,7 @@ export const CommandPalette: React.FC = () => {
           {/* Email Campaigns Match */}
           {filteredCampaigns.length > 0 && (
             <div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-rose-400 mb-2 px-3">
+              <div className="text-[11px] font-semibold text-slate-500 mb-2 px-3">
                 Marketing Campaigns ({filteredCampaigns.length})
               </div>
               <div className="space-y-1">
@@ -168,11 +168,11 @@ export const CommandPalette: React.FC = () => {
                       navigate('email', 'overview', ec.id);
                       setCommandPaletteOpen(false);
                     }}
-                    className="w-full p-2.5 rounded-xl hover:bg-slate-800 flex items-center justify-between transition-colors text-slate-200"
+                    className="w-full p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-between transition-colors text-slate-700 dark:text-slate-200"
                   >
                     <div className="flex items-center gap-3">
                       <Mail className="w-4 h-4 text-rose-400" />
-                      <span className="font-bold text-slate-100">{ec.name}</span>
+                      <span className="font-semibold text-slate-900 dark:text-slate-100">{ec.name}</span>
                     </div>
                     <span className="text-[10px] font-bold text-rose-400">{ec.status}</span>
                   </button>
@@ -183,8 +183,8 @@ export const CommandPalette: React.FC = () => {
 
           {/* Quick Apps Navigation */}
           <div>
-            <div className="text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-2 px-3">
-              Applications & Tools Navigation
+            <div className="text-[11px] font-semibold text-slate-500 mb-2 px-3">
+              Apps and tools
             </div>
             <div className="space-y-1">
               {quickNav.map((item) => {
@@ -196,7 +196,7 @@ export const CommandPalette: React.FC = () => {
                       navigate(item.app, item.sub);
                       setCommandPaletteOpen(false);
                     }}
-                    className="w-full p-2 rounded-xl hover:bg-slate-800 flex items-center justify-between transition-colors text-slate-200"
+                    className="w-full p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 flex items-center justify-between transition-colors text-slate-700 dark:text-slate-200"
                   >
                     <div className="flex items-center gap-3">
                       <Icon className={`w-4 h-4 ${item.color}`} />

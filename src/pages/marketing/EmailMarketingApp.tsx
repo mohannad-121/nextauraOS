@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { PageHeader } from '../../components/common/PageHeader';
-import { StatCard } from '../../components/common/StatCard';
 import { Modal } from '../../components/common/Modal';
 
 export const EmailMarketingApp: React.FC = () => {
@@ -52,8 +51,8 @@ export const EmailMarketingApp: React.FC = () => {
     <div className="space-y-6">
       <PageHeader
         category="Marketing"
-        title="Email Marketing & Automation"
-        subtitle="Design email campaigns, target segments, inspect open/click rates & build reusable templates."
+        title="Email campaigns"
+        subtitle="Create a campaign, choose its audience, and review performance after sending."
         actions={
           <button
             onClick={() => setModalOpen(true)}
@@ -65,12 +64,12 @@ export const EmailMarketingApp: React.FC = () => {
         }
       />
 
-      {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Active Campaigns" value={emailCampaigns.length} comparisonText="sent & scheduled" accentColor="rose" />
-        <StatCard title="Avg Open Rate" value={avgOpenRate} accentColor="indigo" />
-        <StatCard title="Click-Through Rate" value={avgClickRate} accentColor="emerald" />
-        <StatCard title="Total Subscribers" value={totalSubscribers.toLocaleString()} comparisonText="verified contacts" accentColor="amber" />
+      <div className="flex flex-wrap items-center gap-x-7 gap-y-3 rounded-2xl border border-slate-200/80 bg-white px-5 py-4 text-xs dark:border-slate-800 dark:bg-slate-900 sm:px-6">
+        <span className="font-medium text-slate-500">Campaign register</span>
+        <span><span className="text-slate-500">Campaigns</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-white">{emailCampaigns.length}</strong></span>
+        <span><span className="text-slate-500">Open rate</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-white">{avgOpenRate}</strong></span>
+        <span><span className="text-slate-500">Click rate</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-white">{avgClickRate}</strong></span>
+        <span><span className="text-slate-500">Audience</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-white">{totalSubscribers.toLocaleString()}</strong></span>
       </div>
 
       {/* Tabs */}
@@ -227,4 +226,3 @@ export const EmailMarketingApp: React.FC = () => {
     </div>
   );
 };
-

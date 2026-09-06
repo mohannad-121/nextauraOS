@@ -57,23 +57,23 @@ export const StatCard: React.FC<StatCardProps> = ({
   };
 
   return (
-    <div
+    <article
       onClick={onClick}
-      className={`p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs transition-all duration-200 ${
-        onClick ? 'cursor-pointer hover:border-slate-300 dark:hover:border-slate-700' : ''
+      className={`min-h-[108px] p-4 sm:p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 transition-all duration-200 ${
+        onClick ? 'cursor-pointer hover:border-slate-300 hover:shadow-sm dark:hover:border-slate-700' : ''
       }`}
     >
       <div className="flex items-center justify-between gap-2">
-        <span className="text-xs font-medium text-slate-500 dark:text-slate-400 font-sans tracking-tight">{title}</span>
+        <span className="text-xs font-medium text-slate-600 dark:text-slate-400 font-sans">{title}</span>
         {Icon && (
-          <div className={`p-2 rounded-xl border shrink-0 ${styleClass}`}>
+          <div className={`p-1.5 rounded-lg border shrink-0 ${styleClass}`}>
             {renderIcon()}
           </div>
         )}
       </div>
 
-      <div className="mt-2.5 space-y-1">
-        <div className="text-2xl font-semibold text-slate-900 dark:text-slate-100 tracking-tight font-heading tabular-nums">
+      <div className="mt-2 space-y-0.5">
+        <div className="text-xl font-semibold text-slate-900 dark:text-slate-100 tracking-tight font-heading tabular-nums">
           {formattedValue}
         </div>
 
@@ -93,6 +93,6 @@ export const StatCard: React.FC<StatCardProps> = ({
           </div>
         )}
       </div>
-    </div>
+    </article>
   );
 };

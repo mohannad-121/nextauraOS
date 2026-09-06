@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Plus } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { PageHeader } from '../../components/common/PageHeader';
-import { StatCard } from '../../components/common/StatCard';
 import { Modal } from '../../components/common/Modal';
 
 export const CarbonCalculator: React.FC = () => {
@@ -39,8 +38,8 @@ export const CarbonCalculator: React.FC = () => {
     <div className="space-y-6">
       <PageHeader
         category="Finance"
-        title="Carbon Footprint Calculator (GHG Protocol)"
-        subtitle="Track Scope 1 (Direct), Scope 2 (Energy), and Scope 3 (Value Chain) greenhouse gas emissions."
+        title="Carbon activity"
+        subtitle="Record Scope 1, 2, and 3 activity and keep a clear emissions register."
         actions={
           <button
             onClick={() => setModalOpen(true)}
@@ -52,12 +51,12 @@ export const CarbonCalculator: React.FC = () => {
         }
       />
 
-      {/* Scope Breakdown KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Total Emissions" value={`${grandTotalCO2e.toFixed(1)} Tons`} comparisonText="CO2e YTD" accentColor="emerald" />
-        <StatCard title="Scope 1 (Direct)" value={`${scope1Total.toFixed(1)} Tons`} comparisonText="natural gas, fleet" accentColor="indigo" />
-        <StatCard title="Scope 2 (Electricity)" value={`${scope2Total.toFixed(1)} Tons`} comparisonText="purchased energy" accentColor="rose" />
-        <StatCard title="Scope 3 (Travel & Ops)" value={`${scope3Total.toFixed(1)} Tons`} comparisonText="flights, suppliers" accentColor="amber" />
+      <div className="flex flex-wrap items-center gap-x-7 gap-y-3 rounded-2xl border border-slate-200/80 bg-white px-5 py-4 text-xs dark:border-slate-800 dark:bg-slate-900 sm:px-6">
+        <span className="font-medium text-slate-500">Emissions summary</span>
+        <span><span className="text-slate-500">Total</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-white">{grandTotalCO2e.toFixed(1)} tons</strong></span>
+        <span><span className="text-slate-500">Scope 1</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-white">{scope1Total.toFixed(1)}</strong></span>
+        <span><span className="text-slate-500">Scope 2</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-white">{scope2Total.toFixed(1)}</strong></span>
+        <span><span className="text-slate-500">Scope 3</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-white">{scope3Total.toFixed(1)}</strong></span>
       </div>
 
       {/* Activity Log Table */}
@@ -175,4 +174,3 @@ export const CarbonCalculator: React.FC = () => {
     </div>
   );
 };
-

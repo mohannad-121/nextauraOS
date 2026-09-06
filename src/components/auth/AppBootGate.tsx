@@ -304,9 +304,9 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
   switch (bootState) {
     case 'loading':
       return (
-        <div className="min-h-screen w-full bg-slate-950 flex flex-col items-center justify-center space-y-4">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-500 to-indigo-500 p-0.5 animate-pulse">
-            <div className="w-full h-full rounded-[14px] bg-slate-950 flex items-center justify-center font-black text-cyan-400 text-lg">
+        <div className="min-h-screen w-full bg-[#F7F7F4] dark:bg-[#171B19] flex flex-col items-center justify-center space-y-4">
+          <div className="w-12 h-12 rounded-2xl bg-blue-700 p-0.5 animate-pulse shadow-sm">
+            <div className="w-full h-full rounded-[14px] bg-white dark:bg-[#171B19] flex items-center justify-center font-semibold text-blue-700 dark:text-blue-300 text-sm">
               N
             </div>
           </div>
@@ -343,17 +343,17 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
 
     case 'bootstrapError':
       return (
-        <div className="min-h-screen w-full bg-slate-950 text-slate-100 flex items-center justify-center p-6 relative overflow-hidden font-sans">
-          <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl text-center space-y-6 animate-in zoom-in-95">
-            <div className="w-14 h-14 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 flex items-center justify-center mx-auto shadow-xl">
+        <div className="min-h-screen w-full bg-[#F7F7F4] dark:bg-[#171B19] text-slate-900 dark:text-slate-100 flex items-center justify-center p-6 relative overflow-hidden font-sans">
+          <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-8 shadow-lg text-center space-y-6 animate-in zoom-in-95">
+            <div className="w-14 h-14 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-300 flex items-center justify-center mx-auto">
               <ShieldAlert className="w-7 h-7" />
             </div>
 
             <div className="space-y-2">
-              <h2 className="text-xl font-extrabold text-slate-100 font-heading">
+              <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100 font-heading">
                 We couldn't initialize your NextAura workspace
               </h2>
-              <p className="text-xs text-slate-400 leading-relaxed max-w-xs mx-auto">
+              <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed max-w-xs mx-auto">
                 {bootstrapErrorMessage || 'A database or session error occurred while loading your organization workspace.'}
               </p>
             </div>
@@ -367,7 +367,7 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
                     supabase.auth.getSession().then(({ data }) => evaluateAuthState(data?.session, true));
                   }
                 }}
-                className="w-full py-3 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-extrabold text-xs shadow-lg shadow-cyan-500/20 flex items-center justify-center gap-2 transition-all"
+                className="w-full py-3 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-semibold text-xs shadow-sm flex items-center justify-center gap-2 transition-all"
               >
                 <RefreshCw className="w-4 h-4" />
                 <span>Retry Connection</span>
@@ -376,7 +376,7 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
               <button
                 type="button"
                 onClick={handleSignOut}
-                className="w-full py-2.5 rounded-xl border border-slate-800 text-slate-400 hover:text-slate-200 text-xs font-bold flex items-center justify-center gap-2 transition-colors"
+                className="w-full py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold flex items-center justify-center gap-2 transition-colors"
               >
                 <LogOut className="w-4 h-4 text-rose-400" />
                 <span>Sign Out</span>

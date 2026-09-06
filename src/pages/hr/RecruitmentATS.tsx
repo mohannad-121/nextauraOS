@@ -9,7 +9,6 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { PageHeader } from '../../components/common/PageHeader';
-import { StatCard } from '../../components/common/StatCard';
 import { Modal } from '../../components/common/Modal';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { Button } from '../../components/common/Button';
@@ -161,8 +160,8 @@ export const RecruitmentATS: React.FC = () => {
   return (
     <div className="space-y-6 max-w-7xl mx-auto">
       <PageHeader
-        title="Recruitment & Applicant Tracking (ATS)"
-        subtitle="Manage job openings, candidate pipeline, interviews, offer letters & seamless employee conversion."
+        title="Recruitment"
+        subtitle="Move candidates through a clear hiring pipeline, from application to offer."
         actions={
           <div className="flex items-center gap-2.5">
             <Button
@@ -185,12 +184,11 @@ export const RecruitmentATS: React.FC = () => {
         }
       />
 
-      {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Open Positions" value={jobOpenings.length} comparisonText="active requisitions" accentColor="amber" />
-        <StatCard title="Active Applicants" value={candidates.length} change={14.0} accentColor="azure" />
-        <StatCard title="Interviews Scheduled" value={interviews.length} comparisonText="in calendar" accentColor="indigo" />
-        <StatCard title="Offer Accept Rate" value="88.5%" comparisonText="YTD metric" accentColor="emerald" />
+      <div className="flex flex-wrap items-center gap-x-7 gap-y-3 rounded-2xl border border-slate-200/80 bg-white px-5 py-4 text-xs dark:border-slate-800 dark:bg-slate-900 sm:px-6">
+        <span className="font-medium text-slate-500">Hiring pipeline</span>
+        <span><span className="text-slate-500">Open positions</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-white">{jobOpenings.length}</strong></span>
+        <span><span className="text-slate-500">Candidates</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-white">{candidates.length}</strong></span>
+        <span><span className="text-slate-500">Interviews</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-white">{interviews.length}</strong></span>
       </div>
 
       {/* Segmented Navigation Tabs */}

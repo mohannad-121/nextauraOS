@@ -23,9 +23,9 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   onSecondaryAction,
 }) => {
   return (
-    <div className="p-10 sm:p-14 text-center rounded-2xl bg-white dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-4 my-4">
-      <div className="w-12 h-12 rounded-xl bg-slate-100 dark:bg-slate-700/60 text-slate-700 dark:text-slate-300 border border-slate-200/60 dark:border-slate-600 flex items-center justify-center mx-auto">
-        <Icon className="w-6 h-6 stroke-[1.75]" />
+    <div className="p-10 sm:p-14 text-center rounded-2xl bg-white dark:bg-slate-800/80 border border-dashed border-slate-300 dark:border-slate-700 space-y-4 my-4">
+      <div className="w-11 h-11 rounded-xl bg-blue-50 dark:bg-blue-950/50 text-blue-700 dark:text-blue-300 border border-blue-100 dark:border-blue-900 flex items-center justify-center mx-auto">
+        <Icon className="w-5 h-5 stroke-[1.75]" aria-hidden="true" />
       </div>
       <div className="space-y-1.5 max-w-md mx-auto">
         <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100 font-heading">{title}</h3>

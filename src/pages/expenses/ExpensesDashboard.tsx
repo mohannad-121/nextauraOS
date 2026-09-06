@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Plus, AlertTriangle, Sparkles, Upload } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { PageHeader } from '../../components/common/PageHeader';
-import { StatCard } from '../../components/common/StatCard';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { Modal } from '../../components/common/Modal';
 import { Avatar } from '../../components/common/Avatar';
@@ -77,8 +76,8 @@ export const ExpensesDashboard: React.FC = () => {
     <div className="space-y-6">
       <PageHeader
         category="Finance"
-        title="Employee Expenses & Cards"
-        subtitle="Receipt capture with AI OCR, manager approval workflows, policy checks & corporate cards."
+        title="Expenses"
+        subtitle="Submit receipts, review claims, and keep company spend moving through approval."
         actions={
           <div className="flex items-center gap-2.5">
             <button
@@ -98,12 +97,10 @@ export const ExpensesDashboard: React.FC = () => {
         }
       />
 
-      {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard title="Total Expense Spend" value={totalSpent} isCurrency accentColor="rose" />
-        <StatCard title="Awaiting Approval" value={pendingApprovals.length} comparisonText="active items" accentColor="amber" />
-        <StatCard title="Corporate Cards Active" value={2} comparisonText="virtual & physical" accentColor="indigo" />
-        <StatCard title="Reimbursed YTD" value={1450} isCurrency accentColor="emerald" />
+      <div className="flex flex-wrap items-center gap-x-7 gap-y-3 rounded-2xl border border-slate-200/80 bg-white px-5 py-4 text-xs dark:border-slate-800 dark:bg-slate-900 sm:px-6">
+        <span className="font-medium text-slate-500">Expense register</span>
+        <span><span className="text-slate-500">Recorded spend</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-white">{formatCurrency(totalSpent)}</strong></span>
+        <span><span className="text-slate-500">Awaiting approval</span> <strong className="ms-1 font-semibold text-amber-800 dark:text-amber-300">{pendingApprovals.length}</strong></span>
       </div>
 
       {/* Expense List */}
