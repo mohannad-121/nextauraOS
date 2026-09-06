@@ -41,24 +41,41 @@ export const EmployeesList: React.FC = () => {
     return matchesSearch && matchesDept;
   });
 
-  const handleCreate = () => {
-    if (!name || !email || !jobTitle) return;
-    createEmployee({
-      name,
-      email,
-      phone: phone || '+1 415 000 0000',
-      avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
-      jobTitle,
-      department,
-      workLocation,
-      startDate: new Date().toISOString().substring(0, 10),
-      employmentType,
-      status: 'Active',
-      baseSalary: Number(baseSalary),
-      payFrequency: 'Monthly',
-      skills: [{ name: 'Enterprise SaaS', level: 'Advanced' }],
-    });
-    setCreateModalOpen(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const handleCreate = async () => {
+    if (!name || !email || !jobTitle) {
+      setErrorMessage('Full name, email, and job title are required.');
+      return;
+    }
+    setErrorMessage(null);
+    setIsSubmitting(true);
+    try {
+      await createEmployee({
+        name,
+        email,
+        phone: phone || '+1 415 000 0000',
+        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+        jobTitle,
+        department,
+        workLocation,
+        startDate: new Date().toISOString().substring(0, 10),
+        employmentType,
+        status: 'Active',
+        baseSalary: Number(baseSalary),
+        payFrequency: 'Monthly',
+        skills: [{ name: 'Enterprise SaaS', level: 'Advanced' }],
+      });
+      setName('');
+      setEmail('');
+      setJobTitle('');
+      setCreateModalOpen(false);
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Failed to create employee. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -267,40 +284,50 @@ export const EmployeesList: React.FC = () => {
             <p className="text-xs text-slate-400">Click any profile card to inspect employee record.</p>
           </div>
 
-          {/* Level 1: CEO */}
-          <div className="flex justify-center">
-            <div
-              onClick={() => navigate('employees', 'detail', employees[0].id)}
-              className="p-4 rounded-2xl bg-gradient-to-b from-orange-950/80 to-slate-950 border border-orange-500/40 text-center space-y-2 cursor-pointer shadow-xl hover:scale-105 transition-transform w-64"
-            >
-              <img src={employees[0].avatar} alt="" className="w-12 h-12 rounded-2xl object-cover mx-auto ring-2 ring-orange-400" />
-              <div>
-                <div className="font-bold text-slate-100 text-xs">{employees[0].name}</div>
-                <div className="text-[11px] text-orange-400 font-semibold">{employees[0].jobTitle}</div>
-              </div>
+          {employees.length === 0 ? (
+            <div className="p-8 text-center text-slate-400 text-xs">
+              No employees added yet to display in the company org chart.
             </div>
-          </div>
-
-          {/* Line Down */}
-          <div className="w-0.5 h-6 bg-slate-700 mx-auto" />
-
-          {/* Level 2: Tech Lead & VP Finance & Legal */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            {employees.slice(1, 4).map((emp) => (
-              <div
-                key={emp.id}
-                onClick={() => navigate('employees', 'detail', emp.id)}
-                className="p-4 rounded-2xl bg-slate-950 border border-slate-800 text-center space-y-2 cursor-pointer hover:border-orange-500/40 transition-colors"
-              >
-                <img src={emp.avatar} alt="" className="w-10 h-10 rounded-xl object-cover mx-auto" />
-                <div>
-                  <div className="font-bold text-slate-100 text-xs">{emp.name}</div>
-                  <div className="text-[11px] text-cyan-400 font-semibold">{emp.jobTitle}</div>
-                  <div className="text-[10px] text-slate-500">{emp.department}</div>
+          ) : (
+            <>
+              {/* Level 1: CEO */}
+              <div className="flex justify-center">
+                <div
+                  onClick={() => navigate('employees', 'detail', employees[0].id)}
+                  className="p-4 rounded-2xl bg-gradient-to-b from-orange-950/80 to-slate-950 border border-orange-500/40 text-center space-y-2 cursor-pointer shadow-xl hover:scale-105 transition-transform w-64"
+                >
+                  <img src={employees[0].avatar} alt="" className="w-12 h-12 rounded-2xl object-cover mx-auto ring-2 ring-orange-400" />
+                  <div>
+                    <div className="font-bold text-slate-100 text-xs">{employees[0].name}</div>
+                    <div className="text-[11px] text-orange-400 font-semibold">{employees[0].jobTitle}</div>
+                  </div>
                 </div>
               </div>
-            ))}
-          </div>
+
+              {/* Line Down */}
+              {employees.length > 1 && <div className="w-0.5 h-6 bg-slate-700 mx-auto" />}
+
+              {/* Level 2: Tech Lead & VP Finance & Legal */}
+              {employees.length > 1 && (
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+                  {employees.slice(1, 4).map((emp) => (
+                    <div
+                      key={emp.id}
+                      onClick={() => navigate('employees', 'detail', emp.id)}
+                      className="p-4 rounded-2xl bg-slate-950 border border-slate-800 text-center space-y-2 cursor-pointer hover:border-orange-500/40 transition-colors"
+                    >
+                      <img src={emp.avatar} alt="" className="w-10 h-10 rounded-xl object-cover mx-auto" />
+                      <div>
+                        <div className="font-bold text-slate-100 text-xs">{emp.name}</div>
+                        <div className="text-[11px] text-cyan-400 font-semibold">{emp.jobTitle}</div>
+                        <div className="text-[10px] text-slate-500">{emp.department}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          )}
         </div>
       )}
 
@@ -351,9 +378,17 @@ export const EmployeesList: React.FC = () => {
               </div>
             </div>
 
+            {errorMessage && (
+              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold">
+                {errorMessage}
+              </div>
+            )}
+
             <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
-              <button onClick={() => setCreateModalOpen(false)} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-200">Cancel</button>
-              <button onClick={handleCreate} className="px-5 py-2 rounded-xl bg-orange-500 text-slate-950 font-bold shadow-lg shadow-orange-500/20">Create Employee Profile</button>
+              <button onClick={() => setCreateModalOpen(false)} disabled={isSubmitting} className="px-4 py-2 rounded-xl bg-slate-800 text-slate-200 disabled:opacity-50">Cancel</button>
+              <button onClick={handleCreate} disabled={isSubmitting} className="px-5 py-2 rounded-xl bg-orange-500 text-slate-950 font-bold shadow-lg shadow-orange-500/20 disabled:opacity-50">
+                {isSubmitting ? 'Creating...' : 'Create Employee Profile'}
+              </button>
             </div>
           </div>
         </Modal>

@@ -4,10 +4,13 @@ import { useApp } from '../../context/AppContext';
 import type { InvoiceItem, Currency } from '../../types';
 
 export const InvoiceBuilder: React.FC = () => {
-  const { navigate, customers, createInvoice, currentOrg } = useApp();
+  const { navigate, customers, createInvoice, createCustomer, currentOrg } = useApp();
 
+  const [isNewCustomerMode, setIsNewCustomerMode] = useState<boolean>(customers.length === 0);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string>(customers[0]?.id || '');
-  const selectedCustomer = customers.find((c) => c.id === selectedCustomerId) || customers[0];
+  const [customCustomerName, setCustomCustomerName] = useState('');
+  const [customCustomerEmail, setCustomCustomerEmail] = useState('');
+  const [customCustomerCompany, setCustomCustomerCompany] = useState('');
 
   const [invoiceNumber, setInvoiceNumber] = useState(`INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`);
   const [issueDate, setIssueDate] = useState(new Date().toISOString().substring(0, 10));
@@ -19,8 +22,22 @@ export const InvoiceBuilder: React.FC = () => {
   const [notes, setNotes] = useState('Thank you for your business.');
 
   const [items, setItems] = useState<InvoiceItem[]>([
-    { id: '1', description: '', quantity: 1, unitPrice: 0, taxRate: 0, discount: 0, amount: 0 },
+    { id: '1', description: 'Consulting & Setup Service', quantity: 1, unitPrice: 1500, taxRate: 15, discount: 0, amount: 1500 },
   ]);
+
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  const foundCustomer = customers.find((c) => c.id === selectedCustomerId);
+  const activeCustomerName = isNewCustomerMode
+    ? customCustomerName || 'New Client / Customer'
+    : foundCustomer?.name || customers[0]?.name || 'Client Name';
+  const activeCustomerEmail = isNewCustomerMode
+    ? customCustomerEmail || 'client@company.com'
+    : foundCustomer?.email || customers[0]?.email || 'client@company.com';
+  const activeCustomerCompany = isNewCustomerMode
+    ? customCustomerCompany || 'Client Enterprise'
+    : foundCustomer?.company || customers[0]?.company || 'Client Enterprise';
 
   const updateItem = (id: string, field: keyof InvoiceItem, val: any) => {
     setItems((prev) =>
@@ -40,7 +57,7 @@ export const InvoiceBuilder: React.FC = () => {
   const addItem = () => {
     setItems((prev) => [
       ...prev,
-      { id: Date.now().toString(), description: 'Consulting & Setup Service', quantity: 1, unitPrice: 1500, taxRate: 15, discount: 0, amount: 1500 },
+      { id: Date.now().toString(), description: 'Additional Professional Service', quantity: 1, unitPrice: 500, taxRate: 15, discount: 0, amount: 500 },
     ]);
   };
 
@@ -55,27 +72,53 @@ export const InvoiceBuilder: React.FC = () => {
   const taxTotal = items.reduce((acc, curr) => acc + (curr.amount * (curr.taxRate / 100)), 0);
   const total = subtotal - discountTotal + taxTotal;
 
-  const handleSave = (status: 'Draft' | 'Sent') => {
-    createInvoice({
-      number: invoiceNumber,
-      customerId: selectedCustomer.id,
-      customerName: selectedCustomer.name,
-      customerEmail: selectedCustomer.email,
-      issueDate,
-      dueDate,
-      status,
-      currency,
-      items,
-      subtotal,
-      taxTotal,
-      discountTotal,
-      total,
-      amountPaid: 0,
-      amountDue: total,
-      paymentTerms,
-      notes,
-    });
-    navigate('invoicing', 'invoices');
+  const handleSave = async (status: 'Draft' | 'Sent') => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    setErrorMsg(null);
+
+    try {
+      let targetCustId = selectedCustomerId;
+      let targetCustName = activeCustomerName;
+      let targetCustEmail = activeCustomerEmail;
+
+      if (isNewCustomerMode || !targetCustId) {
+        const newCust = await createCustomer({
+          name: customCustomerName || 'New Client',
+          email: customCustomerEmail || 'client@company.com',
+          company: customCustomerCompany || customCustomerName || 'Client Enterprise',
+        });
+        targetCustId = newCust.id;
+        targetCustName = newCust.name;
+        targetCustEmail = newCust.email;
+      }
+
+      await createInvoice({
+        number: invoiceNumber,
+        customerId: targetCustId,
+        customerName: targetCustName,
+        customerEmail: targetCustEmail,
+        issueDate,
+        dueDate,
+        status,
+        currency,
+        items,
+        subtotal,
+        taxTotal,
+        discountTotal,
+        total,
+        amountPaid: 0,
+        amountDue: total,
+        paymentTerms,
+        notes,
+      });
+
+      navigate('invoicing', 'invoices');
+    } catch (err: any) {
+      console.error('Invoice creation error:', err);
+      setErrorMsg('We could not create the invoice. Please try again.');
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -92,20 +135,28 @@ export const InvoiceBuilder: React.FC = () => {
 
         <div className="flex items-center gap-3">
           <button
+            disabled={isSubmitting}
             onClick={() => handleSave('Draft')}
-            className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 transition-colors"
+            className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-xs font-semibold text-slate-200 transition-colors"
           >
-            Save Draft
+            {isSubmitting ? 'Saving...' : 'Save Draft'}
           </button>
           <button
+            disabled={isSubmitting}
             onClick={() => handleSave('Sent')}
-            className="px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/20 flex items-center gap-1.5"
+            className="px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 disabled:opacity-50 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/20 flex items-center gap-1.5"
           >
             <Send className="w-3.5 h-3.5" />
-            Send Invoice
+            {isSubmitting ? 'Sending...' : 'Send Invoice'}
           </button>
         </div>
       </div>
+
+      {errorMsg && (
+        <div className="p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs font-medium">
+          {errorMsg}
+        </div>
+      )}
 
       {/* Grid: Left Editor & Right Live PDF Preview */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
@@ -115,30 +166,68 @@ export const InvoiceBuilder: React.FC = () => {
             <h3 className="text-base font-bold text-slate-100 font-heading">Invoice Details</h3>
 
             {/* Customer & Invoice Number */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1.5">Select Customer</label>
-                <select
-                  value={selectedCustomerId}
-                  onChange={(e) => setSelectedCustomerId(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-100 focus:outline-none focus:border-cyan-500"
-                >
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name} ({c.company})
-                    </option>
-                  ))}
-                </select>
-              </div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-medium text-slate-400">Customer</label>
+                    <button
+                      type="button"
+                      onClick={() => setIsNewCustomerMode(!isNewCustomerMode)}
+                      className="text-[11px] font-semibold text-cyan-400 hover:underline"
+                    >
+                      {isNewCustomerMode ? 'Select Existing' : '+ New Customer'}
+                    </button>
+                  </div>
 
-              <div>
-                <label className="block text-xs font-medium text-slate-400 mb-1.5">Invoice Number</label>
-                <input
-                  type="text"
-                  value={invoiceNumber}
-                  onChange={(e) => setInvoiceNumber(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-slate-100 focus:outline-none focus:border-cyan-500"
-                />
+                  {!isNewCustomerMode && customers.length > 0 ? (
+                    <select
+                      value={selectedCustomerId}
+                      onChange={(e) => setSelectedCustomerId(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-100 focus:outline-none focus:border-cyan-500"
+                    >
+                      {customers.map((c) => (
+                        <option key={c.id} value={c.id}>
+                          {c.name} ({c.company})
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <div className="space-y-2">
+                      <input
+                        type="text"
+                        placeholder="Customer / Client Name"
+                        value={customCustomerName}
+                        onChange={(e) => setCustomCustomerName(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-100 focus:outline-none focus:border-cyan-500"
+                      />
+                      <input
+                        type="email"
+                        placeholder="Customer Email (e.g. billing@client.com)"
+                        value={customCustomerEmail}
+                        onChange={(e) => setCustomCustomerEmail(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-100 focus:outline-none focus:border-cyan-500"
+                      />
+                      <input
+                        type="text"
+                        placeholder="Company Name (Optional)"
+                        value={customCustomerCompany}
+                        onChange={(e) => setCustomCustomerCompany(e.target.value)}
+                        className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-100 focus:outline-none focus:border-cyan-500"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-slate-400 mb-1.5">Invoice Number</label>
+                  <input
+                    type="text"
+                    value={invoiceNumber}
+                    onChange={(e) => setInvoiceNumber(e.target.value)}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs font-mono text-slate-100 focus:outline-none focus:border-cyan-500"
+                  />
+                </div>
               </div>
             </div>
 
@@ -186,6 +275,7 @@ export const InvoiceBuilder: React.FC = () => {
               <div className="flex items-center justify-between mb-3">
                 <h4 className="text-xs font-bold uppercase tracking-wider text-slate-400">Line Items</h4>
                 <button
+                  type="button"
                   onClick={addItem}
                   className="flex items-center gap-1 text-xs font-semibold text-cyan-400 hover:text-cyan-300"
                 >
@@ -239,6 +329,7 @@ export const InvoiceBuilder: React.FC = () => {
                           <span className="font-bold text-slate-100">${item.amount.toLocaleString()}</span>
                         </div>
                         <button
+                          type="button"
                           onClick={() => removeItem(item.id)}
                           className="p-1 rounded text-rose-400 hover:bg-rose-500/10"
                         >
@@ -295,9 +386,9 @@ export const InvoiceBuilder: React.FC = () => {
             {/* Bill To */}
             <div className="p-3.5 rounded-2xl bg-slate-950 border border-slate-800">
               <div className="text-[10px] font-bold uppercase text-slate-500 mb-1">Billed To</div>
-              <div className="text-xs font-bold text-slate-100">{selectedCustomer.name}</div>
-              <div className="text-[11px] text-slate-400">{selectedCustomer.company}</div>
-              <div className="text-[10px] text-slate-500">{selectedCustomer.address}</div>
+              <div className="text-xs font-bold text-slate-100">{activeCustomerName}</div>
+              <div className="text-[11px] text-slate-400">{activeCustomerCompany}</div>
+              <div className="text-[10px] text-slate-500">{activeCustomerEmail}</div>
             </div>
 
             {/* Live Table */}
@@ -313,7 +404,7 @@ export const InvoiceBuilder: React.FC = () => {
                 <tbody className="divide-y divide-slate-800/80">
                   {items.map((i) => (
                     <tr key={i.id}>
-                      <td className="p-2.5 font-medium text-slate-200">{i.description}</td>
+                      <td className="p-2.5 font-medium text-slate-200">{i.description || 'Service item'}</td>
                       <td className="p-2.5 text-end text-slate-400">{i.quantity}</td>
                       <td className="p-2.5 text-end font-bold text-slate-100">${i.amount.toLocaleString()}</td>
                     </tr>

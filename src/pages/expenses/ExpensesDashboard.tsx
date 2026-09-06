@@ -34,23 +34,41 @@ export const ExpensesDashboard: React.FC = () => {
     }, 1500);
   };
 
-  const handleSubmit = () => {
-    if (!title || !amount) return;
-    createExpense({
-      employeeId: user.id,
-      employeeName: user.name,
-      employeeAvatar: user.avatar,
-      title,
-      merchant,
-      date: new Date().toISOString().substring(0, 10),
-      category,
-      amount: Number(amount),
-      currency: 'USD',
-      status: 'Manager Review',
-      paymentMethod: 'Personal Cash/Card',
-      notes,
-    });
-    setSubmitModalOpen(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  const handleSubmit = async () => {
+    if (!title || !amount) {
+      setErrorMessage('Expense title and amount are required.');
+      return;
+    }
+    setErrorMessage(null);
+    setIsSubmitting(true);
+    try {
+      await createExpense({
+        employeeId: user.id,
+        employeeName: user.name,
+        employeeAvatar: user.avatar,
+        title,
+        merchant,
+        date: new Date().toISOString().substring(0, 10),
+        category,
+        amount: Number(amount),
+        currency: 'USD',
+        status: 'Manager Review',
+        paymentMethod: 'Personal Cash/Card',
+        notes,
+      });
+      setTitle('');
+      setMerchant('');
+      setAmount('');
+      setNotes('');
+      setSubmitModalOpen(false);
+    } catch (err: any) {
+      setErrorMessage(err.message || 'Failed to submit expense. Please try again.');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -236,18 +254,26 @@ export const ExpensesDashboard: React.FC = () => {
               </div>
             </div>
 
+            {errorMessage && (
+              <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-semibold">
+                {errorMessage}
+              </div>
+            )}
+
             <div className="flex justify-end gap-3 pt-4 border-t border-slate-800">
               <button
                 onClick={() => setSubmitModalOpen(false)}
-                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200"
+                disabled={isSubmitting}
+                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-slate-200 disabled:opacity-50"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSubmit}
-                className="px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/20"
+                disabled={isSubmitting}
+                className="px-5 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/20 disabled:opacity-50"
               >
-                Submit Expense
+                {isSubmitting ? 'Submitting...' : 'Submit Expense'}
               </button>
             </div>
           </div>

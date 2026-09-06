@@ -102,6 +102,7 @@ import { financeService } from '../services/financeService';
 import { payrollService } from '../services/payrollService';
 import { marketingService } from '../services/marketingService';
 import { calendarService } from '../services/calendarService';
+import { contactService } from '../services/contactService';
 import { auditService } from '../services/auditService';
 import { entitlementService } from '../services/entitlementService';
 import { NEXTAURA_SERVICES } from '../data/appRegistry';
@@ -172,9 +173,11 @@ interface AppContextType {
 
   // Finance Collections
   invoices: Invoice[];
-  createInvoice: (invoice: Omit<Invoice, 'id' | 'createdAt'>) => void;
-  updateInvoiceStatus: (id: string, status: InvoiceStatus) => void;
+  createInvoice: (invoice: Omit<Invoice, 'id' | 'createdAt'>) => Promise<void>;
+  updateInvoiceStatus: (id: string, status: InvoiceStatus) => Promise<void>;
   customers: Customer[];
+  createCustomer: (cust: { name: string; email: string; phone?: string; company?: string }) => Promise<Customer>;
+  createContact: (contact: Omit<Contact, 'id'>) => Promise<Contact>;
   accounts: Account[];
   journalEntries: JournalEntry[];
   createJournalEntry: (entry: Omit<JournalEntry, 'id'>) => void;
@@ -313,7 +316,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // State Collections initialized from Database / Seed (Isolated per tenant)
   const isSupabase = isSupabaseConfigured();
   const [invoices, setInvoices] = useState<Invoice[]>(isSupabase ? [] : initialInvoices);
-  const [customers] = useState<Customer[]>(isSupabase ? [] : initialCustomers);
+  const [customers, setCustomers] = useState<Customer[]>(isSupabase ? [] : initialCustomers);
   const [accounts] = useState<Account[]>(isSupabase ? [] : initialAccounts);
   const [journalEntries, setJournalEntries] = useState<JournalEntry[]>(isSupabase ? [] : initialJournalEntries);
   const [bankTransactions, setBankTransactions] = useState<BankTransaction[]>(isSupabase ? [] : initialBankTransactions);
@@ -352,7 +355,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [socialPosts, setSocialPosts] = useState<SocialPost[]>(isSupabase ? [] : initialSocialPosts);
 
   // Global
-  const [contacts] = useState<Contact[]>(isSupabase ? [] : initialContacts);
+  const [contacts, setContacts] = useState<Contact[]>(isSupabase ? [] : initialContacts);
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(isSupabase ? [] : initialCalendarEvents);
   const [globalApprovals] = useState<GlobalApprovalItem[]>(isSupabase ? [] : initialGlobalApprovals);
   const [notifications, setNotifications] = useState<NotificationItem[]>(isSupabase ? [] : initialNotifications);
@@ -429,6 +432,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setCalendarEvents([]);
       setVehicles([]);
       setOrganizations([]);
+      setCustomers([]);
+      setContacts([]);
+      setEmailCampaigns([]);
+      setSMSCampaigns([]);
+      setSurveys([]);
+      setSocialPosts([]);
     };
 
     const handleSessionUser = (sessionUser: any) => {
@@ -487,6 +496,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setInvoices([]);
       setPayrollRuns([]);
       setCalendarEvents([]);
+      setCustomers([]);
+      setExpenses([]);
+      setJournalEntries([]);
+      setAttendanceRecords([]);
+      setTimeOffRequests([]);
+      setAppraisals([]);
+      setEmailCampaigns([]);
+      setSMSCampaigns([]);
+      setSurveys([]);
+      setSocialPosts([]);
+      setContacts([]);
       return;
     }
 
@@ -494,13 +514,42 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const loadOrgData = async () => {
       try {
-        const [dbEmps, dbCands, dbVehs, dbInv, dbRuns, dbCal] = await Promise.all([
+        const [
+          dbEmps,
+          dbCands,
+          dbVehs,
+          dbInv,
+          dbRuns,
+          dbCal,
+          dbCust,
+          dbExp,
+          dbJE,
+          dbAtt,
+          dbTimeOff,
+          dbAppraisals,
+          dbEmail,
+          dbSMS,
+          dbSurveys,
+          dbSocial,
+          dbContacts,
+        ] = await Promise.all([
           employeeService.fetchEmployees(currentOrg.id),
           recruitmentService.fetchCandidates(currentOrg.id),
           employeeService.fetchVehicles(currentOrg.id),
           financeService.fetchInvoices(currentOrg.id),
           payrollService.fetchPayrollRuns(currentOrg.id),
           calendarService.fetchEvents(currentOrg.id),
+          financeService.fetchCustomers(currentOrg.id),
+          financeService.fetchExpenses(currentOrg.id),
+          financeService.fetchJournalEntries(currentOrg.id),
+          employeeService.fetchAttendance(currentOrg.id),
+          employeeService.fetchTimeOffRequests(currentOrg.id),
+          employeeService.fetchAppraisals(currentOrg.id),
+          marketingService.fetchEmailCampaigns(currentOrg.id),
+          marketingService.fetchSMSCampaigns(currentOrg.id),
+          marketingService.fetchSurveys(currentOrg.id),
+          marketingService.fetchSocialPosts(currentOrg.id),
+          contactService.fetchContacts(currentOrg.id),
         ]);
 
         if (!isCancelled) {
@@ -510,6 +559,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           setInvoices(dbInv);
           setPayrollRuns(dbRuns);
           setCalendarEvents(dbCal);
+          setCustomers(dbCust);
+          setExpenses(dbExp);
+          setJournalEntries(dbJE);
+          setAttendanceRecords(dbAtt);
+          setTimeOffRequests(dbTimeOff);
+          setAppraisals(dbAppraisals);
+          setEmailCampaigns(dbEmail);
+          setSMSCampaigns(dbSMS);
+          setSurveys(dbSurveys);
+          setSocialPosts(dbSocial);
+          setContacts(dbContacts);
         }
       } catch (err) {
         console.error('Failed loading tenant data from Supabase:', err);
@@ -575,14 +635,68 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   };
 
   // Finance Actions
-  const createInvoice = (invData: Omit<Invoice, 'id' | 'createdAt'>) => {
-    const newInvoice: Invoice = { ...invData, id: `inv-${Date.now()}`, createdAt: new Date().toISOString() };
+  const createInvoice = async (invData: Omit<Invoice, 'id' | 'createdAt'>) => {
+    const newInvoice = await financeService.createInvoice(currentOrg.id, invData);
     setInvoices((prev) => [newInvoice, ...prev]);
     addAuditLog('CREATE_INVOICE', 'Invoicing', `Created invoice ${newInvoice.number}`);
   };
 
-  const updateInvoiceStatus = (id: string, status: InvoiceStatus) => {
-    setInvoices((prev) => prev.map((inv) => inv.id === id ? { ...inv, status, amountPaid: status === 'Paid' ? inv.total : inv.amountPaid, amountDue: status === 'Paid' ? 0 : inv.amountDue } : inv));
+  const updateInvoiceStatus = async (id: string, status: InvoiceStatus) => {
+    await financeService.updateInvoiceStatus(currentOrg.id, id, status);
+    setInvoices((prev) =>
+      prev.map((inv) =>
+        inv.id === id
+          ? { ...inv, status, amountPaid: status === 'Paid' ? inv.total : inv.amountPaid, amountDue: status === 'Paid' ? 0 : inv.amountDue }
+          : inv
+      )
+    );
+    addAuditLog('UPDATE_INVOICE_STATUS', 'Invoicing', `Updated invoice ${id} status to ${status}`);
+  };
+
+  const createCustomer = async (custData: { name: string; email: string; phone?: string; company?: string }): Promise<Customer> => {
+    const newCust = await financeService.createCustomer(currentOrg.id, custData);
+    setCustomers((prev) => [newCust, ...prev]);
+    setContacts((prev) => [
+      {
+        id: newCust.id,
+        name: newCust.name,
+        email: newCust.email,
+        phone: newCust.phone,
+        companyName: newCust.company,
+        company: newCust.company,
+        roles: ['Customer'],
+        totalBusiness: 0,
+      },
+      ...prev,
+    ]);
+    addAuditLog('CREATE_CUSTOMER', 'Invoicing', `Created customer ${newCust.name}`);
+    return newCust;
+  };
+
+  const createContact = async (contactData: Omit<Contact, 'id'>): Promise<Contact> => {
+    const newContact = await contactService.createContact(currentOrg.id, contactData);
+    setContacts((prev) => [newContact, ...prev]);
+    if (newContact.type === 'Customer' || newContact.roles?.includes('Customer')) {
+      setCustomers((prev) => [
+        {
+          id: newContact.id,
+          name: newContact.name,
+          email: newContact.email,
+          phone: newContact.phone,
+          company: newContact.companyName || newContact.name,
+          taxId: 'US-TAX-101',
+          address: '100 Corporate Parkway',
+          currency: 'USD',
+          lifetimeRevenue: 0,
+          outstandingBalance: 0,
+          avgPaymentDays: 14,
+          invoicesCount: 0,
+        },
+        ...prev,
+      ]);
+    }
+    addAuditLog('CREATE_CONTACT', 'CRM Directory', `Created contact ${newContact.name}`);
+    return newContact;
   };
 
   const createExpense = (expData: Omit<Expense, 'id'>) => {
@@ -976,6 +1090,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         createInvoice,
         updateInvoiceStatus,
         customers,
+        createCustomer,
+        createContact,
         accounts,
         journalEntries,
         createJournalEntry,

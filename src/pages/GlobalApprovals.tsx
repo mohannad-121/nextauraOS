@@ -14,15 +14,15 @@ export const GlobalApprovals: React.FC = () => {
   const [approvedIds, setApprovedIds] = useState<string[]>([]);
   const [rejectedIds, setRejectedIds] = useState<string[]>([]);
 
-  const handleApprove = (id: string, module: string) => {
+  const handleApprove = async (id: string, module: string) => {
     setApprovedIds((prev) => [...prev, id]);
 
     if (module === 'Time Off') {
-      updateTimeOffStatus('tor-1', 'Approved');
+      await updateTimeOffStatus(id, 'Approved');
     } else if (module === 'Expenses') {
-      updateExpenseStatus('exp-2', 'Approved');
+      await updateExpenseStatus(id, 'Approved');
     } else if (module === 'Payroll') {
-      approvePayrollRun('payrun-1');
+      await approvePayrollRun(id);
     }
   };
 

@@ -82,59 +82,82 @@ export const InvoicingDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Invoices Data Table */}
-      <div className="rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-start text-xs">
-            <thead className="bg-slate-950/80 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800">
-              <tr>
-                <th className="p-4 text-start">Invoice</th>
-                <th className="p-4 text-start">Customer</th>
-                <th className="p-4 text-start">Issue Date</th>
-                <th className="p-4 text-start">Due Date</th>
-                <th className="p-4 text-end">Total</th>
-                <th className="p-4 text-end">Amount Due</th>
-                <th className="p-4 text-center">Status</th>
-                <th className="p-4 text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-800/60 font-medium">
-              {filteredInvoices.map((inv) => (
-                <tr key={inv.id} className="hover:bg-slate-800/40 transition-colors">
-                  <td className="p-4 font-mono font-bold text-cyan-400">{inv.number}</td>
-                  <td className="p-4 font-semibold text-slate-200">{inv.customerName}</td>
-                  <td className="p-4 text-slate-400">{formatDate(inv.issueDate)}</td>
-                  <td className="p-4 text-slate-400">{formatDate(inv.dueDate)}</td>
-                  <td className="p-4 text-end font-bold text-slate-100">${inv.total.toLocaleString()}</td>
-                  <td className="p-4 text-end font-bold text-cyan-400">${inv.amountDue.toLocaleString()}</td>
-                  <td className="p-4 text-center">
-                    <StatusBadge status={inv.status} />
-                  </td>
-                  <td className="p-4 text-center">
-                    <div className="flex items-center justify-center gap-2">
-                      <button
-                        onClick={() => setDetailModalInvoice(inv)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800"
-                        title="View Detail"
-                      >
-                        <Eye className="w-4 h-4" />
-                      </button>
-                      {inv.status !== 'Paid' && (
-                        <button
-                          onClick={() => updateInvoiceStatus(inv.id, 'Paid')}
-                          className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 text-[11px] font-bold"
-                        >
-                          Mark Paid
-                        </button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {/* Invoices Data Table / Empty State */}
+      {filteredInvoices.length === 0 ? (
+        <div className="p-12 text-center rounded-3xl bg-slate-900 border border-slate-800 text-slate-400 space-y-4">
+          <div className="w-12 h-12 rounded-2xl bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 flex items-center justify-center mx-auto">
+            <Plus className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="text-base font-bold text-slate-200 font-heading">No Invoices Found</h3>
+            <p className="text-xs text-slate-400 mt-1 max-w-sm mx-auto">
+              {search || selectedStatus !== 'all'
+                ? 'No invoices match your current search or filter criteria.'
+                : 'Your organization has no invoices yet. Create your first invoice now.'}
+            </p>
+          </div>
+          <button
+            onClick={() => navigate('invoicing', 'new-invoice')}
+            className="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold text-xs shadow-lg inline-flex items-center gap-1.5"
+          >
+            <Plus className="w-4 h-4 stroke-[3]" />
+            Create Invoice
+          </button>
         </div>
-      </div>
+      ) : (
+        <div className="rounded-3xl bg-slate-900/90 border border-slate-800 shadow-xl overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-start text-xs">
+              <thead className="bg-slate-950/80 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-slate-800">
+                <tr>
+                  <th className="p-4 text-start">Invoice</th>
+                  <th className="p-4 text-start">Customer</th>
+                  <th className="p-4 text-start">Issue Date</th>
+                  <th className="p-4 text-start">Due Date</th>
+                  <th className="p-4 text-end">Total</th>
+                  <th className="p-4 text-end">Amount Due</th>
+                  <th className="p-4 text-center">Status</th>
+                  <th className="p-4 text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-800/60 font-medium">
+                {filteredInvoices.map((inv) => (
+                  <tr key={inv.id} className="hover:bg-slate-800/40 transition-colors">
+                    <td className="p-4 font-mono font-bold text-cyan-400">{inv.number}</td>
+                    <td className="p-4 font-semibold text-slate-200">{inv.customerName}</td>
+                    <td className="p-4 text-slate-400">{formatDate(inv.issueDate)}</td>
+                    <td className="p-4 text-slate-400">{formatDate(inv.dueDate)}</td>
+                    <td className="p-4 text-end font-bold text-slate-100">${inv.total.toLocaleString()}</td>
+                    <td className="p-4 text-end font-bold text-cyan-400">${inv.amountDue.toLocaleString()}</td>
+                    <td className="p-4 text-center">
+                      <StatusBadge status={inv.status} />
+                    </td>
+                    <td className="p-4 text-center">
+                      <div className="flex items-center justify-center gap-2">
+                        <button
+                          onClick={() => setDetailModalInvoice(inv)}
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-100 hover:bg-slate-800"
+                          title="View Detail"
+                        >
+                          <Eye className="w-4 h-4" />
+                        </button>
+                        {inv.status !== 'Paid' && (
+                          <button
+                            onClick={() => updateInvoiceStatus(inv.id, 'Paid')}
+                            className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 text-[11px] font-bold"
+                          >
+                            Mark Paid
+                          </button>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       {/* Detail Modal */}
       {detailModalInvoice && (

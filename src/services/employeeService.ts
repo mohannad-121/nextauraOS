@@ -1,13 +1,14 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient';
-import type { Employee, Vehicle, VehicleMaintenance } from '../types';
+import type { Employee, Vehicle, VehicleMaintenance, AttendanceRecord, TimeOffRequest, Appraisal } from '../types';
 
 export const employeeService = {
   async fetchEmployees(orgId: string): Promise<Employee[]> {
-    if (!isSupabaseConfigured()) return [];
+    if (!isSupabaseConfigured() || !orgId) return [];
     const { data, error } = await supabase
       .from('employees')
       .select('*')
-      .eq('organization_id', orgId);
+      .eq('organization_id', orgId)
+      .order('created_at', { ascending: false });
 
     if (error) {
       console.error('Error fetching employees from Supabase:', error);
@@ -20,7 +21,7 @@ export const employeeService = {
       name: row.name,
       email: row.email,
       phone: row.phone,
-      avatar: row.avatar,
+      avatar: row.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(row.name)}&background=06b6d4&color=020617`,
       jobTitle: row.job_title,
       department: row.department,
       workLocation: row.work_location,
@@ -47,7 +48,7 @@ export const employeeService = {
         name: emp.name,
         email: emp.email,
         phone: emp.phone,
-        avatar: emp.avatar,
+        avatar: emp.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(emp.name)}&background=06b6d4&color=020617`,
         job_title: emp.jobTitle,
         department: emp.department,
         work_location: emp.workLocation,
@@ -59,7 +60,10 @@ export const employeeService = {
         manager_name: emp.managerName,
       });
 
-      if (error) console.error('Error creating employee in Supabase:', error);
+      if (error) {
+        console.error('Error creating employee in Supabase:', error);
+        throw new Error(`Failed to create employee: ${error.message}`);
+      }
     }
 
     return {
@@ -70,8 +74,228 @@ export const employeeService = {
     };
   },
 
+  async updateEmployeeDetails(orgId: string, employeeId: string, updates: Partial<Employee>): Promise<void> {
+    if (!isSupabaseConfigured()) return;
+    const dbUpdates: any = {};
+    if (updates.name) dbUpdates.name = updates.name;
+    if (updates.email) dbUpdates.email = updates.email;
+    if (updates.phone) dbUpdates.phone = updates.phone;
+    if (updates.jobTitle) dbUpdates.job_title = updates.jobTitle;
+    if (updates.department) dbUpdates.department = updates.department;
+    if (updates.status) dbUpdates.status = updates.status;
+    if (updates.baseSalary) dbUpdates.base_salary = updates.baseSalary;
+
+    const { error } = await supabase
+      .from('employees')
+      .update(dbUpdates)
+      .eq('id', employeeId)
+      .eq('organization_id', orgId);
+
+    if (error) console.error('Error updating employee:', error);
+  },
+
+  // Attendance
+  async fetchAttendance(orgId: string): Promise<AttendanceRecord[]> {
+    if (!isSupabaseConfigured() || !orgId) return [];
+    const { data, error } = await supabase
+      .from('attendance_records')
+      .select('*')
+      .eq('organization_id', orgId)
+      .order('created_at', { ascending: false });
+
+    if (error) return [];
+    return (data || []).map((row) => ({
+      id: row.id,
+      employeeId: row.employee_id,
+      employeeName: row.employee_name,
+      employeeAvatar: row.employee_avatar || '',
+      department: row.department || 'General',
+      date: row.date,
+      checkIn: row.clock_in || '09:00 AM',
+      checkOut: row.clock_out,
+      breakDurationMins: row.break_duration_mins || 0,
+      workedHours: Number(row.total_hours) || 8,
+      expectedHours: 8,
+      overtimeHours: Number(row.overtime_hours) || 0,
+      status: row.status || 'Working',
+      locationType: 'Office',
+    }));
+  },
+
+  async clockIn(orgId: string, rec: Omit<AttendanceRecord, 'id'>): Promise<AttendanceRecord> {
+    const id = crypto.randomUUID();
+    if (isSupabaseConfigured()) {
+      const { error } = await supabase.from('attendance_records').insert({
+        id,
+        organization_id: orgId,
+        employee_id: rec.employeeId,
+        employee_name: rec.employeeName,
+        employee_avatar: rec.employeeAvatar,
+        department: rec.department,
+        date: rec.date,
+        clock_in: rec.checkIn,
+        total_hours: rec.workedHours,
+        status: rec.status,
+      });
+      if (error) console.error('Error recording attendance:', error);
+    }
+    return { ...rec, id };
+  },
+
+  async updateAttendance(orgId: string, recordId: string, updates: Partial<AttendanceRecord>): Promise<void> {
+    if (!isSupabaseConfigured()) return;
+    const dbUpdates: any = {};
+    if (updates.status) dbUpdates.status = updates.status;
+    if (updates.checkOut) dbUpdates.clock_out = updates.checkOut;
+    if (updates.workedHours !== undefined) dbUpdates.total_hours = updates.workedHours;
+    if (updates.breakDurationMins !== undefined) dbUpdates.break_duration_mins = updates.breakDurationMins;
+
+    await supabase
+      .from('attendance_records')
+      .update(dbUpdates)
+      .eq('id', recordId)
+      .eq('organization_id', orgId);
+  },
+
+  // Time Off
+  async fetchTimeOffRequests(orgId: string): Promise<TimeOffRequest[]> {
+    if (!isSupabaseConfigured() || !orgId) return [];
+    const { data, error } = await supabase
+      .from('time_off_requests')
+      .select('*')
+      .eq('organization_id', orgId)
+      .order('created_at', { ascending: false });
+
+    if (error) return [];
+    return (data || []).map((row) => ({
+      id: row.id,
+      employeeId: row.employee_id,
+      employeeName: row.employee_name,
+      employeeAvatar: row.employee_avatar || '',
+      department: row.department || 'General',
+      leaveType: row.leave_type,
+      startDate: row.start_date,
+      endDate: row.end_date,
+      totalDays: row.days_requested,
+      reason: row.reason || '',
+      status: row.status,
+      approvedBy: row.approved_by,
+      createdAt: row.created_at ? row.created_at.substring(0, 10) : new Date().toISOString().substring(0, 10),
+    }));
+  },
+
+  async createTimeOffRequest(orgId: string, req: Omit<TimeOffRequest, 'id' | 'status' | 'createdAt'>): Promise<TimeOffRequest> {
+    const id = crypto.randomUUID();
+    const createdAt = new Date().toISOString().substring(0, 10);
+    if (isSupabaseConfigured()) {
+      await supabase.from('time_off_requests').insert({
+        id,
+        organization_id: orgId,
+        employee_id: req.employeeId,
+        employee_name: req.employeeName,
+        employee_avatar: req.employeeAvatar,
+        department: req.department,
+        leave_type: req.leaveType,
+        start_date: req.startDate,
+        end_date: req.endDate,
+        days_requested: req.totalDays,
+        reason: req.reason,
+        status: 'Pending',
+      });
+    }
+    return { ...req, id, status: 'Pending', createdAt };
+  },
+
+  async updateTimeOffStatus(orgId: string, id: string, status: 'Approved' | 'Rejected', approvedBy: string): Promise<void> {
+    if (!isSupabaseConfigured()) return;
+    await supabase
+      .from('time_off_requests')
+      .update({ status, approved_by: approvedBy })
+      .eq('id', id)
+      .eq('organization_id', orgId);
+  },
+
+  // Appraisals
+  async fetchAppraisals(orgId: string): Promise<Appraisal[]> {
+    if (!isSupabaseConfigured() || !orgId) return [];
+    const { data, error } = await supabase
+      .from('appraisals')
+      .select('*')
+      .eq('organization_id', orgId)
+      .order('created_at', { ascending: false });
+
+    if (error) return [];
+    return (data || []).map((row) => ({
+      id: row.id,
+      employeeId: row.employee_id,
+      employeeName: row.employee_name,
+      employeeAvatar: row.employee_avatar || '',
+      jobTitle: row.job_title || 'Employee',
+      department: row.department || 'General',
+      managerName: 'Manager',
+      cycleTitle: row.cycle_name,
+      stage: row.stage || 'Self Review',
+      selfRating: Number(row.self_rating) || 0,
+      managerRating: Number(row.manager_rating) || 0,
+      overallRating: Number(row.overall_rating) || 0,
+      goalsOnTrackCount: row.goals_on_track_count || 4,
+      status: row.status || 'In Progress',
+    }));
+  },
+
+  async createAppraisal(orgId: string, emp: Employee, cycleName: string): Promise<Appraisal> {
+    const id = crypto.randomUUID();
+    if (isSupabaseConfigured()) {
+      await supabase.from('appraisals').insert({
+        id,
+        organization_id: orgId,
+        employee_id: emp.id,
+        employee_name: emp.name,
+        employee_avatar: emp.avatar,
+        job_title: emp.jobTitle,
+        department: emp.department,
+        cycle_name: cycleName,
+        stage: 'Self Review',
+        status: 'In Progress',
+      });
+    }
+    return {
+      id,
+      employeeId: emp.id,
+      employeeName: emp.name,
+      employeeAvatar: emp.avatar,
+      jobTitle: emp.jobTitle,
+      department: emp.department,
+      managerName: emp.managerName || 'Manager',
+      cycleTitle: cycleName,
+      stage: 'Self Review',
+      overallRating: 0,
+      selfRating: 0,
+      managerRating: 0,
+      goalsOnTrackCount: 4,
+      status: 'In Progress',
+    };
+  },
+
+  async updateAppraisal(orgId: string, id: string, updates: Partial<Appraisal>): Promise<void> {
+    if (!isSupabaseConfigured()) return;
+    const dbUpdates: any = {};
+    if (updates.stage) dbUpdates.stage = updates.stage;
+    if (updates.status) dbUpdates.status = updates.status;
+    if (updates.selfRating !== undefined) dbUpdates.self_rating = updates.selfRating;
+    if (updates.managerRating !== undefined) dbUpdates.manager_rating = updates.managerRating;
+    if (updates.overallRating !== undefined) dbUpdates.overall_rating = updates.overallRating;
+
+    await supabase
+      .from('appraisals')
+      .update(dbUpdates)
+      .eq('id', id)
+      .eq('organization_id', orgId);
+  },
+
+  // Fleet
   async fetchVehicles(orgId: string): Promise<Vehicle[]> {
-    if (!isSupabaseConfigured()) return [];
+    if (!isSupabaseConfigured() || !orgId) return [];
     const { data, error } = await supabase
       .from('vehicles')
       .select('*')

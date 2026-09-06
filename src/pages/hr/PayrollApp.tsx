@@ -9,10 +9,21 @@ export const PayrollApp: React.FC = () => {
   const { payrollRuns, payslips, approvePayrollRun } = useApp();
   const [selectedPayslip, setSelectedPayslip] = useState<Payslip | null>(null);
 
-  const activeRun = payrollRuns[1] || payrollRuns[0];
+  const activeRun = payrollRuns[1] || payrollRuns[0] || {
+    id: 'payrun-fallback',
+    periodName: 'September 2026 Payroll',
+    payDate: '2026-09-30',
+    grossPayTotal: 485000,
+    netPayTotal: 342000,
+    deductionsTotal: 143000,
+    employerCostsTotal: 48500,
+    status: 'Draft',
+  };
 
-  const handleApprove = () => {
-    approvePayrollRun(activeRun.id);
+  const handleApprove = async () => {
+    if (activeRun.id && activeRun.id !== 'payrun-fallback') {
+      await approvePayrollRun(activeRun.id);
+    }
   };
 
   return (
