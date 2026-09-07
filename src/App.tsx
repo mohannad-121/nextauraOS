@@ -57,6 +57,7 @@ import { AuthScreens } from './pages/auth/AuthScreens';
 import { PricingPage, PublicPricingPage } from './pages/PricingPage';
 import { BillingSuccessPage } from './pages/billing/BillingSuccessPage';
 import { AutomationsPage } from './pages/AutomationsPage';
+import { WebsitesPage } from './pages/websites/WebsitesPage';
 
 const NextAuraAI = React.lazy(() => import('./pages/ai/NextAuraAI').then((module) => ({ default: module.NextAuraAI })));
 
@@ -175,6 +176,8 @@ const AppContent: React.FC = () => {
         return <AnalyticsCenter />;
       case 'automations':
         return <AutomationsPage />;
+      case 'websites':
+        return <WebsitesPage />;
 
       case 'ai':
         return (

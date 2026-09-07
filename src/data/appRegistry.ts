@@ -18,6 +18,7 @@ import {
   FileText,
   BarChart3,
   Contact,
+  PanelsTopLeft,
 } from 'lucide-react';
 import type { AppView } from '../context/AppContext';
 
@@ -35,6 +36,9 @@ export interface NextAuraServiceDefinition {
 }
 
 export const NEXTAURA_SERVICES: NextAuraServiceDefinition[] = [
+  {
+    key: 'website_builder', appId: 'websites', name: 'Website Builder', category: 'marketing', categoryLabel: 'Marketing', description: 'Create structured, versioned website drafts for your organization.', icon: PanelsTopLeft, route: '/websites',
+  },
   // FINANCE
   {
     key: 'invoicing',

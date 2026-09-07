@@ -138,6 +138,7 @@ export type AppView =
   | 'documents'
   | 'analytics'
   | 'automations'
+  | 'websites'
   | 'ai'
   | 'pricing'
   | 'settings'

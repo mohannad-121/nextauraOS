@@ -21,6 +21,7 @@ import {
   Car,
   ClipboardList,
   ArrowRight,
+  Globe2,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { AppView } from '../context/AppContext';
@@ -86,6 +87,7 @@ const groups: Array<{ id: AppDirectoryItem['category']; title: string; apps: App
       { id: 'calendar', title: 'Calendar', description: 'Events across your apps', icon: Calendar, category: 'platform' },
       { id: 'approvals', title: 'Approvals', description: 'Decisions waiting for review', icon: CheckCircle2, category: 'platform' },
       { serviceKey: 'analytics', id: 'analytics', title: 'Analytics', description: 'Cross-module reporting', icon: BarChart3, category: 'platform' },
+      { serviceKey: 'website_builder', id: 'websites', title: 'Website Builder', description: 'Structured website drafts and pages', icon: Globe2, category: 'platform' },
     ],
   },
 ];

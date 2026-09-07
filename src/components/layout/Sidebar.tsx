@@ -29,6 +29,7 @@ import {
   Lock,
   BadgeDollarSign,
   Workflow,
+  Globe2,
 } from 'lucide-react';
 import type { AppView } from '../../context/AppContext';
 import { useApp } from '../../context/AppContext';
@@ -426,6 +427,7 @@ export const Sidebar: React.FC = () => {
             <button aria-label="Automations" onClick={() => navigate('automations')} className={`w-full px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-xs font-medium transition-all ${activeApp === 'automations' ? 'bg-blue-50 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300 font-semibold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100/60 dark:hover:bg-slate-800/40'}`}>
               <Workflow className="w-4 h-4 text-violet-600" />{!isSidebarCollapsed && <span>Automations</span>}
             </button>
+            {activeServices.includes('website_builder') && <button aria-label="Website Builder" onClick={() => navigate('websites')} className={`w-full px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-xs font-medium transition-all ${activeApp === 'websites' ? 'bg-blue-50 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300 font-semibold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100/60 dark:hover:bg-slate-800/40'}`}><Globe2 className="w-4 h-4 text-blue-600" />{!isSidebarCollapsed && <span>Website Builder</span>}</button>}
 
             <button
               aria-label="Settings"
