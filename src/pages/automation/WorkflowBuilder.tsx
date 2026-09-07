@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import {
   ReactFlow,
   Background,
@@ -653,6 +654,7 @@ export function WorkflowBuilder({
   } | null>(null);
   const flowRef = useRef<any>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => { const previousOverflow = document.body.style.overflow; const previousPadding = document.body.style.paddingRight; const scrollbar = window.innerWidth - document.documentElement.clientWidth; document.body.style.overflow = "hidden"; if (scrollbar > 0) document.body.style.paddingRight = `${scrollbar}px`; return () => { document.body.style.overflow = previousOverflow; document.body.style.paddingRight = previousPadding; }; }, []);
   useEffect(() => { let cancelled = false; setConnections([]); setConnectionLoading(true); integrationConnectionService.list(organizationId).then((items) => { if (!cancelled) setConnections(items); }).catch(() => { if (!cancelled) setConnections([]); }).finally(() => { if (!cancelled) setConnectionLoading(false); }); return () => { cancelled = true; }; }, [organizationId]);
   const add = (
     item: AutomationNodeDefinition,
@@ -880,8 +882,8 @@ export function WorkflowBuilder({
     ...node,
     data: { ...node.data, onQuickAdd: openQuickAdd },
   }));
-  return (
-    <div className={`fixed inset-0 z-[100] overflow-hidden bg-[#07111c] text-slate-100 ${focusMode ? "" : ""}`}>
+  return createPortal(
+    <div className="fixed inset-0 z-[1000] h-[100dvh] w-screen overflow-hidden bg-[#07111c] text-slate-100" style={{ pointerEvents: "auto" }}>
       {picker && (
         <NodePicker
           onClose={() => setPicker(null)}
@@ -918,6 +920,7 @@ export function WorkflowBuilder({
             <Plus className="me-1 inline h-3.5 w-3.5" />
             Add node
           </button>
+          <button onClick={() => flowRef.current?.fitView({ padding: 0.28, minZoom: 0.55, maxZoom: 1.1, duration: 180 })} className="hidden rounded-xl border border-white/10 px-3 py-2 text-xs text-slate-300 hover:bg-white/5 md:inline-flex">Fit view</button>
           <button onClick={() => setFocusMode((value) => !value)} className="hidden rounded-xl border border-white/10 px-3 py-2 text-xs text-slate-300 lg:inline-flex">{focusMode ? "Exit focus" : "Focus"}</button>
           {selected && !triggerMap[selected.type || ""] && (
             <>
@@ -1070,6 +1073,9 @@ export function WorkflowBuilder({
               onPaneClick={() => setSelected(null)}
               defaultEdgeOptions={{ type: "smoothstep" }}
               fitView
+              minZoom={0.45}
+              maxZoom={1.5}
+              fitViewOptions={{ padding: 0.28, minZoom: 0.55, maxZoom: 1.1 }}
             >
               <Background
                 color="#284158"
@@ -1107,6 +1113,7 @@ export function WorkflowBuilder({
           {configOpen && <div className="contents"><button aria-label="Close node configuration" onClick={() => setConfigOpen(false)} className="absolute right-[320px] top-3 z-40 rounded-l-lg border border-white/10 bg-slate-900 px-2 py-2 text-xs text-slate-300 hover:bg-slate-800 xl:right-[320px]">›</button><ConfigPanel node={selected} update={updateConfig} connections={connections} connectionLoading={connectionLoading} onAddGmailPermission={addGmailPermission} /></div>}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
