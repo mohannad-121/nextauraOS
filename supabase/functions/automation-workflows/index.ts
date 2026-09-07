@@ -102,11 +102,24 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
+    const effectiveMethod = typeof body._method === 'string' ? body._method : req.method;
     const organizationId = String(body.organizationId || '');
     if (!organizationId) return json({ success: false, error: 'organizationId is required.' }, 400);
+    if (body.operation === 'list') {
+      await requireMembership(admin, user.id, organizationId);
+      const { data, error } = await admin.from('automation_workflows').select('*').eq('organization_id', organizationId).order('updated_at', { ascending: false });
+      if (error) throw error;
+      return json({ success: true, workflows: (data || []).map(publicWorkflow) });
+    }
+    if (body.operation === 'listRuns') {
+      await requireMembership(admin, user.id, organizationId);
+      const { data, error } = await admin.from('automation_runs').select('id,status,workflow_id,event_id,attempt_count,error_summary,started_at,completed_at,created_at,automation_workflows(name),automation_events(event_type)').eq('organization_id', organizationId).order('created_at', { ascending: false }).limit(50);
+      if (error) throw error;
+      return json({ success: true, runs: data || [] });
+    }
     await requireWorkflowAccess(admin, user.id, organizationId);
 
-    if (req.method === 'POST') {
+    if (effectiveMethod === 'POST') {
       const definition = validateDefinition(body);
       const { count, error: countError } = await admin.from('automation_workflows').select('id', { count: 'exact', head: true }).eq('organization_id', organizationId);
       if (countError) throw countError;
@@ -124,7 +137,7 @@ Deno.serve(async (req) => {
     const workflowId = String(body.workflowId || '');
     if (!workflowId) return json({ success: false, error: 'workflowId is required.' }, 400);
 
-    if (req.method === 'PATCH') {
+    if (effectiveMethod === 'PATCH') {
       const { data: current, error: currentError } = await admin.from('automation_workflows').select('*').eq('id', workflowId).eq('organization_id', organizationId).maybeSingle();
       if (currentError) throw currentError;
       if (!current) return json({ success: false, error: 'Workflow not found.' }, 404);
@@ -149,7 +162,7 @@ Deno.serve(async (req) => {
       return json({ success: true, workflow: publicWorkflow(data), ...(incomingWebhookToken ? { incomingWebhookToken } : {}) });
     }
 
-    if (req.method === 'DELETE') {
+    if (effectiveMethod === 'DELETE') {
       const { data, error } = await admin.from('automation_workflows').delete().eq('id', workflowId).eq('organization_id', organizationId).select('id,name').maybeSingle();
       if (error) throw error;
       if (!data) return json({ success: false, error: 'Workflow not found.' }, 404);

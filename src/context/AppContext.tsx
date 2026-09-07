@@ -137,6 +137,7 @@ export type AppView =
   | 'contacts'
   | 'documents'
   | 'analytics'
+  | 'automations'
   | 'ai'
   | 'pricing'
   | 'settings'

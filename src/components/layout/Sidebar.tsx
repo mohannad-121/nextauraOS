@@ -28,6 +28,7 @@ import {
   Building2,
   Lock,
   BadgeDollarSign,
+  Workflow,
 } from 'lucide-react';
 import type { AppView } from '../../context/AppContext';
 import { useApp } from '../../context/AppContext';
@@ -420,6 +421,10 @@ export const Sidebar: React.FC = () => {
             >
               <Plus className="w-4 h-4 text-blue-600 dark:text-blue-400" />
               {!isSidebarCollapsed && <span>Add Services</span>}
+            </button>
+
+            <button aria-label="Automations" onClick={() => navigate('automations')} className={`w-full px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-xs font-medium transition-all ${activeApp === 'automations' ? 'bg-blue-50 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300 font-semibold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100/60 dark:hover:bg-slate-800/40'}`}>
+              <Workflow className="w-4 h-4 text-violet-600" />{!isSidebarCollapsed && <span>Automations</span>}
             </button>
 
             <button
