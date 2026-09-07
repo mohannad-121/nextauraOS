@@ -152,6 +152,7 @@ interface AppContextType {
 
   // Workspace & Multi-Tenant Organization
   organizations: Organization[];
+  setOrganizationList: (organizations: Organization[]) => void;
   currentOrg: Organization;
   setCurrentOrg: (org: Organization) => void;
   switchOrg: (orgId: string) => Promise<void>;
@@ -401,6 +402,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setUser(newUserObj);
 
+    // Supabase boot supplies the authoritative membership list separately.
+    // Never add a synthetic workspace to that list.
+    if (isSupabaseConfigured()) return;
+
     const userOrgId = `org_${Math.random().toString(36).substring(2, 9)}`;
     const newOrg: Organization = {
       id: userOrgId,
@@ -417,6 +422,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     setOrganizations((prev) => [newOrg, ...prev.filter((o) => o.id !== newOrg.id)]);
     setCurrentOrg(newOrg);
+  }, []);
+
+  const setOrganizationList = useCallback((nextOrganizations: Organization[]) => {
+    setOrganizations(nextOrganizations);
   }, []);
 
   const refreshServices = useCallback(async (): Promise<void> => {
@@ -1167,6 +1176,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         navigate,
         goBack,
         organizations,
+        setOrganizationList,
         currentOrg,
         setCurrentOrg,
         switchOrg,

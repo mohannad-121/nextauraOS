@@ -257,8 +257,8 @@ export const Sidebar: React.FC = () => {
                   </button>
                 ))}
                 {companyCreationAccess !== 'none' && <div className="mt-1 border-t border-slate-100 pt-1 dark:border-slate-800">
-                  <button type="button" onClick={() => { if (companyCreationAccess === 'upgrade') navigate('pricing'); else setCompanyCreationOpen(true); setIsOrgDropdownOpen(false); }} className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-blue-950/30">
-                    <Plus className="h-3.5 w-3.5" aria-hidden="true" />{companyCreationAccess === 'upgrade' ? 'Upgrade for more companies' : 'Add company'}
+                  <button type="button" disabled={companyCreationAccess === 'loading'} onClick={() => { if (companyCreationAccess === 'upgrade') navigate('pricing'); else setCompanyCreationOpen(true); setIsOrgDropdownOpen(false); }} className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50 disabled:cursor-wait disabled:opacity-60 dark:text-blue-300 dark:hover:bg-blue-950/30">
+                    <Plus className="h-3.5 w-3.5" aria-hidden="true" />{companyCreationAccess === 'loading' ? 'Checking company access…' : companyCreationAccess === 'upgrade' ? 'Upgrade for more companies' : companyCreationAccess === 'error' ? 'Company access unavailable' : 'Add company'}
                   </button>
                 </div>}
               </div>

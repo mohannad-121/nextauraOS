@@ -26,7 +26,7 @@ interface AppBootGateProps {
 }
 
 export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
-  const { currentOrg, setCurrentOrg, setUserProfile } = useApp();
+  const { currentOrg, setCurrentOrg, setOrganizationList, setUserProfile } = useApp();
   const [bootState, setBootState] = useState<BootState>('loading');
   const [sessionUserId, setSessionUserId] = useState<string | null>(null);
   const [sessionUserEmail, setSessionUserEmail] = useState<string>('');
@@ -44,6 +44,9 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
 
   const setUserProfileRef = useRef(setUserProfile);
   setUserProfileRef.current = setUserProfile;
+
+  const setOrganizationListRef = useRef(setOrganizationList);
+  setOrganizationListRef.current = setOrganizationList;
 
   const currentOrgIdRef = useRef(currentOrg?.id);
   currentOrgIdRef.current = currentOrg?.id;
@@ -135,6 +138,7 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
           );
           userOrgs = [newOrg];
         }
+        setOrganizationListRef.current(userOrgs);
 
         const activeOrg = await organizationService.resolveActiveOrganization(userOrgs);
         if (!activeOrg) {
