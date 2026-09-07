@@ -825,10 +825,34 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addAuditLog('END_BREAK', 'Human Resources', `Employee ended break`);
   };
 
+  const clearOrganizationData = () => {
+    setEmployees([]); setDepartments([]); setCandidates([]); setVehicles([]); setInvoices([]);
+    setPayrollRuns([]); setCalendarEvents([]); setCustomers([]); setExpenses([]); setJournalEntries([]);
+    setAttendanceRecords([]); setTimeOffRequests([]); setAppraisals([]); setEmailCampaigns([]);
+    setSMSCampaigns([]); setSurveys([]); setSocialPosts([]); setContacts([]); setActiveServices([]);
+  };
+
   const switchOrg = async (orgId: string) => {
     const found = organizations.find((o) => o.id === orgId);
     if (!found) return;
-    if (isSupabase) await organizationService.setActiveOrganization(orgId);
+    if (isSupabase) {
+      // Validate target access before persisting. Any failure leaves the current
+      // tenant, visible data, and persisted preference untouched.
+      const [services, entitlements] = await Promise.all([
+        entitlementService.getActiveOrgServices(orgId),
+        entitlementService.getPlanEntitlements(orgId),
+      ]);
+      if (!entitlements?.access_active) throw new Error('This company is not currently available.');
+      await organizationService.setActiveOrganization(orgId);
+      clearOrganizationData();
+      setActiveServices(services);
+      const serviceForRoute = NEXTAURA_SERVICES.find((service) => service.appId === activeApp);
+      if (serviceForRoute && !services.includes(serviceForRoute.key)) {
+        setActiveApp('launchpad');
+        setActiveSubView('overview');
+        setSelectedResourceId(undefined);
+      }
+    }
     setCurrentOrg(found);
   };
 
