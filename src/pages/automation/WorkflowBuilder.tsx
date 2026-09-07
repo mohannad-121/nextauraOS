@@ -252,7 +252,7 @@ function WorkflowNodeCard({ id, data, selected }: NodeProps<WorkflowNode>) {
   const accent = accentClasses[info.accent] || accentClasses.blue;
   return (
     <div
-      className={`relative min-w-[230px] overflow-hidden rounded-2xl border bg-slate-900/95 text-slate-100 shadow-xl backdrop-blur transition ${accent.border} ${accent.glow} ${selected ? "ring-2 ring-white/70" : "hover:-translate-y-0.5 hover:shadow-2xl"}`}
+      className={`relative min-w-[200px] overflow-hidden rounded-xl border bg-slate-900/95 text-slate-100 shadow-xl backdrop-blur transition ${accent.border} ${accent.glow} ${selected ? "ring-2 ring-white/70" : "hover:-translate-y-0.5 hover:shadow-2xl"}`}
     >
       <div className={`h-1 ${accent.stripe}`} />
       <Handle
@@ -479,7 +479,7 @@ function ConfigPanel({
     </label>
   );
   return (
-    <aside className="w-full border-s border-white/10 bg-slate-950/80 p-5 xl:w-80">
+    <aside className="absolute inset-y-0 right-0 z-30 w-[min(320px,92vw)] overflow-y-auto border-s border-white/10 bg-slate-950/95 p-4 shadow-2xl backdrop-blur xl:relative xl:w-[320px] xl:shrink-0 xl:shadow-none">
       <div className="flex items-center gap-3">
         <div
           className={`flex h-9 w-9 items-center justify-center rounded-xl ${accentClasses[info?.accent || "blue"].icon}`}
@@ -643,6 +643,8 @@ export function WorkflowBuilder({
   const [error, setError] = useState("");
   const [connections, setConnections] = useState<IntegrationConnection[]>([]);
   const [connectionLoading, setConnectionLoading] = useState(true);
+  const [configOpen, setConfigOpen] = useState(false);
+  const [focusMode, setFocusMode] = useState(false);
   const [search, setSearch] = useState("");
   const [picker, setPicker] = useState<{
     sourceId?: string;
@@ -879,7 +881,7 @@ export function WorkflowBuilder({
     data: { ...node.data, onQuickAdd: openQuickAdd },
   }));
   return (
-    <div className="fixed inset-0 z-[70] bg-[#07111c] text-slate-100">
+    <div className={`fixed inset-0 z-[100] overflow-hidden bg-[#07111c] text-slate-100 ${focusMode ? "" : ""}`}>
       {picker && (
         <NodePicker
           onClose={() => setPicker(null)}
@@ -890,7 +892,7 @@ export function WorkflowBuilder({
         />
       )}
       <div className="flex h-full flex-col">
-        <header className="flex min-h-16 items-center gap-3 border-b border-white/10 bg-slate-950/80 px-4 backdrop-blur">
+        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-white/10 bg-slate-950/95 px-3 backdrop-blur">
           <button
             onClick={onClose}
             className="rounded-xl p-2 text-slate-400 hover:bg-white/5 hover:text-white"
@@ -916,6 +918,7 @@ export function WorkflowBuilder({
             <Plus className="me-1 inline h-3.5 w-3.5" />
             Add node
           </button>
+          <button onClick={() => setFocusMode((value) => !value)} className="hidden rounded-xl border border-white/10 px-3 py-2 text-xs text-slate-300 lg:inline-flex">{focusMode ? "Exit focus" : "Focus"}</button>
           {selected && !triggerMap[selected.type || ""] && (
             <>
               <button
@@ -962,8 +965,8 @@ export function WorkflowBuilder({
             {error}
           </div>
         )}
-        <div className="flex min-h-0 flex-1">
-          <aside className="hidden w-72 shrink-0 border-e border-white/10 bg-slate-950/70 p-4 lg:block">
+        <div className="relative flex min-h-0 flex-1 overflow-hidden">
+          <aside className="hidden">
             <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
               <Sparkles className="h-4 w-4 text-cyan-300" />
               <input
@@ -1050,7 +1053,7 @@ export function WorkflowBuilder({
             onDrop={drop}
             onDoubleClick={() => openQuickAdd(undefined, undefined)}
             onDragOver={(event) => event.preventDefault()}
-            className="relative min-w-0 flex-1 bg-[#0a1522]"
+            className="relative min-h-0 min-w-0 flex-1 bg-[#0a1522]"
           >
             <ReactFlow
               nodes={displayNodes}
@@ -1063,7 +1066,7 @@ export function WorkflowBuilder({
               onInit={(instance) => {
                 flowRef.current = instance;
               }}
-              onNodeClick={(_, node: any) => setSelected(node)}
+              onNodeClick={(_, node: any) => { setSelected(node); setConfigOpen(true); }}
               onPaneClick={() => setSelected(null)}
               defaultEdgeOptions={{ type: "smoothstep" }}
               fitView
@@ -1077,6 +1080,7 @@ export function WorkflowBuilder({
               <Controls className="!border-white/10 !bg-slate-900 !fill-slate-300 !shadow-xl" />
               <MiniMap
                 className="!border !border-white/10 !bg-slate-900/90"
+                style={{ width: 150, height: 90 }}
                 nodeColor={(node) =>
                   nodeInfo[node.type || ""]?.accent === "emerald"
                     ? "#34d399"
@@ -1100,7 +1104,7 @@ export function WorkflowBuilder({
               </div>
             )}
           </main>
-          <ConfigPanel node={selected} update={updateConfig} connections={connections} connectionLoading={connectionLoading} onAddGmailPermission={addGmailPermission} />
+          {configOpen && <div className="contents"><button aria-label="Close node configuration" onClick={() => setConfigOpen(false)} className="absolute right-[320px] top-3 z-40 rounded-l-lg border border-white/10 bg-slate-900 px-2 py-2 text-xs text-slate-300 hover:bg-slate-800 xl:right-[320px]">›</button><ConfigPanel node={selected} update={updateConfig} connections={connections} connectionLoading={connectionLoading} onAddGmailPermission={addGmailPermission} /></div>}
         </div>
       </div>
     </div>
