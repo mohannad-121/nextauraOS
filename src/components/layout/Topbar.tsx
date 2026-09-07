@@ -34,7 +34,7 @@ const appLabels: Record<string, string> = {
 export const Topbar: React.FC = () => {
   const {
     activeApp, activeSubView, navigate, theme, toggleTheme, language, toggleLanguage, user,
-    notifications, setCommandPaletteOpen, setNotificationDrawerOpen, isSidebarCollapsed, setSidebarCollapsed,
+    notificationUnreadCount, setCommandPaletteOpen, setNotificationDrawerOpen, isSidebarCollapsed, setSidebarCollapsed,
     organizations, currentOrg, switchOrg, setCompanyCreationOpen,
   } = useApp();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -43,7 +43,7 @@ export const Topbar: React.FC = () => {
   const [companyError, setCompanyError] = useState('');
   const menuRef = useRef<HTMLDivElement>(null);
   const companyMenuRef = useRef<HTMLDivElement>(null);
-  const unreadCount = notifications.filter((item) => !item.read).length;
+  const unreadCount = notificationUnreadCount;
   const companyCreationAccess = useCompanyCreationAccess();
 
   useEffect(() => {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Bell, ExternalLink } from 'lucide-react';
+import { X, Bell, ExternalLink, LoaderCircle } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 
 export const NotificationDrawer: React.FC = () => {
@@ -7,11 +7,27 @@ export const NotificationDrawer: React.FC = () => {
     isNotificationDrawerOpen,
     setNotificationDrawerOpen,
     notifications,
+    notificationsLoading,
+    notificationsError,
+    refreshNotifications,
+    markNotificationRead,
     markNotificationsRead,
     navigate,
   } = useApp();
 
   if (!isNotificationDrawerOpen) return null;
+
+  const handleNotificationClick = async (id: string, linkApp: string, isRead: boolean) => {
+    if (!isRead) {
+      try {
+        await markNotificationRead(id);
+      } catch {
+        return;
+      }
+    }
+    navigate(linkApp as any);
+    setNotificationDrawerOpen(false);
+  };
 
   return (
     <div className="fixed inset-0 z-50 overflow-hidden bg-slate-900/25 backdrop-blur-[2px] dark:bg-slate-950/60">
@@ -27,8 +43,9 @@ export const NotificationDrawer: React.FC = () => {
               </div>
               <div className="flex items-center gap-3">
                 <button
-                  onClick={() => markNotificationsRead()}
-                  className="text-xs font-semibold text-blue-700 hover:text-blue-800 dark:text-blue-300"
+                  onClick={() => { void markNotificationsRead(); }}
+                  disabled={notificationsLoading || !notifications.some((item) => !item.read)}
+                  className="text-xs font-semibold text-blue-700 hover:text-blue-800 disabled:cursor-not-allowed disabled:opacity-50 dark:text-blue-300"
                 >
                   Mark all read
                 </button>
@@ -42,15 +59,32 @@ export const NotificationDrawer: React.FC = () => {
               </div>
             </div>
 
-            <div className="space-y-3 max-h-[calc(100vh-160px)] overflow-y-auto pr-1">
-              {notifications.map((item) => (
-                <div
+            <div className="space-y-3 max-h-[calc(100vh-160px)] overflow-y-auto pr-1" aria-busy={notificationsLoading}>
+              {notificationsLoading && (
+                <div className="flex items-center gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-xs text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
+                  <LoaderCircle className="h-4 w-4 animate-spin" aria-hidden="true" />
+                  Loading notifications…
+                </div>
+              )}
+              {!notificationsLoading && notificationsError && (
+                <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/30 dark:text-amber-200" role="alert">
+                  <p>{notificationsError}</p>
+                  <button onClick={() => { void refreshNotifications(); }} className="mt-2 font-semibold underline underline-offset-2">
+                    Retry
+                  </button>
+                </div>
+              )}
+              {!notificationsLoading && !notificationsError && notifications.length === 0 && (
+                <div className="rounded-2xl border border-dashed border-slate-200 p-5 text-center text-xs text-slate-500 dark:border-slate-800 dark:text-slate-400">
+                  No notifications yet
+                </div>
+              )}
+              {!notificationsLoading && notifications.map((item) => (
+                <button
+                  type="button"
                   key={item.id}
-                  onClick={() => {
-                    navigate(item.linkApp as any);
-                    setNotificationDrawerOpen(false);
-                  }}
-                  className={`p-4 rounded-2xl border transition-all cursor-pointer ${
+                  onClick={() => { void handleNotificationClick(item.id, item.linkApp, item.read); }}
+                  className={`w-full p-4 rounded-2xl border text-left transition-all ${
                     item.read
                       ? 'bg-slate-50/60 border-slate-200/70 text-slate-500 dark:bg-slate-950/50 dark:border-slate-800/80 dark:text-slate-400'
                       : 'bg-white border-blue-200 text-slate-700 shadow-sm dark:bg-slate-950 dark:border-blue-800 dark:text-slate-200'
@@ -62,10 +96,10 @@ export const NotificationDrawer: React.FC = () => {
                   </div>
                   <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{item.message}</p>
                   <div className="mt-2.5 flex items-center gap-1 text-[11px] font-semibold text-blue-700 dark:text-blue-300">
-                    Open {item.linkApp}
+                    {item.type === 'automation' ? 'Automation' : `Open ${item.linkApp}`}
                     <ExternalLink className="w-3 h-3" />
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </div>

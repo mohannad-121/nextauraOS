@@ -741,7 +741,7 @@ export interface NotificationItem {
   message: string;
   time: string;
   read: boolean;
-  type: 'invoice' | 'expense' | 'sign' | 'equity' | 'esg' | 'hr' | 'marketing' | 'system';
+  type: 'invoice' | 'expense' | 'sign' | 'equity' | 'esg' | 'hr' | 'marketing' | 'system' | 'automation';
   linkApp: string;
 }
 

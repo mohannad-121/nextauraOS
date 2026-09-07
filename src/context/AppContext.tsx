@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useReducer } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useReducer, useRef } from 'react';
 import type {
   Organization,
   User,
@@ -106,6 +106,7 @@ import { contactService } from '../services/contactService';
 import { auditService } from '../services/auditService';
 import { entitlementService } from '../services/entitlementService';
 import { organizationService } from '../services/organizationService';
+import { notificationService } from '../services/notificationService';
 import { NEXTAURA_SERVICES } from '../data/appRegistry';
 import { isSupabaseConfigured, supabase } from '../services/supabaseClient';
 
@@ -267,9 +268,13 @@ interface AppContextType {
   calendarEvents: CalendarEvent[];
   globalApprovals: GlobalApprovalItem[];
   notifications: NotificationItem[];
-  markNotificationRead: (id: string) => void;
-  markNotificationsRead: (id?: string) => void;
-  markAllNotificationsRead: () => void;
+  notificationUnreadCount: number;
+  notificationsLoading: boolean;
+  notificationsError: string | null;
+  refreshNotifications: () => Promise<void>;
+  markNotificationRead: (id: string) => Promise<void>;
+  markNotificationsRead: () => Promise<void>;
+  markAllNotificationsRead: () => Promise<void>;
   auditLogs: AuditLogItem[];
   addAuditLog: (action: string, module: string, details: string) => void;
 
@@ -377,6 +382,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [calendarEvents, setCalendarEvents] = useState<CalendarEvent[]>(isSupabase ? [] : initialCalendarEvents);
   const [globalApprovals] = useState<GlobalApprovalItem[]>(isSupabase ? [] : initialGlobalApprovals);
   const [notifications, setNotifications] = useState<NotificationItem[]>(isSupabase ? [] : initialNotifications);
+  const [notificationUnreadCount, setNotificationUnreadCount] = useState(0);
+  const [notificationsLoading, setNotificationsLoading] = useState(isSupabase);
+  const [notificationsError, setNotificationsError] = useState<string | null>(null);
+  const notificationOrganizationRef = useRef<string | null>(isSupabase ? null : currentOrg.id);
+  const notificationLoadVersionRef = useRef(0);
   const [auditLogs, setAuditLogs] = useState<AuditLogItem[]>(isSupabase ? [] : initialAuditLogs);
 
   // Entitlements & Onboarding State
@@ -465,6 +475,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setSMSCampaigns([]);
       setSurveys([]);
       setSocialPosts([]);
+      notificationLoadVersionRef.current += 1;
+      notificationOrganizationRef.current = null;
+      setNotifications([]);
+      setNotificationUnreadCount(0);
+      setNotificationsLoading(false);
+      setNotificationsError(null);
     };
 
     const handleSessionUser = (sessionUser: any) => {
@@ -511,6 +527,45 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const loadNotifications = useCallback(async (organizationId: string): Promise<void> => {
+    const requestVersion = ++notificationLoadVersionRef.current;
+    notificationOrganizationRef.current = organizationId;
+    setNotifications([]);
+    setNotificationUnreadCount(0);
+    setNotificationsError(null);
+
+    if (!isSupabase || !organizationId || organizationId === 'org_pending' || organizationId.startsWith('org_temp_')) {
+      setNotificationsLoading(false);
+      return;
+    }
+
+    setNotificationsLoading(true);
+    try {
+      const [items, unreadCount] = await Promise.all([
+        notificationService.listForOrganization(organizationId),
+        notificationService.getUnreadCount(organizationId),
+      ]);
+      if (notificationLoadVersionRef.current !== requestVersion || notificationOrganizationRef.current !== organizationId) return;
+      setNotifications(items);
+      setNotificationUnreadCount(unreadCount);
+    } catch (error: any) {
+      if (notificationLoadVersionRef.current !== requestVersion || notificationOrganizationRef.current !== organizationId) return;
+      setNotificationsError(error?.message || 'Unable to load notifications.');
+    } finally {
+      if (notificationLoadVersionRef.current === requestVersion && notificationOrganizationRef.current === organizationId) {
+        setNotificationsLoading(false);
+      }
+    }
+  }, [isSupabase]);
+
+  const refreshNotifications = useCallback(async (): Promise<void> => {
+    await loadNotifications(currentOrg?.id || '');
+  }, [currentOrg?.id, loadNotifications]);
+
+  useEffect(() => {
+    void loadNotifications(currentOrg?.id || '');
+  }, [currentOrg?.id, loadNotifications]);
 
   // Load database records per organization (Only when organization is resolved and active)
   useEffect(() => {
@@ -838,11 +893,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addAuditLog('END_BREAK', 'Human Resources', `Employee ended break`);
   };
 
+  const clearNotificationsForOrganizationChange = () => {
+    notificationLoadVersionRef.current += 1;
+    notificationOrganizationRef.current = null;
+    setNotifications([]);
+    setNotificationUnreadCount(0);
+    setNotificationsLoading(true);
+    setNotificationsError(null);
+  };
+
   const clearOrganizationData = () => {
     setEmployees([]); setDepartments([]); setCandidates([]); setVehicles([]); setInvoices([]);
     setPayrollRuns([]); setCalendarEvents([]); setCustomers([]); setExpenses([]); setJournalEntries([]);
     setAttendanceRecords([]); setTimeOffRequests([]); setAppraisals([]); setEmailCampaigns([]);
     setSMSCampaigns([]); setSurveys([]); setSocialPosts([]); setContacts([]); setActiveServices([]);
+    clearNotificationsForOrganizationChange();
   };
 
   const refreshOrganizations = useCallback(async (): Promise<Organization[]> => {
@@ -863,21 +928,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
     if (!found) throw new Error('This company is not available to your account.');
     if (isSupabase) {
-      // Validate target access before persisting. Any failure leaves the current
-      // tenant, visible data, and persisted preference untouched.
-      const [services, entitlements] = await Promise.all([
-        entitlementService.getActiveOrgServices(orgId),
-        entitlementService.getPlanEntitlements(orgId),
-      ]);
-      if (!entitlements?.access_active) throw new Error('This company is not currently available.');
-      await organizationService.setActiveOrganization(orgId);
-      clearOrganizationData();
-      setActiveServices(services);
-      const serviceForRoute = NEXTAURA_SERVICES.find((service) => service.appId === activeApp);
-      if (serviceForRoute && !services.includes(serviceForRoute.key)) {
-        setActiveApp('launchpad');
-        setActiveSubView('overview');
-        setSelectedResourceId(undefined);
+      const previousOrganizationId = currentOrg.id;
+      // Never display one company's notifications while another company is
+      // being resolved. Reload the prior company if the switch is rejected.
+      clearNotificationsForOrganizationChange();
+      try {
+        const [services, entitlements] = await Promise.all([
+          entitlementService.getActiveOrgServices(orgId),
+          entitlementService.getPlanEntitlements(orgId),
+        ]);
+        if (!entitlements?.access_active) throw new Error('This company is not currently available.');
+        await organizationService.setActiveOrganization(orgId);
+        clearOrganizationData();
+        setActiveServices(services);
+        const serviceForRoute = NEXTAURA_SERVICES.find((service) => service.appId === activeApp);
+        if (serviceForRoute && !services.includes(serviceForRoute.key)) {
+          setActiveApp('launchpad');
+          setActiveSubView('overview');
+          setSelectedResourceId(undefined);
+        }
+      } catch (error) {
+        void loadNotifications(previousOrganizationId);
+        throw error;
       }
     }
     setCurrentOrg(found);
@@ -885,10 +957,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const toggleLanguage = () => {
     setLanguage((prev) => (prev === 'en' ? 'ar' : 'en'));
-  };
-
-  const markNotificationsRead = () => {
-    markAllNotificationsRead();
   };
 
   const clockOutAttendance = (recordId: string) => {
@@ -1158,13 +1226,50 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     });
   };
 
-  const markNotificationRead = (id: string) => {
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+  const markNotificationRead = async (id: string): Promise<void> => {
+    const organizationId = notificationOrganizationRef.current;
+    const notification = notifications.find((item) => item.id === id);
+    if (!notification || notification.read || !organizationId) return;
+    if (!isSupabase) {
+      setNotifications((prev) => prev.map((item) => item.id === id ? { ...item, read: true } : item));
+      setNotificationUnreadCount((count) => Math.max(0, count - 1));
+      return;
+    }
+    try {
+      await notificationService.markRead(id);
+      if (notificationOrganizationRef.current !== organizationId) return;
+      setNotifications((prev) => prev.map((item) => item.id === id ? { ...item, read: true } : item));
+      setNotificationUnreadCount((count) => Math.max(0, count - 1));
+    } catch (error: any) {
+      if (notificationOrganizationRef.current === organizationId) {
+        setNotificationsError(error?.message || 'Unable to mark notification as read.');
+      }
+      throw error;
+    }
   };
 
-  const markAllNotificationsRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+  const markAllNotificationsRead = async (): Promise<void> => {
+    const organizationId = notificationOrganizationRef.current;
+    if (!organizationId) return;
+    if (!isSupabase) {
+      setNotifications((prev) => prev.map((item) => ({ ...item, read: true })));
+      setNotificationUnreadCount(0);
+      return;
+    }
+    try {
+      await notificationService.markAllRead(organizationId);
+      if (notificationOrganizationRef.current !== organizationId) return;
+      setNotifications((prev) => prev.map((item) => ({ ...item, read: true })));
+      setNotificationUnreadCount(0);
+    } catch (error: any) {
+      if (notificationOrganizationRef.current === organizationId) {
+        setNotificationsError(error?.message || 'Unable to mark notifications as read.');
+      }
+      throw error;
+    }
   };
+
+  const markNotificationsRead = markAllNotificationsRead;
 
   return (
     <AppContext.Provider
@@ -1284,6 +1389,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         calendarEvents,
         globalApprovals,
         notifications,
+        notificationUnreadCount,
+        notificationsLoading,
+        notificationsError,
+        refreshNotifications,
         markNotificationRead,
         markNotificationsRead,
         markAllNotificationsRead,
