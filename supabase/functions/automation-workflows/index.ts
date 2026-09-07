@@ -117,6 +117,23 @@ async function audit(admin: any, organizationId: string, actorId: string, action
   if (error) throw error;
 }
 
+function branchFromSummary(summary: unknown): 'true' | 'false' | 'linear' | null {
+  const match = typeof summary === 'string' ? summary.match(/\((true|false|linear) branch\)$/) : null;
+  return match ? match[1] as 'true' | 'false' | 'linear' : null;
+}
+
+function safeRunActions(workflow: Record<string, unknown>, branch: 'true' | 'false' | 'linear' | null) {
+  const plan = workflow.execution_plan;
+  if (isObject(plan) && Object.keys(plan).length > 0 && Array.isArray(plan.true_actions) && Array.isArray(plan.false_actions) && branch) {
+    const all = [...plan.true_actions, ...plan.false_actions];
+    const indexes = new Map<string, number>();
+    for (const [index, action] of all.entries()) if (isObject(action) && typeof action.node_id === 'string') indexes.set(action.node_id, index);
+    const selected = branch === 'false' ? plan.false_actions : plan.true_actions;
+    return selected.flatMap((action) => { if (!isObject(action) || typeof action.node_id !== 'string' || (action.type !== 'create_notification' && action.type !== 'outgoing_webhook')) return []; const action_index = indexes.get(action.node_id); return action_index === undefined ? [] : [{ action_index, type: action.type }]; });
+  }
+  return Array.isArray(workflow.actions) ? workflow.actions.flatMap((action, action_index) => isObject(action) && (action.type === 'create_notification' || action.type === 'outgoing_webhook') ? [{ action_index, type: action.type }] : []) : [];
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
@@ -144,9 +161,29 @@ Deno.serve(async (req) => {
     }
     if (body.operation === 'listRuns') {
       await requireMembership(admin, user.id, organizationId);
-      const { data, error } = await admin.from('automation_runs').select('id,status,workflow_id,event_id,attempt_count,error_summary,started_at,completed_at,created_at,automation_workflows(name),automation_events(event_type)').eq('organization_id', organizationId).order('created_at', { ascending: false }).limit(50);
+      const { data, error } = await admin.from('automation_runs').select('id,status,workflow_id,event_id,attempt_count,error_summary,result_summary,started_at,completed_at,created_at,automation_workflows(name),automation_events(event_type)').eq('organization_id', organizationId).order('created_at', { ascending: false }).limit(50);
       if (error) throw error;
       return json({ success: true, runs: data || [] });
+    }
+    if (body.operation === 'runDetail') {
+      const runId = String(body.runId || '');
+      if (!runId) return json({ success: false, error: 'runId is required.' }, 400);
+      await requireMembership(admin, user.id, organizationId);
+      const { data: run, error: runError } = await admin.from('automation_runs').select('id,status,workflow_id,event_id,attempt_count,error_summary,result_summary,started_at,completed_at,created_at').eq('id', runId).eq('organization_id', organizationId).maybeSingle();
+      if (runError) throw runError;
+      if (!run) return json({ success: false, error: 'Run not found.' }, 404);
+      const [{ data: workflow, error: workflowError }, { data: event, error: eventError }, { data: notifications, error: notificationsError }, { data: deliveries, error: deliveriesError }] = await Promise.all([
+        admin.from('automation_workflows').select('name,trigger_type,execution_plan,actions').eq('id', run.workflow_id).eq('organization_id', organizationId).maybeSingle(),
+        admin.from('automation_events').select('event_type').eq('id', run.event_id).eq('organization_id', organizationId).maybeSingle(),
+        admin.from('notifications').select('automation_action_index,created_at').eq('organization_id', organizationId).eq('automation_run_id', run.id),
+        admin.from('automation_action_deliveries').select('action_index,status,http_status,error_summary,started_at,completed_at').eq('organization_id', organizationId).eq('run_id', run.id),
+      ]);
+      if (workflowError || eventError || notificationsError || deliveriesError || !workflow || !event) throw new Error('Run details are unavailable.');
+      const branch_taken = branchFromSummary(run.result_summary);
+      const notificationIndexes = new Set((notifications || []).map((item: any) => Number(item.automation_action_index)));
+      const deliveryByIndex = new Map((deliveries || []).map((item: any) => [Number(item.action_index), item]));
+      const actions = safeRunActions(workflow, branch_taken).map((action) => action.type === 'create_notification' ? { ...action, status: notificationIndexes.has(action.action_index) ? 'completed' : 'not_recorded' } : { ...action, ...(deliveryByIndex.get(action.action_index) || { status: 'not_recorded', http_status: null, error_summary: null }) });
+      return json({ success: true, run: { id: run.id, status: run.status, workflow_name: workflow.name, trigger_type: event.event_type, attempt_count: run.attempt_count, started_at: run.started_at, completed_at: run.completed_at, created_at: run.created_at, branch_taken, error_summary: run.error_summary, result_summary: run.result_summary, actions } });
     }
     await requireWorkflowAccess(admin, user.id, organizationId);
 
