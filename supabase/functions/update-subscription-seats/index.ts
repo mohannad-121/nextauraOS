@@ -1,4 +1,5 @@
-import { authenticate, corsHeaders, json, recordAudit, requireBillingAdmin, stripeRequest } from '../_shared/billing.ts';
+import { authenticate, corsHeaders, json, recordAudit, requireBillingAdmin } from '../_shared/billing.ts';
+import { paddleRequest } from '../_shared/paddle.ts';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -12,12 +13,17 @@ Deno.serve(async (req) => {
     const { data: subscription } = await admin.from('organization_subscriptions').select('*').eq('organization_id', organizationId).maybeSingle();
     if (!subscription) return json({ success: false, error: 'No billing record exists for this workspace.' }, 404);
     if (subscription.plan !== 'one_app_free') {
-      if (!subscription.stripe_subscription_id) return json({ success: false, error: 'Stripe subscription is not ready yet. Complete checkout first.' }, 409);
-      let itemId = subscription.stripe_subscription_item_id;
-      if (!itemId) { const remote = await stripeRequest(`subscriptions/${subscription.stripe_subscription_id}`, 'GET'); itemId = remote.items?.data?.[0]?.id; }
-      if (!itemId) return json({ success: false, error: 'Stripe subscription item could not be found.' }, 409);
-      await stripeRequest(`subscription_items/${itemId}`, 'POST', { quantity: String(seatCount), proration_behavior: 'create_prorations' });
-      await admin.from('organization_subscriptions').update({ seat_count: seatCount, stripe_subscription_item_id: itemId }).eq('organization_id', organizationId);
+      if (subscription.billing_provider !== 'paddle' || !subscription.provider_subscription_id) return json({ success: false, error: 'Paddle subscription is not ready yet. Complete checkout first.' }, 409);
+      const remote = await paddleRequest(`subscriptions/${subscription.provider_subscription_id}`);
+      const currentItems = Array.isArray(remote?.items) ? remote.items : [];
+      if (!currentItems.length) return json({ success: false, error: 'Paddle subscription items could not be found.' }, 409);
+      await paddleRequest(`subscriptions/${subscription.provider_subscription_id}`, 'PATCH', {
+        items: currentItems.map((item: any) => ({ price_id: item.price?.id || item.price_id, quantity: seatCount })),
+        proration_billing_mode: 'prorated_immediately',
+      });
+      await admin.from('organizations').update({ requested_seats: seatCount }).eq('id', organizationId);
+      await recordAudit(admin, organizationId, 'billing.seats_update_requested', `Paddle seat quantity change requested for ${seatCount} seats; awaiting webhook confirmation.`);
+      return json({ success: true, seatCount, pendingWebhook: true });
     } else {
       await admin.from('organization_subscriptions').update({ seat_count: seatCount }).eq('organization_id', organizationId);
     }
@@ -26,4 +32,3 @@ Deno.serve(async (req) => {
     return json({ success: true, seatCount });
   } catch (error: any) { return json({ success: false, error: error.message || 'Unable to update subscription seats.' }, 400); }
 });
-

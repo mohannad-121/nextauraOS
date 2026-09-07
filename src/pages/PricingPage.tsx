@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { ArrowLeft, ArrowRight, Check, ExternalLink, Sparkles } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { billingService } from '../services/billingService';
-import { type BillingCycle, type PlanKey } from '../config/pricingConfig';
+import { getDisplayedPlanTotal, getPricingPlan, isPaddleSandbox, PRICING_PLANS, type BillingCycle, type PlanKey } from '../config/pricingConfig';
+import { openPaddleCheckout } from '../services/paddle';
 
 type PlanName = 'One App Free' | 'Standard' | 'Custom';
 
@@ -22,8 +23,8 @@ const plans: Plan[] = [
   {
     name: 'One App Free',
     description: 'A complete starting point for one business workflow.',
-    monthly: '0',
-    yearly: '0',
+    monthly: String(PRICING_PLANS[0].monthlyPerSeat),
+    yearly: String(PRICING_PLANS[0].yearlyPerSeat),
     accent: 'border-t-sky-400',
     priceColor: 'text-sky-700',
     button: 'bg-sky-700 hover:bg-sky-800 focus-visible:ring-sky-600',
@@ -33,8 +34,8 @@ const plans: Plan[] = [
   {
     name: 'Standard',
     description: 'Every core app for teams running their business in one place.',
-    monthly: '7',
-    yearly: '5.50',
+    monthly: String(PRICING_PLANS[1].monthlyPerSeat),
+    yearly: String(PRICING_PLANS[1].yearlyPerSeat),
     accent: 'border-t-rose-400',
     priceColor: 'text-rose-600',
     button: 'bg-rose-600 hover:bg-rose-700 focus-visible:ring-rose-500',
@@ -44,8 +45,8 @@ const plans: Plan[] = [
   {
     name: 'Custom',
     description: 'Flexible operations for complex organizations and integrations.',
-    monthly: '10',
-    yearly: '8',
+    monthly: String(PRICING_PLANS[2].monthlyPerSeat),
+    yearly: String(PRICING_PLANS[2].yearlyPerSeat),
     accent: 'border-t-emerald-500',
     priceColor: 'text-emerald-700',
     button: 'bg-emerald-700 hover:bg-emerald-800 focus-visible:ring-emerald-600',
@@ -60,15 +61,14 @@ interface PricingContentProps {
   onChooseServices: () => void;
 }
 
-const PricingContent: React.FC<PricingContentProps & { organizationId?: string }> = ({ isPublic = false, onOpenWorkspace, onChooseServices, organizationId }) => {
+const PricingContent: React.FC<PricingContentProps & { organizationId?: string; customerEmail?: string }> = ({ isPublic = false, onOpenWorkspace, onChooseServices, organizationId, customerEmail }) => {
   const [billingCycle, setBillingCycle] = useState<BillingCycle>('yearly');
   const [selectedPlan, setSelectedPlan] = useState<PlanName | null>(null);
   const [seatCount, setSeatCount] = useState(5);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
-  const selectedPlanData = plans.find((plan) => plan.name === selectedPlan);
-  const monthlyEquivalent = Number(selectedPlanData ? (billingCycle === 'yearly' ? selectedPlanData.yearly : selectedPlanData.monthly) : 0);
-  const totalDue = billingCycle === 'yearly' ? monthlyEquivalent * seatCount * 12 : monthlyEquivalent * seatCount;
+  const selectedPlanData = selectedPlan ? getPricingPlan(selectedPlan === 'One App Free' ? 'one_app_free' : selectedPlan.toLowerCase() as PlanKey) : null;
+  const totalDue = selectedPlanData ? getDisplayedPlanTotal(selectedPlanData, billingCycle, seatCount) : 0;
 
   const choosePlan = (plan: Plan) => {
     setSelectedPlan(plan.name);
@@ -81,7 +81,10 @@ const PricingContent: React.FC<PricingContentProps & { organizationId?: string }
     setBusy(true); setError('');
     try {
       if (key === 'one_app_free') { await billingService.activateFreePlan(organizationId, seatCount); onChooseServices(); }
-      else { const result = await billingService.createCheckout(organizationId, key, billingCycle, seatCount); if (result.url) window.location.assign(result.url); }
+      else {
+        const result = await billingService.preparePaddleCheckout(organizationId, key, billingCycle, seatCount);
+        await openPaddleCheckout({ priceId: result.priceId, quantity: seatCount, customerEmail, customData: result.customData });
+      }
     } catch (err: any) { setError(err.message || 'Unable to start billing.'); }
     finally { setBusy(false); }
   };
@@ -94,6 +97,7 @@ const PricingContent: React.FC<PricingContentProps & { organizationId?: string }
         <p className="mx-auto mt-5 max-w-2xl text-base leading-7 text-slate-600">
           Start with one app or bring every NextAura workflow together. Pricing is per user, per month.
         </p>
+        {isPaddleSandbox && <p className="mx-auto mt-4 inline-flex rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-semibold tracking-wide text-amber-800">SANDBOX / TEST PRICING — Paddle Checkout shows the current test amount</p>}
 
         <div className="mt-8 inline-flex flex-col items-center gap-2">
           <div role="tablist" aria-label="Billing cycle" className="inline-flex rounded-full border border-slate-200 bg-slate-50 p-1 shadow-sm">
@@ -163,10 +167,10 @@ const PricingContent: React.FC<PricingContentProps & { organizationId?: string }
           <div>
             <p className="flex items-center gap-2 text-sm font-semibold text-slate-900"><Sparkles className="h-4 w-4 text-blue-700" aria-hidden="true" />{selectedPlan} selected</p>
             <p className="mt-1.5 max-w-2xl text-sm leading-6 text-slate-600">
-              {selectedPlan === 'One App Free' ? 'Activate one app for your workspace. You can change your plan later.' : 'Secure Stripe Checkout will open with your selected seat quantity.'}
+              {selectedPlan === 'One App Free' ? 'Activate one app for your workspace. You can change your plan later.' : 'Secure Paddle Checkout will open with your selected seat quantity.'}
             </p>
             {!isPublic && <label className="mt-4 block text-sm font-medium text-slate-700">Seats<input type="number" min={1} max={10000} value={seatCount} onChange={(e) => setSeatCount(Math.max(1, Number(e.target.value) || 1))} className="mt-1.5 block w-40 border border-slate-300 px-3 py-2 text-sm" /></label>}
-            {!isPublic && selectedPlanData && <p className="mt-3 text-sm font-semibold text-slate-900">Estimated {billingCycle === 'yearly' ? 'annual' : 'monthly'} total: ${totalDue.toFixed(2)} <span className="font-normal text-slate-500">({seatCount} seats)</span></p>}
+            {!isPublic && selectedPlanData && !isPaddleSandbox && <p className="mt-3 text-sm font-semibold text-slate-900">Estimated {billingCycle === 'yearly' ? 'annual' : 'monthly'} total: ${totalDue.toFixed(2)} <span className="font-normal text-slate-500">({seatCount} seats)</span></p>}
             {!isPublic && error && <p className="mt-3 text-sm text-rose-600">{error}</p>}
           </div>
           <button type="button" onClick={completeSelection} disabled={busy} className="mt-5 inline-flex shrink-0 items-center gap-2 bg-blue-700 px-5 py-3 text-sm font-semibold text-white transition-colors hover:bg-blue-800 disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600 focus-visible:ring-offset-2 sm:mt-0">
@@ -177,17 +181,17 @@ const PricingContent: React.FC<PricingContentProps & { organizationId?: string }
       )}
 
       <p className="mt-8 text-center text-xs leading-5 text-slate-500">
-        Paid plans use Stripe-hosted Checkout. Payment details never pass through NextAura.
+        Paid plans use Paddle Checkout. Payment details never pass through NextAura.
       </p>
     </div>
   );
 };
 
 export const PricingPage: React.FC = () => {
-  const { navigate, currentOrg } = useApp();
+  const { navigate, currentOrg, user } = useApp();
   return (
     <div className="-mx-4 -my-5 min-h-[calc(100vh-4rem)] bg-white px-4 py-10 text-slate-900 sm:-mx-6 sm:-my-7 sm:px-6 sm:py-12 xl:-mx-10 xl:-my-9 xl:px-10">
-      <PricingContent organizationId={currentOrg.id} onOpenWorkspace={() => navigate('settings', 'services')} onChooseServices={() => navigate('settings', 'services')} />
+      <PricingContent organizationId={currentOrg.id} customerEmail={user.email} onOpenWorkspace={() => navigate('settings', 'services')} onChooseServices={() => navigate('settings', 'services')} />
     </div>
   );
 };

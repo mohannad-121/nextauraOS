@@ -3,8 +3,9 @@ import type { BillingCycle, PlanKey } from '../config/pricingConfig';
 
 export interface OrganizationSubscription {
   id: string; organization_id: string; plan: PlanKey; billing_cycle: BillingCycle | null; status: string;
-  seat_count: number; stripe_customer_id: string | null; stripe_subscription_id: string | null;
-  current_period_end: string | null; cancel_at_period_end: boolean;
+  seat_count: number; billing_provider: 'internal' | 'paddle' | 'stripe' | null;
+  provider_customer_id: string | null; provider_subscription_id: string | null; provider_price_id: string | null;
+  current_period_end: string | null; next_billed_at: string | null; scheduled_change: { action?: string; effective_at?: string } | null;
 }
 
 async function invoke(name: string, body: Record<string, unknown>) {
@@ -20,11 +21,11 @@ export const billingService = {
     if (error) throw new Error(error.message);
     return data;
   },
-  async createCheckout(organizationId: string, plan: Exclude<PlanKey, 'one_app_free'>, billingCycle: BillingCycle, seatCount: number) {
-    return invoke('create-stripe-checkout', { organizationId, plan, billingCycle, seatCount });
+  async preparePaddleCheckout(organizationId: string, plan: Exclude<PlanKey, 'one_app_free'>, billingCycle: BillingCycle, seatCount: number) {
+    return invoke('prepare-paddle-checkout', { organizationId, plan, billingCycle, seatCount });
   },
   async activateFreePlan(organizationId: string, seatCount: number) { return invoke('activate-free-plan', { organizationId, seatCount }); },
   async saveSeatCount(organizationId: string, seatCount: number) { return invoke('save-seat-count', { organizationId, seatCount }); },
-  async openPortal(organizationId: string) { return invoke('create-stripe-portal', { organizationId }); },
+  async openPortal(organizationId: string) { return invoke('create-paddle-portal', { organizationId }); },
   async updateSeats(organizationId: string, seatCount: number) { return invoke('update-subscription-seats', { organizationId, seatCount }); },
 };

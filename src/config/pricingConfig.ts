@@ -11,16 +11,20 @@ export interface PricingPlan {
   description: string;
 }
 
-export const STRIPE_PRICE_IDS = {
+const environment = import.meta.env;
+
+export const PADDLE_PRICE_IDS = {
   standard: {
-    monthly: 'price_1UCnDKDCcn7z3Fv7QtqmhqHc',
-    yearly: 'price_1UCnE0DCcn7z3Fv7HGiAsD4f',
+    monthly: environment.VITE_PADDLE_STANDARD_MONTHLY_PRICE_ID || 'pri_01m1xkjn0e25b2fh64xc3gwtwz',
+    yearly: environment.VITE_PADDLE_STANDARD_YEARLY_PRICE_ID || 'pri_01m1xkkmx9jnt7fm8dgp39g5cr',
   },
   custom: {
-    monthly: 'price_1UCnEsDCcn7z3Fv7Tdi9wc5l',
-    yearly: 'price_1UCnFBDCcn7z3Fv75aQYAa6D',
+    monthly: environment.VITE_PADDLE_CUSTOM_MONTHLY_PRICE_ID || 'pri_01m1xkra5038az9bs921zmapwy',
+    yearly: environment.VITE_PADDLE_CUSTOM_YEARLY_PRICE_ID || 'pri_01m1xkrxamktvhqbxbgmsd5p6q',
   },
 } as const;
+
+export const isPaddleSandbox = (environment.VITE_PADDLE_ENV || 'sandbox') === 'sandbox';
 
 export const PRICING_PLANS: PricingPlan[] = [
   {
@@ -35,8 +39,8 @@ export const PRICING_PLANS: PricingPlan[] = [
     name: 'Standard',
     monthlyPerSeat: 7,
     yearlyPerSeat: 5.5,
-    monthlyPriceId: STRIPE_PRICE_IDS.standard.monthly,
-    yearlyPriceId: STRIPE_PRICE_IDS.standard.yearly,
+    monthlyPriceId: PADDLE_PRICE_IDS.standard.monthly,
+    yearlyPriceId: PADDLE_PRICE_IDS.standard.yearly,
     description: 'Every core app for teams running their business in one place.',
   },
   {
@@ -44,11 +48,15 @@ export const PRICING_PLANS: PricingPlan[] = [
     name: 'Custom',
     monthlyPerSeat: 10,
     yearlyPerSeat: 8,
-    monthlyPriceId: STRIPE_PRICE_IDS.custom.monthly,
-    yearlyPriceId: STRIPE_PRICE_IDS.custom.yearly,
+    monthlyPriceId: PADDLE_PRICE_IDS.custom.monthly,
+    yearlyPriceId: PADDLE_PRICE_IDS.custom.yearly,
     description: 'Flexible operations for complex organizations and integrations.',
   },
 ];
 
 export const getPricingPlan = (key: PlanKey) => PRICING_PLANS.find((plan) => plan.key === key)!;
 
+export const getDisplayedPlanTotal = (plan: PricingPlan, cycle: BillingCycle, seatCount: number) => {
+  const perSeat = cycle === 'yearly' ? plan.yearlyPerSeat * 12 : plan.monthlyPerSeat;
+  return perSeat * seatCount;
+};

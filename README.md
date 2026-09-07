@@ -32,3 +32,32 @@ npm run test:ai
 npm run lint
 npm run build
 ```
+
+## Paddle Sandbox billing
+
+The paid-plan flow uses Paddle.js in the browser and signed Paddle notifications in Supabase Edge Functions. The free plan remains internal.
+
+Browser environment variables (`.env.local`):
+
+```bash
+VITE_PADDLE_ENV=sandbox
+VITE_PADDLE_CLIENT_TOKEN=test_...
+VITE_PADDLE_STANDARD_MONTHLY_PRICE_ID=pri_01m1xkjn0e25b2fh64xc3gwtwz
+VITE_PADDLE_STANDARD_YEARLY_PRICE_ID=pri_01m1xkkmx9jnt7fm8dgp39g5cr
+VITE_PADDLE_CUSTOM_MONTHLY_PRICE_ID=pri_01m1xkra5038az9bs921zmapwy
+VITE_PADDLE_CUSTOM_YEARLY_PRICE_ID=pri_01m1xkrxamktvhqbxbgmsd5p6q
+```
+
+Set these as Supabase Edge Function secrets (never expose them to the browser):
+
+```bash
+PADDLE_ENV=sandbox
+PADDLE_API_KEY=pdl_sdbx_apikey_...
+PADDLE_NOTIFICATION_WEBHOOK_SECRET=pdl_ntfset_...
+PADDLE_STANDARD_MONTHLY_PRICE_ID=pri_01m1xkjn0e25b2fh64xc3gwtwz
+PADDLE_STANDARD_YEARLY_PRICE_ID=pri_01m1xkkmx9jnt7fm8dgp39g5cr
+PADDLE_CUSTOM_MONTHLY_PRICE_ID=pri_01m1xkra5038az9bs921zmapwy
+PADDLE_CUSTOM_YEARLY_PRICE_ID=pri_01m1xkrxamktvhqbxbgmsd5p6q
+```
+
+Deploy `prepare-paddle-checkout`, `create-paddle-portal`, `update-subscription-seats`, `activate-free-plan`, and `paddle-webhook` after applying the Paddle billing migration. Configure the Paddle Sandbox notification destination to post to `https://<project-ref>.supabase.co/functions/v1/paddle-webhook`, subscribe to customer, subscription, and transaction events, and use that destination's secret as `PADDLE_NOTIFICATION_WEBHOOK_SECRET`.

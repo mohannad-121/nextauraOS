@@ -2,7 +2,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 
 export const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, idempotency-key, stripe-signature',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, idempotency-key, paddle-signature',
 };
 
 export const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), {
@@ -40,21 +40,6 @@ export async function requireBillingAdmin(admin: any, userId: string, organizati
   return data;
 }
 
-export async function stripeRequest(path: string, method = 'POST', values: Record<string, string> = {}) {
-  const key = Deno.env.get('STRIPE_SECRET_KEY');
-  if (!key) throw new Error('Stripe is not configured. Add STRIPE_SECRET_KEY in Supabase Edge Function secrets.');
-  const body = new URLSearchParams(values);
-  const response = await fetch(`https://api.stripe.com/v1/${path}`, {
-    method,
-    headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: method === 'GET' ? undefined : body,
-  });
-  const data = await response.json();
-  if (!response.ok) throw new Error(data?.error?.message || `Stripe request failed (${response.status})`);
-  return data;
-}
-
 export async function recordAudit(admin: any, organizationId: string, action: string, details: string) {
-  await admin.from('audit_logs').insert({ organization_id: organizationId, user_name: 'Stripe Billing', action, details });
+  await admin.from('audit_logs').insert({ organization_id: organizationId, user_name: 'Paddle Billing', action, details });
 }
-

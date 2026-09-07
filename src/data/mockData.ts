@@ -156,7 +156,7 @@ export const initialInvoices: Invoice[] = [
 
 export const initialAccounts: Account[] = [
   { id: 'acc-1000', code: '1000', name: 'Silicon Valley Bank - Main Operating', category: 'Assets', type: 'Bank', balance: 142850, currency: 'USD', isBank: true },
-  { id: 'acc-1050', code: '1050', name: 'Stripe Merchant Cash Account', category: 'Assets', type: 'Bank', balance: 41770, currency: 'USD', isBank: true },
+  { id: 'acc-1050', code: '1050', name: 'Paddle Merchant Cash Account', category: 'Assets', type: 'Bank', balance: 41770, currency: 'USD', isBank: true },
   { id: 'acc-1100', code: '1100', name: 'Accounts Receivable (AR)', category: 'Assets', type: 'Current Asset', balance: 31420, currency: 'USD' },
   { id: 'acc-2000', code: '2000', name: 'Accounts Payable (AP)', category: 'Liabilities', type: 'Current Liability', balance: 14280, currency: 'USD' },
   { id: 'acc-3000', code: '3000', name: 'Common Stock Equity', category: 'Equity', type: 'Equity', balance: 100000, currency: 'USD' },

@@ -10,9 +10,8 @@ Deno.serve(async (req) => {
     if (!organizationId || !Number.isInteger(seatCount) || seatCount < 1 || seatCount > 10000) return json({ success: false, error: 'Valid organization and seat count are required.' }, 400);
     await requireBillingAdmin(admin, user.id, organizationId);
     await admin.from('organizations').update({ requested_seats: seatCount }).eq('id', organizationId);
-    await admin.from('organization_subscriptions').upsert({ organization_id: organizationId, plan: 'one_app_free', billing_cycle: null, status: 'active', seat_count: seatCount, stripe_customer_id: null, stripe_subscription_id: null, stripe_subscription_item_id: null, stripe_price_id: null, cancel_at_period_end: false }, { onConflict: 'organization_id' });
+    await admin.from('organization_subscriptions').upsert({ organization_id: organizationId, plan: 'one_app_free', billing_cycle: null, status: 'active', seat_count: seatCount, billing_provider: 'internal', provider_customer_id: null, provider_subscription_id: null, provider_item_id: null, provider_price_id: null, next_billed_at: null, scheduled_change: null }, { onConflict: 'organization_id' });
     await recordAudit(admin, organizationId, 'billing.free_plan_activated', `One App Free activated for ${seatCount} seats.`);
     return json({ success: true });
   } catch (error: any) { return json({ success: false, error: error.message || 'Unable to activate free plan.' }, 400); }
 });
-
