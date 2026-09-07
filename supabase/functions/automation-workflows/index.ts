@@ -206,7 +206,7 @@ Deno.serve(async (req) => {
         admin.from('automation_workflows').select('name,trigger_type,execution_plan,actions').eq('id', run.workflow_id).eq('organization_id', organizationId).maybeSingle(),
         admin.from('automation_events').select('event_type').eq('id', run.event_id).eq('organization_id', organizationId).maybeSingle(),
         admin.from('notifications').select('automation_action_index,created_at').eq('organization_id', organizationId).eq('automation_run_id', run.id),
-        admin.from('automation_action_deliveries').select('action_index,status,http_status,error_summary,started_at,completed_at').eq('organization_id', organizationId).eq('run_id', run.id),
+        admin.from('automation_action_deliveries').select('action_index,status,http_status,error_summary,provider_error_code,provider_error_reason,started_at,completed_at').eq('organization_id', organizationId).eq('run_id', run.id),
       ]);
       if (workflowError || eventError || notificationsError || deliveriesError || !workflow || !event) throw new Error('Run details are unavailable.');
       const branch_taken = branchFromSummary(run.result_summary);
