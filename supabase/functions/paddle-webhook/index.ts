@@ -1,5 +1,5 @@
 import { adminClient, corsHeaders, json, recordAudit } from '../_shared/billing.ts';
-import { syncOrganizationServiceEntitlements } from '../_shared/entitlements.ts';
+import { lifecyclePlanForSubscription, reconcileOrganizationFamilyForPlan, resolveBillingRootOrganizationId, syncOrganizationServiceEntitlements } from '../_shared/entitlements.ts';
 import { planByPaddlePrice } from '../_shared/paddleConfig.ts';
 
 function hex(bytes: Uint8Array) { return [...bytes].map((byte) => byte.toString(16).padStart(2, '0')).join(''); }
@@ -55,6 +55,7 @@ async function resolveOrganizationId(admin: any, data: any) {
 }
 
 async function syncSubscription(admin: any, event: any, organizationId: string) {
+  const billingRootOrganizationId = await resolveBillingRootOrganizationId(admin, organizationId);
   const subscription = event.data;
   const item = Array.isArray(subscription?.items) ? subscription.items[0] : null;
   const priceId = itemPriceId(item);
@@ -64,7 +65,7 @@ async function syncSubscription(admin: any, event: any, organizationId: string) 
   const currentPeriod = subscription.current_billing_period || {};
   const status = event.event_type === 'subscription.canceled' ? 'canceled' : subscription.status || 'unknown';
   const { error } = await admin.from('organization_subscriptions').upsert({
-    organization_id: organizationId,
+    organization_id: billingRootOrganizationId,
     plan: mapped.plan,
     billing_cycle: mapped.billingCycle,
     status,
@@ -80,9 +81,10 @@ async function syncSubscription(admin: any, event: any, organizationId: string) 
     scheduled_change: scheduledChange,
   }, { onConflict: 'organization_id' });
   if (error) throw error;
-  await admin.from('organizations').update({ requested_seats: itemQuantity(item) }).eq('id', organizationId);
-  await syncOrganizationServiceEntitlements(admin, organizationId);
-  await recordAudit(admin, organizationId, `billing.${event.event_type.replaceAll('.', '_')}`, `Paddle subscription state synchronized (${status}).`);
+  await admin.from('organizations').update({ requested_seats: itemQuantity(item) }).eq('id', billingRootOrganizationId);
+  await reconcileOrganizationFamilyForPlan(admin, billingRootOrganizationId, lifecyclePlanForSubscription(mapped.plan, status));
+  await syncOrganizationServiceEntitlements(admin, billingRootOrganizationId);
+  await recordAudit(admin, billingRootOrganizationId, `billing.${event.event_type.replaceAll('.', '_')}`, `Paddle subscription state synchronized (${status}).`);
 }
 
 Deno.serve(async (req) => {

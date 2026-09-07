@@ -17,6 +17,40 @@ export interface PlanCapabilities {
   ai_access: boolean;
 }
 
+export async function resolveBillingRootOrganizationId(admin: any, organizationId: string): Promise<string> {
+  const { data: organization, error: organizationError } = await admin
+    .from('organizations')
+    .select('id,billing_root_organization_id')
+    .eq('id', organizationId)
+    .maybeSingle();
+  if (organizationError) throw organizationError;
+  if (!organization) throw new Error('Organization not found.');
+
+  const billingRootOrganizationId = organization.billing_root_organization_id || organization.id;
+  const { data: billingRoot, error: rootError } = await admin
+    .from('organizations')
+    .select('id,billing_root_organization_id')
+    .eq('id', billingRootOrganizationId)
+    .maybeSingle();
+  if (rootError) throw rootError;
+  if (!billingRoot || billingRoot.billing_root_organization_id !== null) {
+    throw new Error('Invalid billing root relationship.');
+  }
+  return billingRootOrganizationId;
+}
+
+export function lifecyclePlanForSubscription(plan: PlanCapabilities['plan'], status: string): PlanCapabilities['plan'] {
+  return ACCESS_STATUSES.has(status) ? plan : 'one_app_free';
+}
+
+export async function reconcileOrganizationFamilyForPlan(admin: any, billingRootOrganizationId: string, effectivePlan: PlanCapabilities['plan']) {
+  const { error } = await admin.rpc('reconcile_organization_family_for_plan', {
+    p_billing_root_organization_id: billingRootOrganizationId,
+    p_effective_plan: effectivePlan,
+  });
+  if (error) throw error;
+}
+
 export async function getOrganizationEntitlements(admin: any, organizationId: string): Promise<PlanCapabilities> {
   const { data: organization, error: organizationError } = await admin
     .from('organizations')
