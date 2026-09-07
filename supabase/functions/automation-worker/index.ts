@@ -1,6 +1,7 @@
 import { adminClient } from '../_shared/billing.ts';
 import { getOrganizationEntitlements } from '../_shared/entitlements.ts';
 import { assertPublicWebhookTarget, discardBoundedResponse, isRetryableWebhookStatus, validateOutgoingWebhookAction, WebhookActionError } from '../_shared/webhook-security.ts';
+import { AutomationConditionError, evaluateAutomationCondition } from '../_shared/automation-condition.ts';
 
 const DEFAULT_BATCH_SIZE = 25;
 const LEASE_SECONDS = 120;
@@ -11,6 +12,7 @@ const NOTIFICATION_FAILURE_SUMMARY = 'Automation notification action could not b
 
 type AutomationRun = Record<string, unknown>;
 type AutomationEvent = { id: string; organization_id: string; event_type: string; entity_type: string; entity_id: string | null; payload: Record<string, unknown>; occurred_at: string };
+type ResolvedAction = { action: unknown; actionIndex: number };
 
 function boundedBatchSize(value: unknown) {
   const parsed = typeof value === 'number' ? value : Number(value);
@@ -111,6 +113,33 @@ async function executeOutgoingWebhook(admin: any, run: AutomationRun, event: Aut
   }
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> { return Boolean(value) && typeof value === 'object' && !Array.isArray(value); }
+
+function resolveWorkflowActions(workflow: Record<string, unknown>, event: AutomationEvent): { actions: ResolvedAction[]; selectedBranch: 'true' | 'false' | 'linear' } {
+  const plan = workflow.execution_plan;
+  if (!isRecord(plan) || Object.keys(plan).length === 0) {
+    if (!Array.isArray(workflow.actions)) throw new WebhookActionError('Automation workflow is unavailable.', false);
+    return { actions: workflow.actions.map((action, actionIndex) => ({ action, actionIndex })), selectedBranch: 'linear' };
+  }
+  if (!isRecord(plan.trigger) || plan.trigger.type !== event.event_type || !Array.isArray(plan.true_actions) || !Array.isArray(plan.false_actions) || !Object.prototype.hasOwnProperty.call(plan, 'condition')) throw new WebhookActionError('Automation execution plan is invalid.', false);
+  const allActions = [...plan.true_actions, ...plan.false_actions];
+  if (allActions.length > 20) throw new WebhookActionError('Automation execution plan exceeds action limits.', false);
+  const actionIndexes = new Map<string, number>();
+  for (const [index, action] of allActions.entries()) {
+    if (!isRecord(action) || typeof action.node_id !== 'string' || !action.node_id || actionIndexes.has(action.node_id)) throw new WebhookActionError('Automation execution plan action is invalid.', false);
+    actionIndexes.set(action.node_id, index);
+  }
+  try {
+    const conditionResult = plan.condition === null ? null : evaluateAutomationCondition(plan.condition, event.payload);
+    const selectedBranch: 'true' | 'false' | 'linear' = conditionResult === null ? 'linear' : conditionResult ? 'true' : 'false';
+    const selected = conditionResult === false ? plan.false_actions : plan.true_actions;
+    return { actions: selected.map((action: any) => ({ action, actionIndex: actionIndexes.get(action.node_id)! })), selectedBranch };
+  } catch (error) {
+    if (error instanceof AutomationConditionError) throw new WebhookActionError(error.message, false);
+    throw error;
+  }
+}
+
 async function executeActions(admin: any, run: AutomationRun) {
   const organizationId = String(run.organization_id || '');
   const workflowId = String(run.workflow_id || '');
@@ -118,22 +147,24 @@ async function executeActions(admin: any, run: AutomationRun) {
   const entitlements = await getOrganizationEntitlements(admin, organizationId);
   if (!entitlements.access_active || !entitlements.automation_access) throw new WebhookActionError('Automation access is not active for this organization.', false);
   const [{ data: workflow, error: workflowError }, event] = await Promise.all([
-    admin.from('automation_workflows').select('organization_id,actions').eq('id', workflowId).eq('organization_id', organizationId).eq('enabled', true).maybeSingle(),
+    admin.from('automation_workflows').select('organization_id,actions,execution_plan').eq('id', workflowId).eq('organization_id', organizationId).eq('enabled', true).maybeSingle(),
     loadEvent(admin, run),
   ]);
-  if (workflowError || !workflow || !Array.isArray(workflow.actions)) throw new WebhookActionError('Automation workflow is unavailable.', false);
+  if (workflowError || !workflow) throw new WebhookActionError('Automation workflow is unavailable.', false);
+  const { actions, selectedBranch } = resolveWorkflowActions(workflow, event);
   let notificationActions = 0;
   let webhookActions = 0;
-  for (const [actionIndex, action] of workflow.actions.entries()) {
+  for (const { action, actionIndex } of actions) {
     if (!action || typeof action !== 'object' || Array.isArray(action)) throw new WebhookActionError('Automation action is invalid.', false);
     const actionType = (action as Record<string, unknown>).type;
     if (actionType === 'create_notification') { await executeNotificationAction(admin, run, action, actionIndex); notificationActions += 1; continue; }
     if (actionType === 'outgoing_webhook') { await executeOutgoingWebhook(admin, run, event, action, actionIndex); webhookActions += 1; continue; }
     throw new WebhookActionError('Automation action is not supported.', false);
   }
-  if (webhookActions) return WEBHOOK_RESULT_SUMMARY;
-  if (notificationActions) return NOTIFICATION_RESULT_SUMMARY;
-  return NO_SUPPORTED_ACTIONS_SUMMARY;
+  const branchSuffix = ` (${selectedBranch} branch)`;
+  if (webhookActions) return WEBHOOK_RESULT_SUMMARY + branchSuffix;
+  if (notificationActions) return NOTIFICATION_RESULT_SUMMARY + branchSuffix;
+  return NO_SUPPORTED_ACTIONS_SUMMARY + branchSuffix;
 }
 
 Deno.serve(async (req) => {
@@ -158,7 +189,7 @@ Deno.serve(async (req) => {
         if (error) throw error;
         completedRuns += 1;
       } catch (error) {
-        const actionError = error instanceof WebhookActionError ? error : new WebhookActionError('Automation action could not be completed.', true);
+        const actionError = error instanceof WebhookActionError ? error : error instanceof AutomationConditionError ? new WebhookActionError(error.message, false) : new WebhookActionError('Automation action could not be completed.', true);
         const rpc = actionError.retryable ? 'complete_automation_run' : 'complete_automation_run_terminal_failure';
         const args = actionError.retryable ? { p_run_id: run.id, p_lease_token: leaseToken, p_succeeded: false, p_summary: actionError.message } : { p_run_id: run.id, p_lease_token: leaseToken, p_summary: actionError.message };
         const { error: failureError } = await admin.rpc(rpc, args);
