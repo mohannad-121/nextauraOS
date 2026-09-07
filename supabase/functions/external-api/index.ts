@@ -35,11 +35,14 @@ Deno.serve(async (req) => {
   if (!resource) return json({ error: 'Unknown resource.' }, 404);
   try {
     const authorization = req.headers.get('Authorization') || '';
-    const rawKey = authorization.startsWith('Bearer ') ? authorization.slice(7).trim() : '';
+    const bearer = authorization.match(/^Bearer ([^\s]+)$/i);
+    const rawKey = bearer?.[1] || '';
     if (!isApiKeyFormat(rawKey)) return json({ error: 'Invalid API key.' }, 401);
     const admin = adminClient();
-    const { data: apiKey, error: keyError } = await admin.from('organization_api_keys').select('id,organization_id,scopes,status,revoked_at').eq('key_hash', await hashApiKey(rawKey)).eq('status', 'active').is('revoked_at', null).maybeSingle();
+    const keyHash = await hashApiKey(rawKey);
+    const { data: apiKey, error: keyError } = await admin.from('organization_api_keys').select('id,organization_id,scopes,status,revoked_at').eq('key_hash', keyHash).eq('status', 'active').is('revoked_at', null).maybeSingle();
     if (keyError) throw keyError;
+    console.info(JSON.stringify({ event: 'external_api_key_lookup', key_prefix: rawKey.slice(0, 17), hash_length: keyHash.length, matched: Boolean(apiKey) }));
     if (!apiKey) return json({ error: 'Invalid API key.' }, 401);
     const entitlements = await getOrganizationEntitlements(admin, apiKey.organization_id);
     if (!entitlements.access_active || !entitlements.api_access) return json({ error: 'External API is available on the Custom plan.' }, 403);

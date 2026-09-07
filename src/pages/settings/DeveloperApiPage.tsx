@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Copy, KeyRound, LockKeyhole, Plus } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { Button } from '../../components/common/Button';
@@ -21,22 +21,42 @@ export const DeveloperApiPage: React.FC = () => {
   const [scopes, setScopes] = useState<ExternalApiScope[]>(['employees:read']);
   const [busy, setBusy] = useState(false);
   const [newKey, setNewKey] = useState<string | null>(null);
+  const loadVersion = useRef(0);
 
   const endpoint = useMemo(() => `${import.meta.env.VITE_SUPABASE_URL || '<SUPABASE_PROJECT_URL>'}/functions/v1/external-api/employees`, []);
-  const load = async () => {
-    setLoading(true); setError('');
-    try {
-      const canUseApi = await entitlementService.canUseExternalApi(currentOrg.id);
-      setAllowed(canUseApi);
-      setKeys(canUseApi ? await externalApiService.list(currentOrg.id) : []);
-    } catch (err: any) { setError(err.message || 'Unable to load external API settings.'); }
-    finally { setLoading(false); }
-  };
-  useEffect(() => { void load(); }, [currentOrg.id]);
+  const orgId = currentOrg?.id || '';
+  const isOrganizationReady = Boolean(orgId) && orgId !== 'org_pending' && !orgId.startsWith('org_temp_');
+  useEffect(() => {
+    const version = ++loadVersion.current;
+    const isCurrent = () => loadVersion.current === version;
+    // Always clear organization-specific data before a new organization can render.
+    setKeys([]); setError(''); setAllowed(null); setLoading(true);
+    if (!isOrganizationReady) return;
+
+    void (async () => {
+      try {
+        const canUseApi = await entitlementService.canUseExternalApi(orgId);
+        if (!isCurrent()) return;
+        setAllowed(canUseApi);
+        if (!canUseApi) return;
+        const loadedKeys = await externalApiService.list(orgId);
+        if (!isCurrent()) return;
+        setKeys(loadedKeys);
+        setError('');
+      } catch (err: any) {
+        if (!isCurrent()) return;
+        setKeys([]);
+        setError(err.message || 'Unable to load external API settings.');
+      } finally {
+        if (isCurrent()) setLoading(false);
+      }
+    })();
+  }, [isOrganizationReady, orgId]);
 
   const toggleScope = (scope: ExternalApiScope) => setScopes((previous) => previous.includes(scope) ? previous.filter((item) => item !== scope) : [...previous, scope]);
   const closeCreate = () => { setCreateOpen(false); setName(''); setScopes(['employees:read']); };
   const createKey = async () => {
+    if (!isOrganizationReady) return;
     setBusy(true); setError('');
     try {
       const result = await externalApiService.create(currentOrg.id, name, scopes);
@@ -45,6 +65,7 @@ export const DeveloperApiPage: React.FC = () => {
     finally { setBusy(false); }
   };
   const revoke = async (key: OrganizationApiKey) => {
+    if (!isOrganizationReady) return;
     if (!window.confirm(`Revoke ${key.name}? Integrations using it will immediately stop working.`)) return;
     setBusy(true); setError('');
     try {

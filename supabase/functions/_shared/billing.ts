@@ -34,7 +34,7 @@ export async function requireBillingAdmin(admin: any, userId: string, organizati
     .eq('user_id', userId)
     .eq('status', 'Active')
     .maybeSingle();
-  if (error || !data || !['Owner', 'Administrator'].includes(data.role)) {
+  if (error || !data || !['Owner', 'Admin', 'Administrator'].includes(data.role)) {
     throw new Error('Only workspace owners and administrators can manage billing');
   }
   return data;
