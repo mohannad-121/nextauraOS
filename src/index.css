@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@500;600;700&display=swap');
 @import "tailwindcss";
 @source "../node_modules/streamdown/dist/*.js";
 
@@ -97,6 +98,7 @@
 :focus-visible { outline: 2px solid var(--brand); outline-offset: 3px; }
 .tabular-nums, .num-font { font-variant-numeric: tabular-nums lining-nums; letter-spacing: -0.02em; }
 .font-heading { font-family: var(--font-heading); }
+.font-caveat { font-family: 'Caveat', cursive !important; }
 
 .surface-card {
   background: var(--surface);
