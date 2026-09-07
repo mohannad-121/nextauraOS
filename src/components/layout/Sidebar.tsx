@@ -234,7 +234,7 @@ export const Sidebar: React.FC = () => {
                   <button
                     key={org.id}
                     onClick={() => {
-                      switchOrg(org.id);
+                      void switchOrg(org.id).catch((error) => console.error('[Sidebar] Failed to switch workspace:', error));
                       setIsOrgDropdownOpen(false);
                     }}
                     className={`w-full p-2 rounded-lg flex items-center justify-between text-xs font-medium transition-colors ${

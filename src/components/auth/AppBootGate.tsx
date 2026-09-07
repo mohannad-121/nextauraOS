@@ -136,7 +136,12 @@ export const AppBootGate: React.FC<AppBootGateProps> = ({ children }) => {
           userOrgs = [newOrg];
         }
 
-        const activeOrg = userOrgs[0];
+        const activeOrg = await organizationService.resolveActiveOrganization(userOrgs);
+        if (!activeOrg) {
+          setBootstrapErrorMessage('No active workspace is available for this account.');
+          updateBootState('bootstrapError');
+          return;
+        }
         setActiveOrgId(activeOrg.id);
 
         if (setCurrentOrgRef.current && currentOrgIdRef.current !== activeOrg.id) {

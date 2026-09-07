@@ -105,6 +105,7 @@ import { calendarService } from '../services/calendarService';
 import { contactService } from '../services/contactService';
 import { auditService } from '../services/auditService';
 import { entitlementService } from '../services/entitlementService';
+import { organizationService } from '../services/organizationService';
 import { NEXTAURA_SERVICES } from '../data/appRegistry';
 import { isSupabaseConfigured, supabase } from '../services/supabaseClient';
 
@@ -153,7 +154,7 @@ interface AppContextType {
   organizations: Organization[];
   currentOrg: Organization;
   setCurrentOrg: (org: Organization) => void;
-  switchOrg: (orgId: string) => void;
+  switchOrg: (orgId: string) => Promise<void>;
   user: User;
   theme: 'dark' | 'light';
   toggleTheme: () => void;
@@ -824,9 +825,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     addAuditLog('END_BREAK', 'Human Resources', `Employee ended break`);
   };
 
-  const switchOrg = (orgId: string) => {
+  const switchOrg = async (orgId: string) => {
     const found = organizations.find((o) => o.id === orgId);
-    if (found) setCurrentOrg(found);
+    if (!found) return;
+    if (isSupabase) await organizationService.setActiveOrganization(orgId);
+    setCurrentOrg(found);
   };
 
   const toggleLanguage = () => {
