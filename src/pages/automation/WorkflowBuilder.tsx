@@ -14,7 +14,6 @@ import {
   type Edge,
   type Node,
   type NodeProps,
-  type ReactFlowInstance,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import {
@@ -28,6 +27,9 @@ import {
   Layers3,
   Play,
   Plus,
+  Copy,
+  Search,
+  Trash2,
   Send,
   Sparkles,
   UserPlus,
@@ -240,7 +242,7 @@ function compatibilityDefinition(nodes: WorkflowNode[], edges: Edge[]) {
   };
 }
 
-function WorkflowNodeCard({ data, selected }: NodeProps<WorkflowNode>) {
+function WorkflowNodeCard({ id, data, selected }: NodeProps<WorkflowNode>) {
   const info = nodeInfo[data.nodeType] || nodeInfo.create_notification;
   const Icon = info.icon;
   const accent = accentClasses[info.accent];
@@ -275,8 +277,18 @@ function WorkflowNodeCard({ data, selected }: NodeProps<WorkflowNode>) {
       {data.nodeType === "if" ? (
         <div className="border-t border-white/10 px-3 py-2">
           <div className="relative flex justify-between text-[10px] font-semibold">
-            <span className="text-emerald-300">TRUE</span>
-            <span className="text-rose-300">FALSE</span>
+            <button
+              className="nodrag text-emerald-300 hover:text-white"
+              onClick={() => data.onQuickAdd?.(id, "true")}
+            >
+              + TRUE
+            </button>
+            <button
+              className="nodrag text-rose-300 hover:text-white"
+              onClick={() => data.onQuickAdd?.(id, "false")}
+            >
+              + FALSE
+            </button>
             <Handle
               id="true"
               type="source"
@@ -294,11 +306,19 @@ function WorkflowNodeCard({ data, selected }: NodeProps<WorkflowNode>) {
           </div>
         </div>
       ) : (
-        <Handle
-          type="source"
-          position={Position.Right}
-          className={`!h-3 !w-3 !border-2 !border-slate-950 ${info.accent === "emerald" ? "!bg-emerald-400" : info.accent === "amber" ? "!bg-amber-400" : "!bg-blue-400"}`}
-        />
+        <>
+          <button
+            className="nodrag absolute bottom-2 right-6 rounded bg-white/5 px-1.5 text-[10px] text-slate-400 hover:bg-white/10 hover:text-white"
+            onClick={() => data.onQuickAdd?.(id)}
+          >
+            + Add next
+          </button>
+          <Handle
+            type="source"
+            position={Position.Right}
+            className={`!h-3 !w-3 !border-2 !border-slate-950 ${info.accent === "emerald" ? "!bg-emerald-400" : info.accent === "amber" ? "!bg-amber-400" : "!bg-blue-400"}`}
+          />
+        </>
       )}
     </div>
   );
@@ -306,6 +326,100 @@ function WorkflowNodeCard({ data, selected }: NodeProps<WorkflowNode>) {
 const visualNodeTypes = Object.fromEntries(
   palette.map((item) => [item.type, WorkflowNodeCard]),
 );
+
+function NodePicker({
+  onChoose,
+  onClose,
+}: {
+  onChoose: (node: AutomationNodeDefinition) => void;
+  onClose: () => void;
+}) {
+  const [query, setQuery] = useState("");
+  const matches = palette.filter((node) =>
+    `${node.title} ${node.category} ${node.description}`
+      .toLowerCase()
+      .includes(query.toLowerCase()),
+  );
+  return (
+    <div
+      className="fixed inset-0 z-[90] grid place-items-center bg-slate-950/55 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Add workflow node"
+    >
+      <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-white/10 bg-slate-900 shadow-2xl">
+        <div className="flex items-center gap-3 border-b border-white/10 p-4">
+          <Search className="h-5 w-5 text-cyan-300" />
+          <input
+            autoFocus
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Search nodes..."
+            className="flex-1 bg-transparent text-sm text-white outline-none placeholder:text-slate-500"
+          />
+          <button
+            onClick={onClose}
+            className="text-xs text-slate-400 hover:text-white"
+          >
+            Cancel
+          </button>
+        </div>
+        <div className="max-h-[60vh] overflow-y-auto p-4">
+          {(
+            [
+              "Trigger",
+              "Logic",
+              "Action",
+              "Integration",
+              "AI",
+              "Data",
+              "Utility",
+            ] as const
+          ).map((category) => {
+            const nodes = matches.filter((node) => node.category === category);
+            return nodes.length ? (
+              <section key={category} className="mb-5">
+                <p className="mb-2 text-[10px] font-bold uppercase tracking-[.16em] text-slate-500">
+                  {category}s
+                </p>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {nodes.map((node) => {
+                    const Icon = node.icon;
+                    return (
+                      <button
+                        key={node.type}
+                        disabled={!node.available}
+                        onClick={() => node.available && onChoose(node)}
+                        className={`flex items-center gap-3 rounded-xl border border-white/10 p-3 text-left ${node.available ? "hover:border-cyan-300/50 hover:bg-white/5" : "cursor-not-allowed opacity-45"}`}
+                      >
+                        <div
+                          className={`flex h-9 w-9 items-center justify-center rounded-lg ${accentClasses[node.accent].icon}`}
+                        >
+                          <Icon className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-slate-100">
+                            {node.title}
+                          </p>
+                          <p className="truncate text-xs text-slate-500">
+                            {node.description}
+                          </p>
+                        </div>
+                        <span className="ms-auto text-[9px] uppercase tracking-wide text-slate-400">
+                          {node.available ? "Available" : "Soon"}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </section>
+            ) : null;
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 function ConfigPanel({
   node,
@@ -492,17 +606,36 @@ export function WorkflowBuilder({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
-  const flowRef = useRef<ReactFlowInstance | null>(null);
+  const [picker, setPicker] = useState<{
+    sourceId?: string;
+    sourceHandle?: string;
+    position?: { x: number; y: number };
+  } | null>(null);
+  const flowRef = useRef<any>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
   const add = (
     item: AutomationNodeDefinition,
     position?: { x: number; y: number },
+    sourceId?: string,
+    sourceHandle?: string,
   ) => {
     if (!item.available) return;
+    if (
+      item.kind === "trigger" &&
+      nodes.some((node) => triggerMap[node.type || ""])
+    ) {
+      setError("A workflow can currently have one trigger.");
+      return;
+    }
+    if (nodes.length >= 100) {
+      setError("Workflow node limit reached.");
+      return;
+    }
+    const id = crypto.randomUUID();
     setNodes((current) => [
       ...current,
       {
-        id: crypto.randomUUID(),
+        id,
         type: item.type,
         position: position || {
           x: 180 + current.length * 40,
@@ -514,6 +647,64 @@ export function WorkflowBuilder({
         },
       },
     ]);
+    if (sourceId)
+      setEdges((current) =>
+        addEdge(
+          {
+            id: crypto.randomUUID(),
+            source: sourceId,
+            target: id,
+            sourceHandle,
+            type: "smoothstep",
+            label: sourceHandle?.toUpperCase(),
+            animated: Boolean(sourceHandle),
+          },
+          current,
+        ),
+      );
+  };
+  const openQuickAdd = (sourceId?: string, sourceHandle?: string) => {
+    const source = nodes.find((node) => node.id === sourceId);
+    setPicker({
+      sourceId,
+      sourceHandle,
+      position: source
+        ? {
+            x: source.position.x + 320,
+            y:
+              source.position.y +
+              (sourceHandle === "false"
+                ? 170
+                : sourceHandle === "true"
+                  ? -120
+                  : 0),
+          }
+        : undefined,
+    });
+  };
+  const duplicateSelected = () => {
+    if (!selected || triggerMap[selected.type || ""]) return;
+    add(nodeByType[selected.type || ""], {
+      x: selected.position.x + 48,
+      y: selected.position.y + 48,
+    });
+  };
+  const deleteSelected = () => {
+    if (!selected) return;
+    if (
+      triggerMap[selected.type || ""] &&
+      !confirm(
+        "Delete the trigger? The workflow will be invalid until you add another trigger.",
+      )
+    )
+      return;
+    setNodes((current) => current.filter((node) => node.id !== selected.id));
+    setEdges((current) =>
+      current.filter(
+        (edge) => edge.source !== selected.id && edge.target !== selected.id,
+      ),
+    );
+    setSelected(null);
   };
   const connect = useCallback(
     (connection: Connection) =>
@@ -539,6 +730,43 @@ export function WorkflowBuilder({
         ),
       ),
     [setEdges],
+  );
+  const isValidConnection = useCallback(
+    (connection: Connection) => {
+      if (
+        !connection.source ||
+        !connection.target ||
+        connection.source === connection.target
+      )
+        return false;
+      const target = nodes.find((node) => node.id === connection.target);
+      if (target && triggerMap[target.type || ""]) return false;
+      if (
+        edges.some(
+          (edge) =>
+            edge.source === connection.source &&
+            edge.target === connection.target &&
+            edge.sourceHandle === connection.sourceHandle,
+        )
+      )
+        return false;
+      if (
+        connection.sourceHandle &&
+        connection.sourceHandle !== "true" &&
+        connection.sourceHandle !== "false"
+      )
+        return false;
+      const reachesSource = (id: string, seen = new Set<string>()): boolean => {
+        if (id === connection.source) return true;
+        if (seen.has(id)) return false;
+        seen.add(id);
+        return edges
+          .filter((edge) => edge.source === id)
+          .some((edge) => reachesSource(edge.target, seen));
+      };
+      return !reachesSource(connection.target);
+    },
+    [nodes, edges],
   );
   const drop = (event: React.DragEvent) => {
     event.preventDefault();
@@ -606,8 +834,21 @@ export function WorkflowBuilder({
       .toLowerCase()
       .includes(search.toLowerCase()),
   );
+  const displayNodes = nodes.map((node) => ({
+    ...node,
+    data: { ...node.data, onQuickAdd: openQuickAdd },
+  }));
   return (
     <div className="fixed inset-0 z-[70] bg-[#07111c] text-slate-100">
+      {picker && (
+        <NodePicker
+          onClose={() => setPicker(null)}
+          onChoose={(item) => {
+            add(item, picker.position, picker.sourceId, picker.sourceHandle);
+            setPicker(null);
+          }}
+        />
+      )}
       <div className="flex h-full flex-col">
         <header className="flex min-h-16 items-center gap-3 border-b border-white/10 bg-slate-950/80 px-4 backdrop-blur">
           <button
@@ -628,6 +869,30 @@ export function WorkflowBuilder({
           >
             {enabled ? "Enabled" : "Draft"}
           </span>
+          <button
+            onClick={() => openQuickAdd()}
+            className="rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-100 hover:bg-cyan-400/20"
+          >
+            <Plus className="me-1 inline h-3.5 w-3.5" />
+            Add node
+          </button>
+          {selected && !triggerMap[selected.type || ""] && (
+            <>
+              <button
+                onClick={duplicateSelected}
+                className="hidden rounded-xl border border-white/10 px-3 py-2 text-xs text-slate-300 hover:bg-white/5 lg:inline-flex"
+              >
+                <Copy className="me-1 h-3.5 w-3.5" />
+                Duplicate
+              </button>
+              <button
+                onClick={deleteSelected}
+                className="hidden rounded-xl border border-red-400/20 px-3 py-2 text-xs text-red-200 hover:bg-red-400/10 lg:inline-flex"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </>
+          )}
           <button
             onClick={() => setEnabled((value) => !value)}
             className="rounded-xl border border-white/10 px-3 py-2 text-xs font-medium text-slate-300 hover:bg-white/5"
@@ -743,16 +1008,18 @@ export function WorkflowBuilder({
           <main
             ref={canvasRef}
             onDrop={drop}
+            onDoubleClick={() => openQuickAdd(undefined, undefined)}
             onDragOver={(event) => event.preventDefault()}
             className="relative min-w-0 flex-1 bg-[#0a1522]"
           >
             <ReactFlow
-              nodes={nodes}
+              nodes={displayNodes}
               edges={edges}
               nodeTypes={visualNodeTypes}
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
               onConnect={connect}
+              isValidConnection={isValidConnection as any}
               onInit={(instance) => {
                 flowRef.current = instance;
               }}
