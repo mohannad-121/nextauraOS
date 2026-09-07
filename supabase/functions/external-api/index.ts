@@ -36,8 +36,10 @@ Deno.serve(async (req) => {
   try {
     const authorization = req.headers.get('Authorization') || '';
     console.log(JSON.stringify({ event: 'external_api_request_arrived', authorization_present: Boolean(authorization), requested_scope: resources[resource].scope, expected_mode: apiKeyMode() }));
-    const bearer = authorization.match(/^Bearer ([^\s]+)$/i);
-    const rawKey = bearer?.[1] || '';
+    // HTTP permits optional whitespace around a Bearer credential. The format validator below
+    // still rejects empty values, multiple tokens, and all non-NextAura key strings.
+    const bearer = authorization.match(/^Bearer\s+(.+?)\s*$/i);
+    const rawKey = bearer?.[1]?.trim() || '';
     console.log(JSON.stringify({ event: 'external_api_key_extracted', extracted_key_length: rawKey.length, key_prefix: rawKey.slice(0, 17), format_valid: isApiKeyFormat(rawKey) }));
     if (!isApiKeyFormat(rawKey)) return json({ error: 'Invalid API key.' }, 401);
     const admin = adminClient();
