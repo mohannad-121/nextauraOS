@@ -1,6 +1,7 @@
 import { authenticate, corsHeaders, json, requireBillingAdmin } from '../_shared/billing.ts';
 import { getOrganizationEntitlements } from '../_shared/entitlements.ts';
 import { validateOutgoingWebhookAction } from '../_shared/webhook-security.ts';
+import { createIncomingWebhookToken, hashIncomingWebhookToken } from '../_shared/incoming-webhook.ts';
 
 const TRIGGER_TYPES = new Set(['employee.created', 'contact.created', 'expense.status_changed', 'incoming_webhook', 'schedule']);
 const CONDITION_OPERATORS = new Set(['equals', 'not_equals', 'contains', 'greater_than', 'less_than', 'is_empty', 'is_not_empty', 'changed_from', 'changed_to']);
@@ -13,6 +14,7 @@ const isObject = (value: unknown): value is Record<string, unknown> => Boolean(v
 const hasOnlyKeys = (value: Record<string, unknown>, keys: string[]) => Object.keys(value).every((key) => keys.includes(key));
 const stringValue = (value: unknown, maximum: number) => typeof value === 'string' && value.trim().length > 0 && value.length <= maximum;
 const simpleValue = (value: unknown) => value === null || ['string', 'number', 'boolean'].includes(typeof value);
+const publicWorkflow = (workflow: Record<string, unknown>) => { const { incoming_webhook_token_hash: _hash, ...safe } = workflow; return safe; };
 
 function validateTrigger(triggerType: unknown, triggerConfig: unknown) {
   if (typeof triggerType !== 'string' || !TRIGGER_TYPES.has(triggerType)) throw new Error('Unsupported automation trigger type.');
@@ -96,7 +98,7 @@ Deno.serve(async (req) => {
       await requireMembership(admin, user.id, organizationId);
       const { data, error } = await admin.from('automation_workflows').select('*').eq('organization_id', organizationId).order('updated_at', { ascending: false });
       if (error) throw error;
-      return json({ success: true, workflows: data || [] });
+      return json({ success: true, workflows: (data || []).map(publicWorkflow) });
     }
 
     const body = await req.json();
@@ -110,11 +112,13 @@ Deno.serve(async (req) => {
       if (countError) throw countError;
       if ((count || 0) >= MAX_WORKFLOWS) return json({ success: false, error: `An organization may have at most ${MAX_WORKFLOWS} workflows.` }, 409);
       const timestamps = definition.enabled ? { last_enabled_at: new Date().toISOString(), disabled_at: null } : { last_enabled_at: null, disabled_at: new Date().toISOString() };
-      const { data, error } = await admin.from('automation_workflows').insert({ organization_id: organizationId, created_by: user.id, ...definition, ...timestamps }).select('*').single();
+      const incomingWebhookToken = definition.trigger_type === 'incoming_webhook' ? createIncomingWebhookToken() : null;
+      const incomingWebhookTokenHash = incomingWebhookToken ? await hashIncomingWebhookToken(incomingWebhookToken) : null;
+      const { data, error } = await admin.from('automation_workflows').insert({ organization_id: organizationId, created_by: user.id, ...definition, ...timestamps, incoming_webhook_token_hash: incomingWebhookTokenHash }).select('*').single();
       if (error) throw error;
       await audit(admin, organizationId, user.id, 'automation.workflow.created', data.id, { name: data.name });
       if (definition.enabled) await audit(admin, organizationId, user.id, 'automation.workflow.enabled', data.id, { name: data.name });
-      return json({ success: true, workflow: data }, 201);
+      return json({ success: true, workflow: publicWorkflow(data), ...(incomingWebhookToken ? { incomingWebhookToken } : {}) }, 201);
     }
 
     const workflowId = String(body.workflowId || '');
@@ -133,12 +137,16 @@ Deno.serve(async (req) => {
         actions: body.actions ?? current.actions,
         enabled: body.enabled ?? current.enabled,
       });
+      if (body.regenerateIncomingWebhookToken !== undefined && body.regenerateIncomingWebhookToken !== true) return json({ success: false, error: 'regenerateIncomingWebhookToken must be true.' }, 400);
+      if (body.regenerateIncomingWebhookToken === true && definition.trigger_type !== 'incoming_webhook') return json({ success: false, error: 'Only incoming webhook workflows can regenerate a token.' }, 400);
+      const incomingWebhookToken = body.regenerateIncomingWebhookToken === true ? createIncomingWebhookToken() : null;
+      const incomingWebhookTokenHash = incomingWebhookToken ? await hashIncomingWebhookToken(incomingWebhookToken) : undefined;
       const enabledChanged = definition.enabled !== current.enabled;
       const lifecycle = enabledChanged ? (definition.enabled ? { last_enabled_at: new Date().toISOString(), disabled_at: null } : { disabled_at: new Date().toISOString() }) : {};
-      const { data, error } = await admin.from('automation_workflows').update({ ...definition, ...lifecycle, version: current.version + 1 }).eq('id', workflowId).eq('organization_id', organizationId).select('*').single();
+      const { data, error } = await admin.from('automation_workflows').update({ ...definition, ...lifecycle, version: current.version + 1, ...(incomingWebhookTokenHash ? { incoming_webhook_token_hash: incomingWebhookTokenHash } : {}) }).eq('id', workflowId).eq('organization_id', organizationId).select('*').single();
       if (error) throw error;
       await audit(admin, organizationId, user.id, enabledChanged ? (definition.enabled ? 'automation.workflow.enabled' : 'automation.workflow.disabled') : 'automation.workflow.updated', workflowId, { name: data.name, version: data.version });
-      return json({ success: true, workflow: data });
+      return json({ success: true, workflow: publicWorkflow(data), ...(incomingWebhookToken ? { incomingWebhookToken } : {}) });
     }
 
     if (req.method === 'DELETE') {
