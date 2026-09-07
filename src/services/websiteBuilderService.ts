@@ -11,5 +11,6 @@ export const websiteBuilderService = {
   createSite: (organizationId: string, name: string, slug?: string) => call({ operation: 'createSite', organizationId, name, slug }),
   listPages: (organizationId: string, siteId: string) => call({ operation: 'listPages', organizationId, siteId }),
   getPageDocument: (organizationId: string, siteId: string, pageId: string) => call({ operation: 'getPageDocument', organizationId, siteId, pageId }),
+  updatePageMetadata: (body: Record<string, unknown>) => call({ operation: 'updatePageMetadata', ...body }),
   savePageDocument: (body: Record<string, unknown>) => call({ operation: 'savePageDocument', ...body }),
 };
