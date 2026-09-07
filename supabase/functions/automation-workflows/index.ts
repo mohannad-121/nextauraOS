@@ -15,6 +15,15 @@ const hasOnlyKeys = (value: Record<string, unknown>, keys: string[]) => Object.k
 const stringValue = (value: unknown, maximum: number) => typeof value === 'string' && value.trim().length > 0 && value.length <= maximum;
 const simpleValue = (value: unknown) => value === null || ['string', 'number', 'boolean'].includes(typeof value);
 const publicWorkflow = (workflow: Record<string, unknown>) => { const { incoming_webhook_token_hash: _hash, ...safe } = workflow; return safe; };
+const GRAPH_TYPES = new Set(['employee_created','contact_created','expense_status_changed','incoming_webhook','if','create_notification','outgoing_webhook']);
+function validateGraph(nodes: unknown, edges: unknown) {
+  if (nodes === undefined && edges === undefined) return { graph_nodes: undefined, graph_edges: undefined };
+  if (!Array.isArray(nodes) || !Array.isArray(edges) || nodes.length > 100 || edges.length > 200) throw new Error('Workflow graph exceeds its limits.');
+  const ids = new Set<string>();
+  for (const node of nodes) { if (!isObject(node) || typeof node.id !== 'string' || !node.id || ids.has(node.id) || !GRAPH_TYPES.has(String(node.type)) || !isObject(node.position) || !Number.isFinite(node.position.x) || !Number.isFinite(node.position.y) || !isObject(node.config ?? {})) throw new Error('Workflow graph node is invalid.'); ids.add(node.id); }
+  for (const edge of edges) { if (!isObject(edge) || typeof edge.id !== 'string' || typeof edge.source !== 'string' || typeof edge.target !== 'string' || !ids.has(edge.source) || !ids.has(edge.target)) throw new Error('Workflow graph edge is invalid.'); }
+  return { graph_nodes: nodes, graph_edges: edges };
+}
 
 function validateTrigger(triggerType: unknown, triggerConfig: unknown) {
   if (typeof triggerType !== 'string' || !TRIGGER_TYPES.has(triggerType)) throw new Error('Unsupported automation trigger type.');
@@ -62,7 +71,7 @@ function validateDefinition(body: Record<string, unknown>) {
   validateActions(body.actions);
   if (body.enabled !== undefined && typeof body.enabled !== 'boolean') throw new Error('enabled must be a boolean.');
 
-  return { name, description, trigger_type: body.triggerType, trigger_config: body.triggerConfig, conditions: body.conditions, actions: body.actions, enabled: body.enabled === true };
+  return { name, description, trigger_type: body.triggerType, trigger_config: body.triggerConfig, conditions: body.conditions, actions: body.actions, enabled: body.enabled === true, ...validateGraph(body.graphNodes, body.graphEdges) };
 }
 
 async function requireWorkflowAccess(admin: any, userId: string, organizationId: string) {
@@ -127,7 +136,7 @@ Deno.serve(async (req) => {
       const timestamps = definition.enabled ? { last_enabled_at: new Date().toISOString(), disabled_at: null } : { last_enabled_at: null, disabled_at: new Date().toISOString() };
       const incomingWebhookToken = definition.trigger_type === 'incoming_webhook' ? createIncomingWebhookToken() : null;
       const incomingWebhookTokenHash = incomingWebhookToken ? await hashIncomingWebhookToken(incomingWebhookToken) : null;
-      const { data, error } = await admin.from('automation_workflows').insert({ organization_id: organizationId, created_by: user.id, ...definition, ...timestamps, incoming_webhook_token_hash: incomingWebhookTokenHash }).select('*').single();
+      const { graph_nodes, graph_edges, ...definitionFields } = definition; const { data, error } = await admin.from('automation_workflows').insert({ organization_id: organizationId, created_by: user.id, ...definitionFields, ...timestamps, incoming_webhook_token_hash: incomingWebhookTokenHash, ...(graph_nodes ? { graph_nodes, graph_edges } : {}) }).select('*').single();
       if (error) throw error;
       await audit(admin, organizationId, user.id, 'automation.workflow.created', data.id, { name: data.name });
       if (definition.enabled) await audit(admin, organizationId, user.id, 'automation.workflow.enabled', data.id, { name: data.name });
@@ -149,6 +158,8 @@ Deno.serve(async (req) => {
         conditions: body.conditions ?? current.conditions,
         actions: body.actions ?? current.actions,
         enabled: body.enabled ?? current.enabled,
+        graphNodes: body.graphNodes ?? current.graph_nodes,
+        graphEdges: body.graphEdges ?? current.graph_edges,
       });
       if (body.regenerateIncomingWebhookToken !== undefined && body.regenerateIncomingWebhookToken !== true) return json({ success: false, error: 'regenerateIncomingWebhookToken must be true.' }, 400);
       if (body.regenerateIncomingWebhookToken === true && definition.trigger_type !== 'incoming_webhook') return json({ success: false, error: 'Only incoming webhook workflows can regenerate a token.' }, 400);
@@ -156,7 +167,7 @@ Deno.serve(async (req) => {
       const incomingWebhookTokenHash = incomingWebhookToken ? await hashIncomingWebhookToken(incomingWebhookToken) : undefined;
       const enabledChanged = definition.enabled !== current.enabled;
       const lifecycle = enabledChanged ? (definition.enabled ? { last_enabled_at: new Date().toISOString(), disabled_at: null } : { disabled_at: new Date().toISOString() }) : {};
-      const { data, error } = await admin.from('automation_workflows').update({ ...definition, ...lifecycle, version: current.version + 1, ...(incomingWebhookTokenHash ? { incoming_webhook_token_hash: incomingWebhookTokenHash } : {}) }).eq('id', workflowId).eq('organization_id', organizationId).select('*').single();
+      const { graph_nodes, graph_edges, ...definitionFields } = definition; const { data, error } = await admin.from('automation_workflows').update({ ...definitionFields, ...lifecycle, version: current.version + 1, ...(graph_nodes ? { graph_nodes, graph_edges, graph_version: current.graph_version + 1 } : {}), ...(incomingWebhookTokenHash ? { incoming_webhook_token_hash: incomingWebhookTokenHash } : {}) }).eq('id', workflowId).eq('organization_id', organizationId).select('*').single();
       if (error) throw error;
       await audit(admin, organizationId, user.id, enabledChanged ? (definition.enabled ? 'automation.workflow.enabled' : 'automation.workflow.disabled') : 'automation.workflow.updated', workflowId, { name: data.name, version: data.version });
       return json({ success: true, workflow: publicWorkflow(data), ...(incomingWebhookToken ? { incomingWebhookToken } : {}) });
