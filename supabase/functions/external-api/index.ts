@@ -1,5 +1,5 @@
 import { adminClient, corsHeaders, json } from '../_shared/billing.ts';
-import { hashApiKey, isApiKeyFormat, type ApiScope } from '../_shared/apiKeys.ts';
+import { apiKeyMode, hashApiKey, isApiKeyFormat, type ApiScope } from '../_shared/apiKeys.ts';
 import { getOrganizationEntitlements } from '../_shared/entitlements.ts';
 
 type Resource = 'employees' | 'contacts' | 'invoices' | 'expenses' | 'payroll' | 'documents' | 'approvals';
@@ -35,14 +35,36 @@ Deno.serve(async (req) => {
   if (!resource) return json({ error: 'Unknown resource.' }, 404);
   try {
     const authorization = req.headers.get('Authorization') || '';
+    console.log(JSON.stringify({ event: 'external_api_request_arrived', authorization_present: Boolean(authorization), requested_scope: resources[resource].scope, expected_mode: apiKeyMode() }));
     const bearer = authorization.match(/^Bearer ([^\s]+)$/i);
     const rawKey = bearer?.[1] || '';
+    console.log(JSON.stringify({ event: 'external_api_key_extracted', extracted_key_length: rawKey.length, key_prefix: rawKey.slice(0, 17), format_valid: isApiKeyFormat(rawKey) }));
     if (!isApiKeyFormat(rawKey)) return json({ error: 'Invalid API key.' }, 401);
     const admin = adminClient();
     const keyHash = await hashApiKey(rawKey);
+    console.log(JSON.stringify({ event: 'external_api_key_hash_computed', key_prefix: rawKey.slice(0, 17), hash_length: keyHash.length, hash_prefix: keyHash.slice(0, 8) }));
+    console.log(JSON.stringify({ event: 'external_api_key_hash_lookup_attempted', key_prefix: rawKey.slice(0, 17) }));
     const { data: apiKey, error: keyError } = await admin.from('organization_api_keys').select('id,organization_id,scopes,status,revoked_at').eq('key_hash', keyHash).eq('status', 'active').is('revoked_at', null).maybeSingle();
     if (keyError) throw keyError;
-    console.info(JSON.stringify({ event: 'external_api_key_lookup', key_prefix: rawKey.slice(0, 17), hash_length: keyHash.length, matched: Boolean(apiKey) }));
+    console.log(JSON.stringify({ event: 'external_api_key_lookup_result', key_prefix: rawKey.slice(0, 17), matched: Boolean(apiKey) }));
+    if (!apiKey) {
+      const { data: candidates, error: candidatesError } = await admin.from('organization_api_keys')
+        .select('id,key_prefix,key_hash,status,revoked_at')
+        .eq('key_prefix', rawKey.slice(0, 17));
+      if (candidatesError) throw candidatesError;
+      console.log(JSON.stringify({
+        event: 'external_api_key_prefix_candidates',
+        key_prefix: rawKey.slice(0, 17),
+        count: candidates?.length || 0,
+        candidates: (candidates || []).map((candidate: { id: string; key_prefix: string; key_hash: string; status: string; revoked_at: string | null }) => ({
+          id: candidate.id,
+          key_prefix: candidate.key_prefix,
+          hash_length: candidate.key_hash.length,
+          status: candidate.status,
+          revoked_at_present: Boolean(candidate.revoked_at),
+        })),
+      }));
+    }
     if (!apiKey) return json({ error: 'Invalid API key.' }, 401);
     const entitlements = await getOrganizationEntitlements(admin, apiKey.organization_id);
     if (!entitlements.access_active || !entitlements.api_access) return json({ error: 'External API is available on the Custom plan.' }, 403);

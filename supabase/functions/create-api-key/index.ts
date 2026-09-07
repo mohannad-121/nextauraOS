@@ -17,8 +17,12 @@ Deno.serve(async (req) => {
     if (!entitlements.access_active || !entitlements.api_access) return json({ success: false, error: 'External API is available on the Custom plan.' }, 403);
 
     const { rawKey, keyPrefix } = createApiKey();
+    const keyHash = await hashApiKey(rawKey);
+    const creationSelfCheck = keyHash === await hashApiKey(rawKey);
+    console.log(JSON.stringify({ event: 'external_api_key_created', key_prefix: keyPrefix, hash_length: keyHash.length, creation_self_check: creationSelfCheck }));
+    if (!creationSelfCheck) throw new Error('External API key creation self-check failed.');
     const { data: key, error } = await admin.from('organization_api_keys').insert({
-      organization_id: organizationId, name, key_prefix: keyPrefix, key_hash: await hashApiKey(rawKey), scopes, created_by: user.id,
+      organization_id: organizationId, name, key_prefix: keyPrefix, key_hash: keyHash, scopes, created_by: user.id,
     }).select('id, name, key_prefix, scopes, created_by, created_at, last_used_at, revoked_at, status').single();
     if (error) throw error;
     await recordAudit(admin, organizationId, 'api_key.created', `External API key "${name}" (${keyPrefix}) was created.`);

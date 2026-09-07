@@ -25,8 +25,12 @@ function hashSecret() {
   return secret;
 }
 
+export function apiKeyMode() {
+  return Deno.env.get('NEXTAURA_API_KEY_MODE') === 'live' ? 'live' : 'test';
+}
+
 export function createApiKey() {
-  const mode = Deno.env.get('NEXTAURA_API_KEY_MODE') === 'live' ? 'live' : 'test';
+  const mode = apiKeyMode();
   const random = new Uint8Array(32);
   crypto.getRandomValues(random);
   const rawKey = `nxa_${mode}_${base64Url(random)}`;
