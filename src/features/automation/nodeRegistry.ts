@@ -49,7 +49,8 @@ export type AutomationNodeDefinition = {
   entitlement?: string;
   provider?: string;
   requires_connection?: boolean;
-  connection_type?: "oauth";
+  connection_type?: "oauth" | "api_key";
+  required_scopes?: string[];
 };
 const anyConfig = () => true;
 const definitions: AutomationNodeDefinition[] = [

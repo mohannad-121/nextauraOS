@@ -17,6 +17,14 @@ const simpleValue = (value: unknown) => value === null || ['string', 'number', '
 const publicWorkflow = (workflow: Record<string, unknown>) => { const { incoming_webhook_token_hash: _hash, ...safe } = workflow; return safe; };
 const GRAPH_TYPES = new Set(['employee_created','contact_created','expense_status_changed','incoming_webhook','if','create_notification','outgoing_webhook']);
 const GRAPH_TRIGGER_TYPES = new Map([['employee_created', 'employee.created'], ['contact_created', 'contact.created'], ['expense_status_changed', 'expense.status_changed'], ['incoming_webhook', 'incoming_webhook']]);
+const CONNECTION_NODE_REQUIREMENTS: Record<string, { provider: string; authType: string; scopes: string[] }> = {
+  gmail: { provider: 'google', authType: 'oauth', scopes: [] },
+  google_sheets: { provider: 'google', authType: 'oauth', scopes: [] },
+  google_calendar: { provider: 'google', authType: 'oauth', scopes: [] },
+  slack: { provider: 'slack', authType: 'oauth', scopes: [] },
+  whatsapp: { provider: 'meta', authType: 'oauth', scopes: [] },
+};
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 function validateGraph(nodes: unknown, edges: unknown) {
   if (nodes === undefined && edges === undefined) return { graph_nodes: undefined, graph_edges: undefined };
   if (!Array.isArray(nodes) || !Array.isArray(edges) || nodes.length > 100 || edges.length > 200) throw new Error('Workflow graph exceeds its limits.');
@@ -83,7 +91,21 @@ function validateActions(actions: unknown) {
   }
 }
 
-function validateDefinition(body: Record<string, unknown>) {
+async function validateGraphConnectionReferences(admin: any, organizationId: string, nodes: unknown) {
+  if (!Array.isArray(nodes)) return;
+  for (const node of nodes) {
+    if (!isObject(node) || !isObject(node.config) || !Object.prototype.hasOwnProperty.call(node.config, 'connection_id')) continue;
+    const requirement = CONNECTION_NODE_REQUIREMENTS[String(node.type)];
+    const connectionId = node.config.connection_id;
+    if (!requirement || typeof connectionId !== 'string' || !UUID.test(connectionId)) throw new Error('This workflow node has an invalid connection reference.');
+    const { data: connection, error } = await admin.from('integration_connections').select('id,provider,auth_type,status,scopes').eq('id', connectionId).eq('organization_id', organizationId).maybeSingle();
+    if (error || !connection || connection.status !== 'active' || connection.provider !== requirement.provider || connection.auth_type !== requirement.authType) throw new Error('Select an active matching connection from this organization.');
+    const scopes = Array.isArray(connection.scopes) ? connection.scopes : [];
+    if (requirement.scopes.some((scope) => !scopes.includes(scope))) throw new Error('The selected connection is missing a required scope.');
+  }
+}
+
+async function validateDefinition(admin: any, organizationId: string, body: Record<string, unknown>) {
   const name = String(body.name || '').trim();
   const description = body.description === undefined || body.description === null || body.description === '' ? null : String(body.description).trim();
   if (!name || name.length > 120 || (description && description.length > 1000)) throw new Error('Workflow name or description is invalid.');
@@ -93,6 +115,7 @@ function validateDefinition(body: Record<string, unknown>) {
   if (body.enabled !== undefined && typeof body.enabled !== 'boolean') throw new Error('enabled must be a boolean.');
 
   const graph = validateGraph(body.graphNodes, body.graphEdges); const execution_plan = Array.isArray(graph.graph_nodes) && graph.graph_nodes.length > 0 ? compileGraph(graph.graph_nodes, graph.graph_edges) : undefined;
+  await validateGraphConnectionReferences(admin, organizationId, graph.graph_nodes);
   return { name, description, trigger_type: body.triggerType, trigger_config: body.triggerConfig, conditions: body.conditions, actions: body.actions, enabled: body.enabled === true, ...graph, execution_plan };
 }
 
@@ -188,7 +211,7 @@ Deno.serve(async (req) => {
     await requireWorkflowAccess(admin, user.id, organizationId);
 
     if (effectiveMethod === 'POST') {
-      const definition = validateDefinition(body);
+      const definition = await validateDefinition(admin, organizationId, body);
       const { count, error: countError } = await admin.from('automation_workflows').select('id', { count: 'exact', head: true }).eq('organization_id', organizationId);
       if (countError) throw countError;
       if ((count || 0) >= MAX_WORKFLOWS) return json({ success: false, error: `An organization may have at most ${MAX_WORKFLOWS} workflows.` }, 409);
@@ -209,7 +232,7 @@ Deno.serve(async (req) => {
       const { data: current, error: currentError } = await admin.from('automation_workflows').select('*').eq('id', workflowId).eq('organization_id', organizationId).maybeSingle();
       if (currentError) throw currentError;
       if (!current) return json({ success: false, error: 'Workflow not found.' }, 404);
-      const definition = validateDefinition({
+      const definition = await validateDefinition(admin, organizationId, {
         name: body.name ?? current.name,
         description: Object.prototype.hasOwnProperty.call(body, 'description') ? body.description : current.description,
         triggerType: body.triggerType ?? current.trigger_type,

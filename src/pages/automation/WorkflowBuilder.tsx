@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ReactFlow,
   Background,
@@ -41,6 +41,7 @@ import {
   nodeRegistry,
   type AutomationNodeDefinition,
 } from "../../features/automation/nodeRegistry";
+import { integrationConnectionService, type IntegrationConnection } from "../../services/integrationConnectionService";
 
 type WorkflowNode = Node<Record<string, any>>;
 type PaletteItem = {
@@ -424,9 +425,13 @@ function NodePicker({
 function ConfigPanel({
   node,
   update,
+  connections,
+  connectionLoading,
 }: {
   node: WorkflowNode | null;
   update: (config: Record<string, unknown>) => void;
+  connections: IntegrationConnection[];
+  connectionLoading: boolean;
 }) {
   if (!node)
     return (
@@ -484,6 +489,21 @@ function ConfigPanel({
         </div>
       </div>
       <div className="mt-6 space-y-4">
+        {info?.requires_connection && (
+          <label className="block text-xs font-medium text-slate-300">
+            Connection
+            <select
+              value={String(config.connection_id || "")}
+              onChange={(event) => field("connection_id", event.target.value)}
+              disabled={connectionLoading}
+              className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/70 disabled:opacity-60"
+            >
+              <option value="">{connectionLoading ? "Loading connections…" : "Select an active connection"}</option>
+              {connections.filter((connection) => connection.status === "active" && connection.provider === info.provider && (!info.connection_type || connection.auth_type === info.connection_type)).map((connection) => <option key={connection.id} value={connection.id}>{connection.name}{connection.account_label ? ` · ${connection.account_label}` : ""}</option>)}
+            </select>
+            <span className="mt-1 block text-[11px] font-normal leading-4 text-slate-500">Only active {info.provider} connections in this company are shown. Credentials are never stored in the workflow.</span>
+          </label>
+        )}
         {node.type === "expense_status_changed" && (
           <label className="block text-xs font-medium text-slate-300">
             New status
@@ -605,6 +625,8 @@ export function WorkflowBuilder({
   const [enabled, setEnabled] = useState(Boolean(workflow?.enabled));
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [connections, setConnections] = useState<IntegrationConnection[]>([]);
+  const [connectionLoading, setConnectionLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [picker, setPicker] = useState<{
     sourceId?: string;
@@ -613,6 +635,7 @@ export function WorkflowBuilder({
   } | null>(null);
   const flowRef = useRef<any>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => { let cancelled = false; setConnections([]); setConnectionLoading(true); integrationConnectionService.list(organizationId).then((items) => { if (!cancelled) setConnections(items); }).catch(() => { if (!cancelled) setConnections([]); }).finally(() => { if (!cancelled) setConnectionLoading(false); }); return () => { cancelled = true; }; }, [organizationId]);
   const add = (
     item: AutomationNodeDefinition,
     position?: { x: number; y: number },
@@ -1060,7 +1083,7 @@ export function WorkflowBuilder({
               </div>
             )}
           </main>
-          <ConfigPanel node={selected} update={updateConfig} />
+          <ConfigPanel node={selected} update={updateConfig} connections={connections} connectionLoading={connectionLoading} />
         </div>
       </div>
     </div>

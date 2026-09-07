@@ -25,6 +25,11 @@ async function requireConnectionAccess(admin: any, userId: string, organizationI
   if (!entitlements.access_active || !entitlements.automation_access) throw new Error('Connections require an active Custom workspace.');
 }
 
+async function requireMembership(admin: any, userId: string, organizationId: string) {
+  const { data, error } = await admin.from('organization_members').select('id').eq('organization_id', organizationId).eq('user_id', userId).eq('status', 'Active').maybeSingle();
+  if (error || !data) throw new Error('You are not an active member of this organization.');
+}
+
 async function audit(admin: any, organizationId: string, actorId: string, action: string, connectionId: string, details: Record<string, unknown> = {}) {
   await admin.from('audit_logs').insert({ organization_id: organizationId, user_name: actorId, action, details: JSON.stringify({ connection_id: connectionId, ...details }) });
 }
@@ -34,7 +39,7 @@ Deno.serve(async (req) => {
   try {
     const { admin, user } = await authenticate(req); const body = await req.json(); const organizationId = String(body.organizationId || '');
     if (!organizationId) return json({ success: false, error: 'organizationId is required.' }, 400);
-    if (body.operation === 'list') { const { data, error } = await admin.from('integration_connections').select('id,organization_id,provider,name,status,auth_type,scopes,account_label,expires_at,last_verified_at,revoked_at,created_at,updated_at').eq('organization_id', organizationId).order('created_at', { ascending: false }); if (error) throw error; return json({ success: true, connections: data || [] }); }
+    if (body.operation === 'list') { await requireMembership(admin, user.id, organizationId); const { data, error } = await admin.from('integration_connections').select('id,organization_id,provider,name,status,auth_type,scopes,account_label,expires_at,last_verified_at,revoked_at,created_at,updated_at').eq('organization_id', organizationId).order('created_at', { ascending: false }); if (error) throw error; return json({ success: true, connections: data || [] }); }
     await requireConnectionAccess(admin, user.id, organizationId);
     if (body.operation === 'createGenericApi') {
       const name = String(body.name || '').trim(); const baseUrl = String(body.baseUrl || '').trim(); const secret = String(body.secret || '');
