@@ -1,47 +1,764 @@
-import { useCallback, useMemo, useState } from 'react';
-import { ReactFlow, Background, Controls, MiniMap, Handle, Position, addEdge, useEdgesState, useNodesState, type Connection, type Edge, type Node } from '@xyflow/react';
-import '@xyflow/react/dist/style.css';
-import { Bell, ChevronLeft, GitBranch, Plus, Send, Trash2, UserPlus, Webhook } from 'lucide-react';
-import { automationService } from '../../services/automationService';
+import { useCallback, useMemo, useRef, useState } from "react";
+import {
+  ReactFlow,
+  Background,
+  BackgroundVariant,
+  Controls,
+  MiniMap,
+  Handle,
+  Position,
+  addEdge,
+  useEdgesState,
+  useNodesState,
+  type Connection,
+  type Edge,
+  type Node,
+  type NodeProps,
+  type ReactFlowInstance,
+} from "@xyflow/react";
+import "@xyflow/react/dist/style.css";
+import {
+  Bell,
+  ChevronLeft,
+  Code2,
+  ContactRound,
+  GitBranch,
+  GripVertical,
+  Info,
+  Layers3,
+  Play,
+  Plus,
+  Send,
+  Sparkles,
+  UserPlus,
+  Webhook,
+} from "lucide-react";
+import { automationService } from "../../services/automationService";
 
 type WorkflowNode = Node<Record<string, any>>;
-const triggerMap: Record<string, string> = { employee_created: 'employee.created', contact_created: 'contact.created', expense_status_changed: 'expense.status_changed', incoming_webhook: 'incoming_webhook' };
-const items = [['employee_created', 'Employee Created', UserPlus], ['contact_created', 'Contact Created', UserPlus], ['expense_status_changed', 'Expense Status Changed', UserPlus], ['incoming_webhook', 'Incoming Webhook', Webhook], ['if', 'IF', GitBranch], ['create_notification', 'Create Notification', Bell], ['outgoing_webhook', 'Send Webhook', Send]] as const;
+type PaletteItem = {
+  type: string;
+  title: string;
+  category: "Trigger" | "Logic" | "Action";
+  subtitle: string;
+  icon: any;
+  accent: string;
+};
+const triggerMap: Record<string, string> = {
+  employee_created: "employee.created",
+  contact_created: "contact.created",
+  expense_status_changed: "expense.status_changed",
+  incoming_webhook: "incoming_webhook",
+};
+const palette: PaletteItem[] = [
+  {
+    type: "employee_created",
+    title: "Employee Created",
+    category: "Trigger",
+    subtitle: "Runs when a new employee is added",
+    icon: UserPlus,
+    accent: "emerald",
+  },
+  {
+    type: "contact_created",
+    title: "Contact Created",
+    category: "Trigger",
+    subtitle: "Runs when a new contact is created",
+    icon: ContactRound,
+    accent: "emerald",
+  },
+  {
+    type: "expense_status_changed",
+    title: "Expense Status Changed",
+    category: "Trigger",
+    subtitle: "Runs when an expense changes status",
+    icon: Layers3,
+    accent: "emerald",
+  },
+  {
+    type: "incoming_webhook",
+    title: "Incoming Webhook",
+    category: "Trigger",
+    subtitle: "Runs when a secure webhook arrives",
+    icon: Webhook,
+    accent: "emerald",
+  },
+  {
+    type: "if",
+    title: "IF",
+    category: "Logic",
+    subtitle: "Route workflow based on a condition",
+    icon: GitBranch,
+    accent: "amber",
+  },
+  {
+    type: "create_notification",
+    title: "Create Notification",
+    category: "Action",
+    subtitle: "Create an in-app notification",
+    icon: Bell,
+    accent: "blue",
+  },
+  {
+    type: "outgoing_webhook",
+    title: "Send Webhook",
+    category: "Action",
+    subtitle: "POST data to an external endpoint",
+    icon: Send,
+    accent: "blue",
+  },
+];
+const nodeInfo = Object.fromEntries(palette.map((item) => [item.type, item]));
+const accentClasses: Record<
+  string,
+  { border: string; icon: string; stripe: string; glow: string }
+> = {
+  emerald: {
+    border: "border-emerald-400/50",
+    icon: "bg-emerald-400/15 text-emerald-300",
+    stripe: "bg-emerald-400",
+    glow: "shadow-emerald-500/10",
+  },
+  amber: {
+    border: "border-amber-400/50",
+    icon: "bg-amber-400/15 text-amber-200",
+    stripe: "bg-amber-400",
+    glow: "shadow-amber-500/10",
+  },
+  blue: {
+    border: "border-blue-400/50",
+    icon: "bg-blue-400/15 text-blue-200",
+    stripe: "bg-blue-400",
+    glow: "shadow-blue-500/10",
+  },
+};
+const defaults: Record<string, Record<string, unknown>> = {
+  expense_status_changed: { to_status: "Pending" },
+  if: { field: "status", operator: "equals", value: "" },
+  create_notification: {
+    title: "Automation update",
+    message: "A workflow event was completed.",
+  },
+  outgoing_webhook: { url: "", method: "POST" },
+};
 
 function restoreGraph(workflow: any) {
-  if (workflow?.graph_nodes?.length) return { nodes: workflow.graph_nodes, edges: workflow.graph_edges || [] };
-  const nodes: any[] = [{ id: 'trigger', position: { x: 80, y: 160 }, type: workflow?.trigger_type?.replace('.', '_') || 'employee_created', data: { config: workflow?.trigger_config || {} } }];
-  const edges: any[] = []; let last = 'trigger';
-  if (workflow?.conditions?.length) { nodes.push({ id: 'if', position: { x: 360, y: 160 }, type: 'if', data: { config: workflow.conditions[0] } }); edges.push({ id: 'trigger-if', source: last, target: 'if' }); last = 'if'; }
-  (workflow?.actions || []).forEach((action: any, index: number) => { const id = `action-${index}`; nodes.push({ id, position: { x: 640 + index * 280, y: 160 }, type: action.type, data: { config: action.config } }); edges.push({ id: `${last}-${id}`, source: last, target: id }); last = id; });
+  const normalize = (node: any) => ({
+    ...node,
+    data: {
+      ...(node.data || {}),
+      nodeType: node.type,
+      config: node.data?.config || node.config || defaults[node.type] || {},
+    },
+  });
+  if (workflow?.graph_nodes?.length)
+    return {
+      nodes: workflow.graph_nodes.map(normalize),
+      edges: workflow.graph_edges || [],
+    };
+  const nodes: any[] = [
+    normalize({
+      id: "trigger",
+      position: { x: 100, y: 220 },
+      type: workflow?.trigger_type?.replace(".", "_") || "employee_created",
+      data: {
+        config:
+          workflow?.trigger_config ||
+          defaults[workflow?.trigger_type?.replace(".", "_")] ||
+          {},
+      },
+    }),
+  ];
+  const edges: any[] = [];
+  let last = "trigger";
+  if (workflow?.conditions?.length) {
+    nodes.push(
+      normalize({
+        id: "if",
+        position: { x: 430, y: 220 },
+        type: "if",
+        data: { config: workflow.conditions[0] },
+      }),
+    );
+    edges.push({
+      id: "trigger-if",
+      source: last,
+      target: "if",
+      type: "smoothstep",
+    });
+    last = "if";
+  }
+  (workflow?.actions || []).forEach((action: any, index: number) => {
+    const id = `action-${index}`;
+    nodes.push(
+      normalize({
+        id,
+        position: { x: 760 + index * 280, y: 220 },
+        type: action.type,
+        data: { config: action.config },
+      }),
+    );
+    edges.push({
+      id: `${last}-${id}`,
+      source: last,
+      target: id,
+      type: "smoothstep",
+    });
+    last = id;
+  });
   return { nodes, edges };
 }
 
 function compatibilityDefinition(nodes: WorkflowNode[], edges: Edge[]) {
-  const triggers = nodes.filter((node) => triggerMap[node.type || '']);
-  if (triggers.length !== 1) throw Error('Add exactly one trigger node.');
-  if (new Set(edges.map((edge) => edge.target)).has(triggers[0].id)) throw Error('The trigger must begin the graph.');
-  const conditions = nodes.filter((node) => node.type === 'if').map((node) => node.data.config || {});
-  if (conditions.length > 1) throw Error('Only one IF node is supported.');
-  const actions = nodes.filter((node) => node.type === 'create_notification' || node.type === 'outgoing_webhook').map((node) => ({ type: node.type, config: node.data.config || {} }));
-  if (!actions.length) throw Error('Add at least one action node.');
-  return { triggerType: triggerMap[triggers[0].type || ''], triggerConfig: triggers[0].data.config || {}, conditions, actions };
+  const triggers = nodes.filter((node) => triggerMap[node.type || ""]);
+  if (triggers.length !== 1) throw Error("Add exactly one trigger node.");
+  if (new Set(edges.map((edge) => edge.target)).has(triggers[0].id))
+    throw Error("The trigger must begin the graph.");
+  const conditions = nodes
+    .filter((node) => node.type === "if")
+    .map((node) => node.data.config || {});
+  if (conditions.length > 1) throw Error("Only one IF node is supported.");
+  const actions = nodes
+    .filter(
+      (node) =>
+        node.type === "create_notification" || node.type === "outgoing_webhook",
+    )
+    .map((node) => ({ type: node.type, config: node.data.config || {} }));
+  if (!actions.length) throw Error("Add at least one action node.");
+  return {
+    triggerType: triggerMap[triggers[0].type || ""],
+    triggerConfig: triggers[0].data.config || {},
+    conditions,
+    actions,
+  };
 }
 
-function IfNode() {
-  return <div className="relative rounded border border-violet-300 bg-violet-50 px-7 py-3 text-sm font-medium text-violet-950 shadow-sm"><Handle type="target" position={Position.Left}/><span>IF</span><Handle id="true" type="source" position={Position.Right} style={{ top: '35%' }}/><Handle id="false" type="source" position={Position.Right} style={{ top: '70%' }}/><span className="absolute right-2 top-[20%] text-[10px] text-violet-700">true</span><span className="absolute right-2 top-[58%] text-[10px] text-violet-700">false</span></div>;
+function WorkflowNodeCard({ data, selected }: NodeProps<WorkflowNode>) {
+  const info = nodeInfo[data.nodeType] || nodeInfo.create_notification;
+  const Icon = info.icon;
+  const accent = accentClasses[info.accent];
+  return (
+    <div
+      className={`relative min-w-[230px] overflow-hidden rounded-2xl border bg-slate-900/95 text-slate-100 shadow-xl backdrop-blur transition ${accent.border} ${accent.glow} ${selected ? "ring-2 ring-white/70" : "hover:-translate-y-0.5 hover:shadow-2xl"}`}
+    >
+      <div className={`h-1 ${accent.stripe}`} />
+      <Handle
+        type="target"
+        position={Position.Left}
+        className="!h-3 !w-3 !border-2 !border-slate-950 !bg-slate-200"
+      />
+      <div className="flex gap-3 p-3">
+        <div
+          className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${accent.icon}`}
+        >
+          <Icon className="h-4 w-4" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center justify-between gap-2">
+            <p className="truncate text-sm font-semibold">{info.title}</p>
+            <span className="rounded-full bg-white/5 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-slate-400">
+              idle
+            </span>
+          </div>
+          <p className="mt-1 text-[11px] leading-4 text-slate-400">
+            {info.subtitle}
+          </p>
+        </div>
+      </div>
+      {data.nodeType === "if" ? (
+        <div className="border-t border-white/10 px-3 py-2">
+          <div className="relative flex justify-between text-[10px] font-semibold">
+            <span className="text-emerald-300">TRUE</span>
+            <span className="text-rose-300">FALSE</span>
+            <Handle
+              id="true"
+              type="source"
+              position={Position.Right}
+              style={{ top: "48%", right: 42 }}
+              className="!h-3 !w-3 !border-2 !border-slate-950 !bg-emerald-400"
+            />
+            <Handle
+              id="false"
+              type="source"
+              position={Position.Right}
+              style={{ top: "48%" }}
+              className="!h-3 !w-3 !border-2 !border-slate-950 !bg-rose-400"
+            />
+          </div>
+        </div>
+      ) : (
+        <Handle
+          type="source"
+          position={Position.Right}
+          className={`!h-3 !w-3 !border-2 !border-slate-950 ${info.accent === "emerald" ? "!bg-emerald-400" : info.accent === "amber" ? "!bg-amber-400" : "!bg-blue-400"}`}
+        />
+      )}
+    </div>
+  );
 }
-const visualNodeTypes = { if: IfNode };
+const visualNodeTypes = Object.fromEntries(
+  palette.map((item) => [item.type, WorkflowNodeCard]),
+);
 
-export function WorkflowBuilder({ onClose, organizationId, workflow, onSaved }: { onClose: () => void; organizationId: string; workflow?: any; onSaved: () => void }) {
-  const graph = useMemo(() => restoreGraph(workflow), [workflow]);
-  const [nodes, setNodes, onNodesChange] = useNodesState<WorkflowNode>(graph.nodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(graph.edges);
+function ConfigPanel({
+  node,
+  update,
+}: {
+  node: WorkflowNode | null;
+  update: (config: Record<string, unknown>) => void;
+}) {
+  if (!node)
+    return (
+      <aside className="hidden w-80 border-s border-white/10 bg-slate-950/70 p-5 xl:block">
+        <div className="rounded-2xl border border-dashed border-white/15 p-5 text-center">
+          <Code2 className="mx-auto h-5 w-5 text-slate-500" />
+          <p className="mt-3 text-sm font-medium text-slate-300">
+            Node configuration
+          </p>
+          <p className="mt-1 text-xs leading-5 text-slate-500">
+            Select a node to configure its behavior.
+          </p>
+        </div>
+      </aside>
+    );
+  const info = nodeInfo[node.type || ""];
+  const config = node.data.config || {};
+  const field = (key: string, value: unknown) =>
+    update({ ...config, [key]: value });
+  const input = (
+    label: string,
+    key: string,
+    placeholder = "",
+    type = "text",
+  ) => (
+    <label className="block text-xs font-medium text-slate-300">
+      {label}
+      <input
+        type={type}
+        value={String(config[key] ?? "")}
+        placeholder={placeholder}
+        onChange={(event) =>
+          field(
+            key,
+            type === "number" ? Number(event.target.value) : event.target.value,
+          )
+        }
+        className="mt-1.5 w-full rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-600 focus:border-cyan-400/70"
+      />
+    </label>
+  );
+  return (
+    <aside className="w-full border-s border-white/10 bg-slate-950/80 p-5 xl:w-80">
+      <div className="flex items-center gap-3">
+        <div
+          className={`flex h-9 w-9 items-center justify-center rounded-xl ${accentClasses[info?.accent || "blue"].icon}`}
+        >
+          {info && <info.icon className="h-4 w-4" />}
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-white">{info?.title}</p>
+          <p className="text-xs text-slate-500">
+            {info?.category} configuration
+          </p>
+        </div>
+      </div>
+      <div className="mt-6 space-y-4">
+        {node.type === "expense_status_changed" && (
+          <label className="block text-xs font-medium text-slate-300">
+            New status
+            <select
+              value={String(config.to_status || "Pending")}
+              onChange={(event) => field("to_status", event.target.value)}
+              className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/70"
+            >
+              <option>Pending</option>
+              <option>Approved</option>
+              <option>Rejected</option>
+              <option>Paid</option>
+            </select>
+          </label>
+        )}
+        {node.type === "if" && (
+          <>
+            <p className="rounded-xl border border-amber-400/20 bg-amber-400/10 p-3 text-xs leading-5 text-amber-100">
+              <Info className="me-1 inline h-3.5 w-3.5" />
+              Route the event down exactly one branch.
+            </p>
+            {input("Field", "field", "e.g. status")}
+            <label className="block text-xs font-medium text-slate-300">
+              Operator
+              <select
+                value={String(config.operator || "equals")}
+                onChange={(event) => field("operator", event.target.value)}
+                className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/70"
+              >
+                {[
+                  "equals",
+                  "not_equals",
+                  "contains",
+                  "greater_than",
+                  "less_than",
+                  "is_empty",
+                  "is_not_empty",
+                  "changed_from",
+                  "changed_to",
+                ].map((operator) => (
+                  <option key={operator} value={operator}>
+                    {operator.replaceAll("_", " ")}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {!["is_empty", "is_not_empty"].includes(String(config.operator)) &&
+              input("Value", "value", "Value")}
+          </>
+        )}
+        {node.type === "create_notification" && (
+          <>
+            {input("Title", "title", "Notification title")}
+            <label className="block text-xs font-medium text-slate-300">
+              Message
+              <textarea
+                value={String(config.message || "")}
+                onChange={(event) => field("message", event.target.value)}
+                placeholder="Notification message"
+                className="mt-1.5 h-28 w-full resize-none rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-600 focus:border-cyan-400/70"
+              />
+            </label>
+          </>
+        )}
+        {node.type === "outgoing_webhook" && (
+          <>
+            <p className="rounded-xl border border-blue-400/20 bg-blue-400/10 p-3 text-xs text-blue-100">
+              A secure HTTPS POST request will be sent.
+            </p>
+            {input("Endpoint URL", "url", "https://example.com/webhook")}
+            <div className="rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-400">
+              Method{" "}
+              <span className="float-right font-medium text-slate-100">
+                POST
+              </span>
+            </div>
+          </>
+        )}
+        {["employee_created", "contact_created", "incoming_webhook"].includes(
+          node.type || "",
+        ) && (
+          <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 p-3 text-xs leading-5 text-emerald-100">
+            This trigger needs no additional configuration.
+          </div>
+        )}
+      </div>
+      <details className="mt-8 border-t border-white/10 pt-4">
+        <summary className="cursor-pointer text-xs font-medium text-slate-500">
+          Advanced / debug configuration
+        </summary>
+        <pre className="mt-3 overflow-auto rounded-xl bg-black/25 p-3 text-[10px] text-slate-400">
+          {JSON.stringify(config, null, 2)}
+        </pre>
+      </details>
+    </aside>
+  );
+}
+
+export function WorkflowBuilder({
+  onClose,
+  organizationId,
+  workflow,
+  onSaved,
+}: {
+  onClose: () => void;
+  organizationId: string;
+  workflow?: any;
+  onSaved: () => void;
+}) {
+  const initialGraph = useMemo(() => restoreGraph(workflow), [workflow]);
+  const [nodes, setNodes, onNodesChange] = useNodesState<WorkflowNode>(
+    initialGraph.nodes,
+  );
+  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>(
+    initialGraph.edges,
+  );
   const [selected, setSelected] = useState<WorkflowNode | null>(null);
-  const [name, setName] = useState(workflow?.name || 'Untitled automation');
-  const [saving, setSaving] = useState(false); const [error, setError] = useState('');
-  const connect = useCallback((connection: Connection) => setEdges((current) => addEdge(connection, current)), [setEdges]);
-  const add = (item: typeof items[number]) => setNodes((current) => [...current, { id: crypto.randomUUID(), type: item[0], position: { x: 150 + current.length * 45, y: 90 + current.length * 45 }, data: { config: {} } }]);
-  const save = async () => { try { setSaving(true); setError(''); const definition = compatibilityDefinition(nodes, edges); const body = { organizationId, name, ...definition, graphNodes: nodes.map((node) => ({ id: node.id, type: node.type, position: node.position, config: node.data.config || {} })), graphEdges: edges.map((edge) => ({ id: edge.id, source: edge.source, target: edge.target, sourceHandle: edge.sourceHandle, targetHandle: edge.targetHandle })), enabled: workflow?.enabled || false }; if (workflow) await automationService.update({ ...body, workflowId: workflow.id }); else await automationService.create(body); onSaved(); onClose(); } catch (saveError: any) { setError(saveError.message || 'Unable to save graph.'); } finally { setSaving(false); } };
-  return <div className="fixed inset-0 z-[70] flex bg-slate-950/30 p-3 md:p-6"><div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"><header className="flex items-center gap-3 border-b p-3"><button onClick={onClose} aria-label="Close builder"><ChevronLeft/></button><input value={name} onChange={(event) => setName(event.target.value)} className="flex-1 font-semibold"/><button onClick={save} disabled={saving} className="rounded bg-blue-700 px-3 py-2 text-sm text-white">{saving ? 'Saving…' : 'Save'}</button></header>{error && <div role="alert" className="bg-red-50 p-2 text-sm text-red-700">{error}</div>}<div className="grid min-h-0 flex-1 grid-cols-[200px_1fr_260px]"><aside className="border-e p-3">{items.map((item) => { const Icon = item[2]; return <button key={item[0]} onClick={() => add(item)} className="mb-2 flex w-full gap-2 rounded border p-2 text-left text-xs"><Icon className="h-4 w-4"/>{item[1]}<Plus className="ms-auto h-3 w-3"/></button>; })}</aside><main><ReactFlow nodes={nodes} edges={edges} nodeTypes={visualNodeTypes} onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={connect} onNodeClick={(_, node: any) => setSelected(node)} onPaneClick={() => setSelected(null)} fitView><Background/><Controls/><MiniMap/></ReactFlow></main><aside className="border-s p-3">{selected ? <><b>{selected.type}</b><label className="mt-3 block text-xs">Config<textarea value={JSON.stringify(selected.data.config || {})} onChange={(event) => { try { const config = JSON.parse(event.target.value); setNodes((current) => current.map((node) => node.id === selected.id ? { ...node, data: { ...node.data, config } } : node)); } catch {} }} className="mt-1 h-28 w-full border p-2 text-xs"/></label><button onClick={() => { setNodes((current) => current.filter((node) => node.id !== selected.id)); setEdges((current) => current.filter((edge) => edge.source !== selected.id && edge.target !== selected.id)); setSelected(null); }} className="mt-3 flex gap-1 text-sm text-red-600"><Trash2 className="h-4 w-4"/>Delete</button></> : <p className="text-sm text-slate-500">Select a node.</p>}</aside></div></div></div>;
+  const [name, setName] = useState(workflow?.name || "Untitled automation");
+  const [enabled, setEnabled] = useState(Boolean(workflow?.enabled));
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [search, setSearch] = useState("");
+  const flowRef = useRef<ReactFlowInstance | null>(null);
+  const canvasRef = useRef<HTMLDivElement | null>(null);
+  const add = (item: PaletteItem, position?: { x: number; y: number }) =>
+    setNodes((current) => [
+      ...current,
+      {
+        id: crypto.randomUUID(),
+        type: item.type,
+        position: position || {
+          x: 180 + current.length * 40,
+          y: 140 + current.length * 35,
+        },
+        data: { nodeType: item.type, config: defaults[item.type] || {} },
+      },
+    ]);
+  const connect = useCallback(
+    (connection: Connection) =>
+      setEdges((current) =>
+        addEdge(
+          {
+            ...connection,
+            id: crypto.randomUUID(),
+            type: "smoothstep",
+            animated: Boolean(connection.sourceHandle),
+            label: connection.sourceHandle?.toUpperCase(),
+            style: {
+              stroke:
+                connection.sourceHandle === "false"
+                  ? "#fb7185"
+                  : connection.sourceHandle === "true"
+                    ? "#34d399"
+                    : "#60a5fa",
+              strokeWidth: 2,
+            },
+          },
+          current,
+        ),
+      ),
+    [setEdges],
+  );
+  const drop = (event: React.DragEvent) => {
+    event.preventDefault();
+    const type = event.dataTransfer.getData("application/nextaura-node");
+    const item = palette.find((entry) => entry.type === type);
+    if (item && flowRef.current)
+      add(
+        item,
+        flowRef.current.screenToFlowPosition({
+          x: event.clientX,
+          y: event.clientY,
+        }),
+      );
+  };
+  const updateConfig = (config: Record<string, unknown>) => {
+    if (!selected) return;
+    setNodes((current) =>
+      current.map((node) =>
+        node.id === selected.id
+          ? { ...node, data: { ...node.data, config } }
+          : node,
+      ),
+    );
+    setSelected((current) =>
+      current ? { ...current, data: { ...current.data, config } } : current,
+    );
+  };
+  const save = async () => {
+    try {
+      setSaving(true);
+      setError("");
+      const definition = compatibilityDefinition(nodes, edges);
+      const body = {
+        organizationId,
+        name,
+        ...definition,
+        graphNodes: nodes.map((node) => ({
+          id: node.id,
+          type: node.type,
+          position: node.position,
+          config: node.data.config || {},
+        })),
+        graphEdges: edges.map((edge) => ({
+          id: edge.id,
+          source: edge.source,
+          target: edge.target,
+          sourceHandle: edge.sourceHandle,
+          targetHandle: edge.targetHandle,
+        })),
+        enabled,
+      };
+      if (workflow)
+        await automationService.update({ ...body, workflowId: workflow.id });
+      else await automationService.create(body);
+      onSaved();
+      onClose();
+    } catch (saveError: any) {
+      setError(saveError.message || "Unable to save graph.");
+    } finally {
+      setSaving(false);
+    }
+  };
+  const filtered = palette.filter((item) =>
+    `${item.title} ${item.category} ${item.subtitle}`
+      .toLowerCase()
+      .includes(search.toLowerCase()),
+  );
+  return (
+    <div className="fixed inset-0 z-[70] bg-[#07111c] text-slate-100">
+      <div className="flex h-full flex-col">
+        <header className="flex min-h-16 items-center gap-3 border-b border-white/10 bg-slate-950/80 px-4 backdrop-blur">
+          <button
+            onClick={onClose}
+            className="rounded-xl p-2 text-slate-400 hover:bg-white/5 hover:text-white"
+            aria-label="Back to automations"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </button>
+          <div className="h-7 w-px bg-white/10" />
+          <input
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            className="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none placeholder:text-slate-600"
+          />
+          <span
+            className={`hidden rounded-full border px-2.5 py-1 text-xs font-medium sm:inline ${enabled ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200" : "border-slate-600 bg-slate-800 text-slate-300"}`}
+          >
+            {enabled ? "Enabled" : "Draft"}
+          </span>
+          <button
+            onClick={() => setEnabled((value) => !value)}
+            className="rounded-xl border border-white/10 px-3 py-2 text-xs font-medium text-slate-300 hover:bg-white/5"
+          >
+            {enabled ? "Disable" : "Enable"}
+          </button>
+          <button
+            disabled
+            className="hidden rounded-xl border border-white/10 px-3 py-2 text-xs text-slate-500 md:inline-flex"
+          >
+            <Play className="me-1 h-3.5 w-3.5" />
+            Test soon
+          </button>
+          <button
+            onClick={() => void save()}
+            disabled={saving}
+            className="rounded-xl bg-gradient-to-r from-emerald-400 to-cyan-400 px-4 py-2 text-xs font-bold text-slate-950 shadow-lg shadow-emerald-500/15 disabled:opacity-60"
+          >
+            {saving ? "Saving…" : "Save changes"}
+          </button>
+        </header>
+        {error && (
+          <div
+            role="alert"
+            className="border-b border-red-400/20 bg-red-500/10 px-5 py-2 text-sm text-red-200"
+          >
+            {error}
+          </div>
+        )}
+        <div className="flex min-h-0 flex-1">
+          <aside className="hidden w-72 shrink-0 border-e border-white/10 bg-slate-950/70 p-4 lg:block">
+            <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+              <Sparkles className="h-4 w-4 text-cyan-300" />
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search nodes..."
+                className="w-full bg-transparent text-sm outline-none placeholder:text-slate-500"
+              />
+            </div>
+            <div className="mt-5 space-y-5">
+              {(["Trigger", "Logic", "Action"] as const).map((category) => (
+                <section key={category}>
+                  <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
+                    {category}s
+                  </p>
+                  <div className="space-y-2">
+                    {filtered
+                      .filter((item) => item.category === category)
+                      .map((item) => {
+                        const Icon = item.icon;
+                        return (
+                          <button
+                            key={item.type}
+                            draggable
+                            onDragStart={(event) =>
+                              event.dataTransfer.setData(
+                                "application/nextaura-node",
+                                item.type,
+                              )
+                            }
+                            onClick={() => add(item)}
+                            className="group flex w-full items-center gap-3 rounded-xl border border-white/8 bg-white/[0.025] p-2.5 text-left transition hover:border-white/20 hover:bg-white/[0.06]"
+                          >
+                            <GripVertical className="h-3 w-3 text-slate-600 group-hover:text-slate-400" />
+                            <div
+                              className={`flex h-8 w-8 items-center justify-center rounded-lg ${accentClasses[item.accent].icon}`}
+                            >
+                              <Icon className="h-4 w-4" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-semibold text-slate-200">
+                                {item.title}
+                              </p>
+                              <p className="truncate text-[10px] text-slate-500">
+                                {item.subtitle}
+                              </p>
+                            </div>
+                            <Plus className="ms-auto h-4 w-4 text-slate-600 group-hover:text-slate-300" />
+                          </button>
+                        );
+                      })}
+                  </div>
+                </section>
+              ))}
+            </div>
+            <div className="mt-6 border-t border-white/10 pt-4">
+              <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-600">
+                Coming next
+              </p>
+              <p className="mt-2 text-xs text-slate-500">
+                Integrations · AI · Data · Utilities
+              </p>
+            </div>
+          </aside>
+          <main
+            ref={canvasRef}
+            onDrop={drop}
+            onDragOver={(event) => event.preventDefault()}
+            className="relative min-w-0 flex-1 bg-[#0a1522]"
+          >
+            <ReactFlow
+              nodes={nodes}
+              edges={edges}
+              nodeTypes={visualNodeTypes}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={connect}
+              onInit={(instance) => {
+                flowRef.current = instance;
+              }}
+              onNodeClick={(_, node: any) => setSelected(node)}
+              onPaneClick={() => setSelected(null)}
+              defaultEdgeOptions={{ type: "smoothstep" }}
+              fitView
+            >
+            <Background color="#284158" gap={22} size={1} variant={BackgroundVariant.Dots} />
+              <Controls className="!border-white/10 !bg-slate-900 !fill-slate-300 !shadow-xl" />
+              <MiniMap
+                className="!border !border-white/10 !bg-slate-900/90"
+                nodeColor={(node) =>
+                  nodeInfo[node.type || ""]?.accent === "emerald"
+                    ? "#34d399"
+                    : nodeInfo[node.type || ""]?.accent === "amber"
+                      ? "#fbbf24"
+                      : "#60a5fa"
+                }
+              />
+            </ReactFlow>
+            {!nodes.length && (
+              <div className="pointer-events-none absolute inset-0 grid place-items-center">
+                <div className="rounded-2xl border border-white/10 bg-slate-900/85 p-6 text-center shadow-2xl backdrop-blur">
+                  <Sparkles className="mx-auto h-6 w-6 text-emerald-300" />
+                  <p className="mt-3 font-semibold">
+                    Start by adding a trigger
+                  </p>
+                  <p className="mt-1 text-sm text-slate-400">
+                    Choose a node from the library to begin.
+                  </p>
+                </div>
+              </div>
+            )}
+          </main>
+          <ConfigPanel node={selected} update={updateConfig} />
+        </div>
+      </div>
+    </div>
+  );
 }
