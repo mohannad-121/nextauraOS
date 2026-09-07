@@ -42,6 +42,8 @@ export interface Organization {
   country: string;
   address: string;
   fiscalYearEnd: string;
+  lifecycleStatus?: 'active' | 'locked' | 'archived';
+  billingRootOrganizationId?: string | null;
 }
 
 // ==========================================

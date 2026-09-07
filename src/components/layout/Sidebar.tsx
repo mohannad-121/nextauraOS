@@ -26,6 +26,7 @@ import {
   Plus,
   Sparkles,
   Building2,
+  Lock,
   BadgeDollarSign,
 } from 'lucide-react';
 import type { AppView } from '../../context/AppContext';
@@ -233,11 +234,13 @@ export const Sidebar: React.FC = () => {
                 {organizations.map((org) => (
                   <button
                     key={org.id}
+                    disabled={org.lifecycleStatus !== undefined && org.lifecycleStatus !== 'active'}
                     onClick={() => {
+                      if (org.lifecycleStatus && org.lifecycleStatus !== 'active') return;
                       void switchOrg(org.id).catch((error) => console.error('[Sidebar] Failed to switch workspace:', error));
                       setIsOrgDropdownOpen(false);
                     }}
-                    className={`w-full p-2 rounded-lg flex items-center justify-between text-xs font-medium transition-colors ${
+                    className={`w-full p-2 rounded-lg flex items-center justify-between text-xs font-medium transition-colors ${(org.lifecycleStatus && org.lifecycleStatus !== 'active') ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} ${
                       currentOrg.id === org.id
                         ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 font-semibold'
                         : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -247,7 +250,7 @@ export const Sidebar: React.FC = () => {
                       <Building2 className="h-3.5 w-3.5 text-blue-600" aria-hidden="true" />
                       {org.name}
                     </span>
-                    <span className="text-[10px] font-mono text-slate-400">{org.baseCurrency}</span>
+                    {org.lifecycleStatus && org.lifecycleStatus !== 'active' ? <span className="flex items-center gap-1 text-[10px] text-slate-400"><Lock className="h-3 w-3" />{org.lifecycleStatus === 'archived' ? 'Archived' : 'Locked'}</span> : <span className="text-[10px] font-mono text-slate-400">{org.baseCurrency}</span>}
                   </button>
                 ))}
               </div>

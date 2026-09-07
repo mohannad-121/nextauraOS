@@ -15,7 +15,7 @@ export const organizationService = {
         .from('organization_members')
         .select(`
           organization_id,
-          organizations ( id, name, slug, created_by, created_at, lifecycle_status )
+          organizations ( id, name, slug, created_by, created_at, lifecycle_status, billing_root_organization_id )
         `)
         .eq('user_id', userId)
         .eq('status', 'Active')
@@ -43,6 +43,8 @@ export const organizationService = {
           country: 'United States',
           address: '',
           fiscalYearEnd: '12-31',
+          lifecycleStatus: org.lifecycle_status,
+          billingRootOrganizationId: org.billing_root_organization_id,
         }));
     } catch (err: any) {
       console.error('[Organization Service] Exception fetching orgs:', err);
