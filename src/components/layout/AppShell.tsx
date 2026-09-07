@@ -3,6 +3,7 @@ import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { CommandPalette } from './CommandPalette';
 import { NotificationDrawer } from './NotificationDrawer';
+import { CompanyCreationDialog } from './CompanyCreationDialog';
 import { ErrorBoundary } from '../common/ErrorBoundary';
 import { useApp } from '../../context/AppContext';
 
@@ -88,6 +89,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
       </div>
       <CommandPalette />
       <NotificationDrawer />
+      <CompanyCreationDialog />
     </div>
   );
 };

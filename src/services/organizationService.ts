@@ -15,6 +15,7 @@ export const organizationService = {
         .from('organization_members')
         .select(`
           organization_id,
+          role,
           organizations ( id, name, slug, created_by, created_at, lifecycle_status, billing_root_organization_id )
         `)
         .eq('user_id', userId)
@@ -30,8 +31,11 @@ export const organizationService = {
       if (!data) return [];
 
       return data
-        .map((row: any) => row.organizations)
-        .filter((org: any) => Boolean(org && org.id))
+        .filter((row: any) => Boolean(row.organizations && row.organizations.id))
+        .map((row: any) => ({
+          ...row.organizations,
+          membershipRole: row.role,
+        }))
         .map((org: any) => ({
           id: org.id,
           name: org.name,
@@ -45,6 +49,7 @@ export const organizationService = {
           fiscalYearEnd: '12-31',
           lifecycleStatus: org.lifecycle_status,
           billingRootOrganizationId: org.billing_root_organization_id,
+          membershipRole: org.membershipRole,
         }));
     } catch (err: any) {
       console.error('[Organization Service] Exception fetching orgs:', err);
@@ -103,9 +108,47 @@ export const organizationService = {
         country: 'United States',
         address: '',
         fiscalYearEnd: '12-31',
+        lifecycleStatus: data.lifecycle_status,
+        billingRootOrganizationId: data.billing_root_organization_id,
       };
     }
 
     throw new Error('Supabase client is not configured.');
+  },
+
+  /**
+   * Create a child company through the server-authorized workspace RPC.
+   * The RPC derives identity, validates the billing root Owner and Custom plan,
+   * and creates the company plus its services atomically.
+   */
+  async createChildOrganization(orgName: string, billingRootOrganizationId: string): Promise<Organization> {
+    const name = orgName.trim();
+    if (!name) throw new Error('Company name is required.');
+    if (!billingRootOrganizationId) throw new Error('A billing root is required to create a company.');
+    if (!isSupabaseConfigured()) throw new Error('Supabase client is not configured.');
+
+    const { data, error } = await supabase.rpc('create_user_workspace', {
+      p_org_name: name,
+      p_billing_root_organization_id: billingRootOrganizationId,
+    });
+    if (error || !data) {
+      throw new Error(error?.message || 'Unable to create the company.');
+    }
+
+    return {
+      id: data.id,
+      name: data.name,
+      legalName: data.name,
+      logo: '',
+      taxId: '',
+      registrationNumber: '',
+      baseCurrency: 'USD',
+      country: 'United States',
+      address: '',
+      fiscalYearEnd: '12-31',
+      lifecycleStatus: data.lifecycle_status,
+      billingRootOrganizationId: data.billing_root_organization_id,
+      membershipRole: 'Owner',
+    };
   },
 };

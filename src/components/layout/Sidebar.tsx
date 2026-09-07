@@ -33,6 +33,7 @@ import type { AppView } from '../../context/AppContext';
 import { useApp } from '../../context/AppContext';
 import { getServiceCustomIcon } from '../../utils/serviceIconMapper';
 import { NextAuraAIIcon } from '../common/NextAuraAIIcon';
+import { useCompanyCreationAccess } from './useCompanyCreationAccess';
 
 export const Sidebar: React.FC = () => {
   const {
@@ -42,11 +43,13 @@ export const Sidebar: React.FC = () => {
     organizations,
     currentOrg,
     switchOrg,
+    setCompanyCreationOpen,
     isSidebarCollapsed,
     activeServices,
   } = useApp();
 
   const [isOrgDropdownOpen, setIsOrgDropdownOpen] = useState(false);
+  const companyCreationAccess = useCompanyCreationAccess();
   const [expandedCategory, setExpandedCategory] = useState<'finance' | 'hr' | 'marketing' | null>(
     ['invoicing', 'accounting', 'expenses', 'sign', 'equity', 'esg'].includes(activeApp)
       ? 'finance'
@@ -253,6 +256,11 @@ export const Sidebar: React.FC = () => {
                     {org.lifecycleStatus && org.lifecycleStatus !== 'active' ? <span className="flex items-center gap-1 text-[10px] text-slate-400"><Lock className="h-3 w-3" />{org.lifecycleStatus === 'archived' ? 'Archived' : 'Locked'}</span> : <span className="text-[10px] font-mono text-slate-400">{org.baseCurrency}</span>}
                   </button>
                 ))}
+                {companyCreationAccess !== 'none' && <div className="mt-1 border-t border-slate-100 pt-1 dark:border-slate-800">
+                  <button type="button" onClick={() => { if (companyCreationAccess === 'upgrade') navigate('pricing'); else setCompanyCreationOpen(true); setIsOrgDropdownOpen(false); }} className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-blue-950/30">
+                    <Plus className="h-3.5 w-3.5" aria-hidden="true" />{companyCreationAccess === 'upgrade' ? 'Upgrade for more companies' : 'Add company'}
+                  </button>
+                </div>}
               </div>
             )}
           </div>

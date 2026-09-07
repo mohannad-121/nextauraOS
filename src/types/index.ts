@@ -44,6 +44,8 @@ export interface Organization {
   fiscalYearEnd: string;
   lifecycleStatus?: 'active' | 'locked' | 'archived';
   billingRootOrganizationId?: string | null;
+  /** The current user's active membership role, used only to tailor workspace UI. */
+  membershipRole?: string;
 }
 
 // ==========================================

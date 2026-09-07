@@ -155,6 +155,7 @@ interface AppContextType {
   currentOrg: Organization;
   setCurrentOrg: (org: Organization) => void;
   switchOrg: (orgId: string) => Promise<void>;
+  refreshOrganizations: () => Promise<Organization[]>;
   user: User;
   theme: 'dark' | 'light';
   toggleTheme: () => void;
@@ -174,6 +175,8 @@ interface AppContextType {
   setSearchQuery: (query: string) => void;
   isGlobalCreateOpen: boolean;
   setGlobalCreateOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  isCompanyCreationOpen: boolean;
+  setCompanyCreationOpen: React.Dispatch<React.SetStateAction<boolean>>;
 
   // Finance Collections
   invoices: Invoice[];
@@ -325,6 +328,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [isNotificationDrawerOpen, setNotificationDrawerOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isGlobalCreateOpen, setGlobalCreateOpen] = useState(false);
+  const [isCompanyCreationOpen, setCompanyCreationOpen] = useState(false);
 
   // State Collections initialized from Database / Seed (Isolated per tenant)
   const isSupabase = isSupabaseConfigured();
@@ -832,9 +836,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setSMSCampaigns([]); setSurveys([]); setSocialPosts([]); setContacts([]); setActiveServices([]);
   };
 
+  const refreshOrganizations = useCallback(async (): Promise<Organization[]> => {
+    if (!isSupabase) return organizations;
+    const { data, error } = await supabase.auth.getUser();
+    if (error || !data.user) throw new Error('Your session has expired. Please sign in again.');
+    const refreshed = await organizationService.getUserOrganizations(data.user.id);
+    setOrganizations(refreshed);
+    return refreshed;
+  }, [isSupabase, organizations]);
+
   const switchOrg = async (orgId: string) => {
-    const found = organizations.find((o) => o.id === orgId);
-    if (!found) return;
+    let found = organizations.find((o) => o.id === orgId);
+    // A just-created child may not exist in this render's state snapshot yet.
+    // Refresh its membership before applying the same validated switch path.
+    if (!found && isSupabase) {
+      found = (await refreshOrganizations()).find((o) => o.id === orgId);
+    }
+    if (!found) throw new Error('This company is not available to your account.');
     if (isSupabase) {
       // Validate target access before persisting. Any failure leaves the current
       // tenant, visible data, and persisted preference untouched.
@@ -1151,6 +1169,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         organizations,
         currentOrg,
         setCurrentOrg,
+        switchOrg,
+        refreshOrganizations,
         user,
         theme,
         toggleTheme,
@@ -1167,6 +1187,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setSearchQuery,
         isGlobalCreateOpen,
         setGlobalCreateOpen,
+        isCompanyCreationOpen,
+        setCompanyCreationOpen,
         // Finance
         invoices,
         createInvoice,
@@ -1257,7 +1279,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         markAllNotificationsRead,
         auditLogs,
         addAuditLog,
-        switchOrg,
         toggleLanguage,
         activeServices,
         refreshServices,

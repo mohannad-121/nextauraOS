@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { authService } from '../../services/authService';
+import { useCompanyCreationAccess } from './useCompanyCreationAccess';
 
 const appLabels: Record<string, string> = {
   launchpad: 'Apps', home: 'Workspace', invoicing: 'Invoicing', accounting: 'Accounting',
@@ -34,7 +35,7 @@ export const Topbar: React.FC = () => {
   const {
     activeApp, activeSubView, navigate, theme, toggleTheme, language, toggleLanguage, user,
     notifications, setCommandPaletteOpen, setNotificationDrawerOpen, isSidebarCollapsed, setSidebarCollapsed,
-    organizations, currentOrg, switchOrg,
+    organizations, currentOrg, switchOrg, setCompanyCreationOpen,
   } = useApp();
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [companyMenuOpen, setCompanyMenuOpen] = useState(false);
@@ -43,6 +44,7 @@ export const Topbar: React.FC = () => {
   const menuRef = useRef<HTMLDivElement>(null);
   const companyMenuRef = useRef<HTMLDivElement>(null);
   const unreadCount = notifications.filter((item) => !item.read).length;
+  const companyCreationAccess = useCompanyCreationAccess();
 
   useEffect(() => {
     const closeMenu = (event: MouseEvent) => {
@@ -121,7 +123,7 @@ export const Topbar: React.FC = () => {
             <p className="px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Companies</p>
             {organizations.map((org) => { const unavailable = org.lifecycleStatus && org.lifecycleStatus !== 'active'; const active = currentOrg.id === org.id; return <button key={org.id} type="button" disabled={Boolean(unavailable || switchingOrgId)} onClick={() => void selectCompany(org.id)} className={`flex w-full items-center justify-between rounded-xl px-2.5 py-2.5 text-start text-xs ${unavailable ? 'cursor-not-allowed opacity-50' : 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800'} ${active ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300' : 'text-slate-700 dark:text-slate-200'}`}><span className="flex min-w-0 items-center gap-2"><Building2 className="h-4 w-4 shrink-0" /><span className="truncate">{org.name}</span>{org.billingRootOrganizationId === null && <span className="text-[10px] text-slate-400">Main</span>}</span>{switchingOrgId === org.id ? <Loader2 className="h-4 w-4 animate-spin" /> : unavailable ? <span className="flex items-center gap-1 text-[10px]"><Lock className="h-3 w-3" />{org.lifecycleStatus === 'archived' ? 'Archived' : 'Requires Custom'}</span> : active ? <Check className="h-4 w-4" /> : null}</button>; })}
             {companyError && <p className="px-2.5 pt-2 text-[11px] text-rose-600">{companyError}</p>}
-            <div className="mt-1 border-t border-slate-100 pt-1 dark:border-slate-800"><button type="button" onClick={() => { navigate('pricing'); setCompanyMenuOpen(false); }} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2.5 text-xs font-semibold text-blue-700 hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-blue-950/30"><Plus className="h-4 w-4" />Add company</button></div>
+            {companyCreationAccess !== 'none' && <div className="mt-1 border-t border-slate-100 pt-1 dark:border-slate-800"><button type="button" onClick={() => { if (companyCreationAccess === 'upgrade') navigate('pricing'); else setCompanyCreationOpen(true); setCompanyMenuOpen(false); }} className="flex w-full items-center gap-2 rounded-xl px-2.5 py-2.5 text-xs font-semibold text-blue-700 hover:bg-blue-50 dark:text-blue-300 dark:hover:bg-blue-950/30"><Plus className="h-4 w-4" />{companyCreationAccess === 'upgrade' ? 'Upgrade for more companies' : 'Add company'}</button></div>}
           </div>}
         </div>
       </div>
