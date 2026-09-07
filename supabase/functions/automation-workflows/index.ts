@@ -16,6 +16,7 @@ const stringValue = (value: unknown, maximum: number) => typeof value === 'strin
 const simpleValue = (value: unknown) => value === null || ['string', 'number', 'boolean'].includes(typeof value);
 const publicWorkflow = (workflow: Record<string, unknown>) => { const { incoming_webhook_token_hash: _hash, ...safe } = workflow; return safe; };
 const GRAPH_TYPES = new Set(['employee_created','contact_created','expense_status_changed','incoming_webhook','if','create_notification','outgoing_webhook']);
+const GRAPH_TRIGGER_TYPES = new Map([['employee_created', 'employee.created'], ['contact_created', 'contact.created'], ['expense_status_changed', 'expense.status_changed'], ['incoming_webhook', 'incoming_webhook']]);
 function validateGraph(nodes: unknown, edges: unknown) {
   if (nodes === undefined && edges === undefined) return { graph_nodes: undefined, graph_edges: undefined };
   if (!Array.isArray(nodes) || !Array.isArray(edges) || nodes.length > 100 || edges.length > 200) throw new Error('Workflow graph exceeds its limits.');
@@ -23,6 +24,26 @@ function validateGraph(nodes: unknown, edges: unknown) {
   for (const node of nodes) { if (!isObject(node) || typeof node.id !== 'string' || !node.id || ids.has(node.id) || !GRAPH_TYPES.has(String(node.type)) || !isObject(node.position) || !Number.isFinite(node.position.x) || !Number.isFinite(node.position.y) || !isObject(node.config ?? {})) throw new Error('Workflow graph node is invalid.'); ids.add(node.id); }
   for (const edge of edges) { if (!isObject(edge) || typeof edge.id !== 'string' || typeof edge.source !== 'string' || typeof edge.target !== 'string' || !ids.has(edge.source) || !ids.has(edge.target)) throw new Error('Workflow graph edge is invalid.'); }
   return { graph_nodes: nodes, graph_edges: edges };
+}
+function compileGraph(nodes: unknown, edges: unknown) {
+  if (!Array.isArray(nodes) || !Array.isArray(edges)) return null;
+  const byId = new Map(nodes.map((node: any) => [node.id, node]));
+  const triggers = nodes.filter((node: any) => GRAPH_TRIGGER_TYPES.has(node.type));
+  if (triggers.length !== 1) throw new Error('Graph requires exactly one trigger.');
+  const outgoing = new Map<string, any[]>(); const incoming = new Map<string, number>();
+  for (const edge of edges as any[]) { outgoing.set(edge.source, [...(outgoing.get(edge.source) || []), edge]); incoming.set(edge.target, (incoming.get(edge.target) || 0) + 1); }
+  const trigger = triggers[0]; const triggerType = GRAPH_TRIGGER_TYPES.get(trigger.type)!;
+  if (incoming.get(trigger.id)) throw new Error('Trigger cannot have an incoming edge.');
+  if ([...incoming.values()].some((count) => count > 1)) throw new Error('Merge nodes are not supported.');
+  const visited = new Set<string>(); const visiting = new Set<string>();
+  const visit = (nodeId: string) => { if (visiting.has(nodeId)) throw new Error('Cycles are not supported.'); if (visited.has(nodeId)) return; visiting.add(nodeId); for (const edge of outgoing.get(nodeId) || []) visit(edge.target); visiting.delete(nodeId); visited.add(nodeId); };
+  visit(trigger.id);
+  if (visited.size !== nodes.length) throw new Error('Connect all workflow nodes before saving.');
+  validateTrigger(triggerType, trigger.config || {});
+  const walk = (start: any) => { const actions:any[]=[]; let node=start; while(node){ if(node.type==='if') throw new Error('Nested IF nodes are not supported.'); if(!ACTION_TYPES.has(node.type)) throw new Error('Only action nodes may follow a trigger or IF branch.'); actions.push({ node_id:node.id,type:node.type,config:node.config||{} }); const next=outgoing.get(node.id)||[]; if(next.length>1) throw new Error('Action chains cannot branch.'); node=next.length?byId.get(next[0].target):null; } validateActions(actions.map(({ type, config }) => ({ type, config }))); return actions; };
+  const first=(outgoing.get(trigger.id)||[]); if(first.length>1) throw new Error('Trigger cannot branch directly.'); const next=first.length?byId.get(first[0].target):null;
+  if(next?.type==='if'){ const ifEdges=outgoing.get(next.id)||[]; if(ifEdges.some((edge:any)=>edge.sourceHandle!=='true'&&edge.sourceHandle!=='false')) throw new Error('IF edges must use true or false handles.'); const groups:any={true:[],false:[]}; for(const edge of ifEdges){ if(groups[edge.sourceHandle].length) throw new Error('Each IF branch must have one starting action.'); groups[edge.sourceHandle].push(edge); } const condition=next.config||{}; validateConditions([condition]); const true_actions=groups.true.length?walk(byId.get(groups.true[0].target)):[]; const false_actions=groups.false.length?walk(byId.get(groups.false[0].target)):[]; if(!true_actions.length&&!false_actions.length) throw new Error('At least one IF branch needs an action.'); return { trigger:{type:triggerType,config:trigger.config||{}},condition,true_actions,false_actions}; }
+  const true_actions=next?walk(next):[]; if(!true_actions.length) throw new Error('Graph requires a connected action.'); return {trigger:{type:triggerType,config:trigger.config||{}},condition:null,true_actions,false_actions:[]};
 }
 
 function validateTrigger(triggerType: unknown, triggerConfig: unknown) {
@@ -71,7 +92,8 @@ function validateDefinition(body: Record<string, unknown>) {
   validateActions(body.actions);
   if (body.enabled !== undefined && typeof body.enabled !== 'boolean') throw new Error('enabled must be a boolean.');
 
-  return { name, description, trigger_type: body.triggerType, trigger_config: body.triggerConfig, conditions: body.conditions, actions: body.actions, enabled: body.enabled === true, ...validateGraph(body.graphNodes, body.graphEdges) };
+  const graph = validateGraph(body.graphNodes, body.graphEdges); const execution_plan = Array.isArray(graph.graph_nodes) && graph.graph_nodes.length > 0 ? compileGraph(graph.graph_nodes, graph.graph_edges) : undefined;
+  return { name, description, trigger_type: body.triggerType, trigger_config: body.triggerConfig, conditions: body.conditions, actions: body.actions, enabled: body.enabled === true, ...graph, execution_plan };
 }
 
 async function requireWorkflowAccess(admin: any, userId: string, organizationId: string) {
@@ -136,7 +158,7 @@ Deno.serve(async (req) => {
       const timestamps = definition.enabled ? { last_enabled_at: new Date().toISOString(), disabled_at: null } : { last_enabled_at: null, disabled_at: new Date().toISOString() };
       const incomingWebhookToken = definition.trigger_type === 'incoming_webhook' ? createIncomingWebhookToken() : null;
       const incomingWebhookTokenHash = incomingWebhookToken ? await hashIncomingWebhookToken(incomingWebhookToken) : null;
-      const { graph_nodes, graph_edges, ...definitionFields } = definition; const { data, error } = await admin.from('automation_workflows').insert({ organization_id: organizationId, created_by: user.id, ...definitionFields, ...timestamps, incoming_webhook_token_hash: incomingWebhookTokenHash, ...(graph_nodes ? { graph_nodes, graph_edges } : {}) }).select('*').single();
+      const { graph_nodes, graph_edges, execution_plan, ...definitionFields } = definition; const { data, error } = await admin.from('automation_workflows').insert({ organization_id: organizationId, created_by: user.id, ...definitionFields, ...timestamps, incoming_webhook_token_hash: incomingWebhookTokenHash, ...(graph_nodes ? { graph_nodes, graph_edges, execution_plan } : {}) }).select('*').single();
       if (error) throw error;
       await audit(admin, organizationId, user.id, 'automation.workflow.created', data.id, { name: data.name });
       if (definition.enabled) await audit(admin, organizationId, user.id, 'automation.workflow.enabled', data.id, { name: data.name });
@@ -167,7 +189,7 @@ Deno.serve(async (req) => {
       const incomingWebhookTokenHash = incomingWebhookToken ? await hashIncomingWebhookToken(incomingWebhookToken) : undefined;
       const enabledChanged = definition.enabled !== current.enabled;
       const lifecycle = enabledChanged ? (definition.enabled ? { last_enabled_at: new Date().toISOString(), disabled_at: null } : { disabled_at: new Date().toISOString() }) : {};
-      const { graph_nodes, graph_edges, ...definitionFields } = definition; const { data, error } = await admin.from('automation_workflows').update({ ...definitionFields, ...lifecycle, version: current.version + 1, ...(graph_nodes ? { graph_nodes, graph_edges, graph_version: current.graph_version + 1 } : {}), ...(incomingWebhookTokenHash ? { incoming_webhook_token_hash: incomingWebhookTokenHash } : {}) }).eq('id', workflowId).eq('organization_id', organizationId).select('*').single();
+      const { graph_nodes, graph_edges, execution_plan, ...definitionFields } = definition; const { data, error } = await admin.from('automation_workflows').update({ ...definitionFields, ...lifecycle, version: current.version + 1, ...(graph_nodes ? { graph_nodes, graph_edges, execution_plan, graph_version: current.graph_version + 1, execution_plan_version: current.execution_plan_version + 1 } : {}), ...(incomingWebhookTokenHash ? { incoming_webhook_token_hash: incomingWebhookTokenHash } : {}) }).eq('id', workflowId).eq('organization_id', organizationId).select('*').single();
       if (error) throw error;
       await audit(admin, organizationId, user.id, enabledChanged ? (definition.enabled ? 'automation.workflow.enabled' : 'automation.workflow.disabled') : 'automation.workflow.updated', workflowId, { name: data.name, version: data.version });
       return json({ success: true, workflow: publicWorkflow(data), ...(incomingWebhookToken ? { incomingWebhookToken } : {}) });
