@@ -23,11 +23,27 @@ export interface PlanEntitlements {
   organization_count: number;
 }
 
+async function functionErrorMessage(error: any, data: any, fallback: string) {
+  if (data?.error) return String(data.error);
+  const context = error?.context;
+  try {
+    if (context instanceof Response) {
+      const payload = await context.clone().json();
+      if (payload?.error) return String(payload.error);
+    }
+    if (context?.error) return String(context.error);
+  } catch {
+    // The response may not have a JSON body; use a safe local fallback below.
+  }
+  const message = String(error?.message || '');
+  return message.includes('Edge Function returned a non-2xx status code') ? fallback : message || fallback;
+}
+
 export const entitlementService = {
   async getPlanEntitlements(orgId: string): Promise<PlanEntitlements | null> {
     if (!orgId || !isSupabaseConfigured()) return null;
     const { data, error } = await supabase.functions.invoke('get-plan-entitlements', { body: { organizationId: orgId } });
-    if (error || !data?.success) throw new Error(data?.error || error?.message || 'Unable to resolve plan entitlements.');
+    if (error || !data?.success) throw new Error(await functionErrorMessage(error, data, 'Unable to resolve plan entitlements.'));
     return data.entitlements as PlanEntitlements;
   },
 
@@ -133,7 +149,7 @@ export const entitlementService = {
       });
 
       if (error || !data?.success) {
-        const errorMessage = data?.error || error?.message || 'Failed to complete service activation.';
+        const errorMessage = await functionErrorMessage(error, data, 'Failed to complete service activation.');
         console.error('[Entitlement Error] Trusted service activation failed:', errorMessage);
         throw new Error(errorMessage);
       }

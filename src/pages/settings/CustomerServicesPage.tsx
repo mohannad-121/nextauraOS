@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus } from 'lucide-react';
+import { Lock, Plus } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { NEXTAURA_SERVICES } from '../../data/appRegistry';
 import { entitlementService } from '../../services/entitlementService';
@@ -9,24 +9,53 @@ import { StatusBadge } from '../../components/common/StatusBadge';
 import { Modal } from '../../components/common/Modal';
 
 export const CustomerServicesPage: React.FC = () => {
-  const { currentOrg, activeServices, refreshServices } = useApp();
+  const { currentOrg, activeServices, refreshServices, navigate } = useApp();
   const [isCatalogModalOpen, setCatalogModalOpen] = useState(false);
   const [selectedKeys, setSelectedKeys] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [catalogEntitlements, setCatalogEntitlements] = useState<Awaited<ReturnType<typeof entitlementService.getPlanEntitlements>>>(null);
+  const [loadingCatalogEntitlements, setLoadingCatalogEntitlements] = useState(false);
 
   // Categorize services
   const activeServiceDefs = NEXTAURA_SERVICES.filter((s) => activeServices.includes(s.key));
   const availableServiceDefs = NEXTAURA_SERVICES.filter((s) => !activeServices.includes(s.key));
 
+  const isFreePlan = catalogEntitlements?.plan === 'one_app_free';
+  const freePlanHasActiveApp = isFreePlan && catalogEntitlements.active_services.length >= 1;
+  const freePlanHasSelectedApp = isFreePlan && selectedKeys.length >= 1;
+  const freePlanMessage = 'One App Free includes one active business app. Upgrade to Standard to unlock the full app catalog.';
+  const isServiceLocked = (key: string) => isFreePlan && !selectedKeys.includes(key) && (freePlanHasActiveApp || freePlanHasSelectedApp);
+
   const toggleSelectService = (key: string) => {
+    if (isServiceLocked(key)) return;
     setSelectedKeys((prev) =>
       prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
     );
   };
 
+  const openCatalog = async () => {
+    if (!currentOrg?.id) return;
+    setSelectedKeys([]);
+    setErrorMsg('');
+    setCatalogEntitlements(null);
+    setCatalogModalOpen(true);
+    setLoadingCatalogEntitlements(true);
+    try {
+      setCatalogEntitlements(await entitlementService.getPlanEntitlements(currentOrg.id));
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Unable to load your plan access.');
+    } finally {
+      setLoadingCatalogEntitlements(false);
+    }
+  };
+
   const handleActivateNewServices = async () => {
     if (selectedKeys.length === 0 || !currentOrg?.id) return;
+    if (isFreePlan && (freePlanHasActiveApp || selectedKeys.length > 1)) {
+      setErrorMsg(freePlanMessage);
+      return;
+    }
     setSubmitting(true);
     setErrorMsg('');
 
@@ -50,6 +79,11 @@ export const CustomerServicesPage: React.FC = () => {
     if (!currentOrg?.id) return;
     setErrorMsg('');
     try {
+      if (!await entitlementService.canEnableService(currentOrg.id, serviceKey)) {
+        const entitlements = await entitlementService.getPlanEntitlements(currentOrg.id);
+        setErrorMsg(entitlements?.plan === 'one_app_free' ? freePlanMessage : 'This application is not available for your current subscription.');
+        return;
+      }
       await entitlementService.activateOrganizationServices(currentOrg.id, [serviceKey]);
       if (refreshServices) refreshServices();
     } catch (err: any) {
@@ -65,11 +99,7 @@ export const CustomerServicesPage: React.FC = () => {
         subtitle={`Manage active NextAura applications for ${currentOrg?.name || 'your workspace'} or enable new enterprise modules instantly.`}
         actions={
           <Button
-            onClick={() => {
-              setSelectedKeys([]);
-              setErrorMsg('');
-              setCatalogModalOpen(true);
-            }}
+            onClick={openCatalog}
             icon={<Plus className="w-4 h-4" />}
           >
             Enable New Applications
@@ -181,17 +211,40 @@ export const CustomerServicesPage: React.FC = () => {
               </div>
             )}
 
+            {loadingCatalogEntitlements ? (
+              <div className="py-12 text-center text-xs font-medium text-slate-500 dark:text-slate-400">Loading plan access…</div>
+            ) : <>
+            {isFreePlan && (
+              <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-200">
+                <Lock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+                <div>
+                  <p className="font-semibold">{freePlanMessage}</p>
+                  <button type="button" onClick={() => navigate('pricing')} className="mt-2 font-semibold text-blue-700 hover:text-blue-800 hover:underline dark:text-blue-300">Upgrade to Standard</button>
+                </div>
+              </div>
+            )}
             <div className="max-h-[60vh] overflow-y-auto space-y-4 pr-1">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {availableServiceDefs.map((service) => {
                   const Icon = service.icon;
                   const isSelected = selectedKeys.includes(service.key);
+                  const isLocked = isServiceLocked(service.key);
 
                   return (
                     <div
                       key={service.key}
+                      role="checkbox"
+                      aria-checked={isSelected}
+                      aria-disabled={isLocked}
+                      tabIndex={isLocked ? -1 : 0}
                       onClick={() => toggleSelectService(service.key)}
-                      className={`p-4 rounded-xl border transition-all cursor-pointer flex items-start gap-3 ${
+                      onKeyDown={(event) => {
+                        if (!isLocked && (event.key === ' ' || event.key === 'Enter')) {
+                          event.preventDefault();
+                          toggleSelectService(service.key);
+                        }
+                      }}
+                      className={`p-4 rounded-xl border transition-all flex items-start gap-3 ${isLocked ? 'cursor-not-allowed border-slate-200/70 bg-slate-50/70 text-slate-400 opacity-70 dark:border-slate-800 dark:bg-slate-950/40' : 'cursor-pointer'} ${
                         isSelected
                           ? 'bg-indigo-50/60 dark:bg-indigo-950/30 border-indigo-500/50 text-slate-900 dark:text-slate-100 shadow-2xs'
                           : 'bg-slate-50/50 dark:bg-slate-950/60 border-slate-200/80 dark:border-slate-800 hover:border-slate-300 text-slate-600 dark:text-slate-400'
@@ -203,6 +256,7 @@ export const CustomerServicesPage: React.FC = () => {
                       <div className="flex-1">
                         <div className="font-semibold text-xs text-slate-900 dark:text-slate-100 flex items-center justify-between">
                           <span>{service.name}</span>
+                          {isLocked && <Lock className="h-3.5 w-3.5 text-amber-700 dark:text-amber-300" aria-label="Requires an upgrade" />}
                           <span className={`w-4 h-4 rounded text-[10px] flex items-center justify-center ${isSelected ? 'bg-indigo-600 text-white font-bold' : 'border border-slate-300 dark:border-slate-700 text-transparent'}`}>✓</span>
                         </div>
                         <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">{service.description}</div>
@@ -212,6 +266,7 @@ export const CustomerServicesPage: React.FC = () => {
                 })}
               </div>
             </div>
+            </>}
 
             <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-4">
               <span className="text-xs font-mono text-slate-500 dark:text-slate-400">{selectedKeys.length} service(s) selected</span>
@@ -225,7 +280,7 @@ export const CustomerServicesPage: React.FC = () => {
                 <Button
                   onClick={handleActivateNewServices}
                   isLoading={submitting}
-                  disabled={selectedKeys.length === 0}
+                  disabled={selectedKeys.length === 0 || loadingCatalogEntitlements || freePlanHasActiveApp}
                 >
                   Activate Selected Services
                 </Button>
