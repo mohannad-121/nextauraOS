@@ -1,5 +1,6 @@
 import { authenticate, corsHeaders, json, requireBillingAdmin } from '../_shared/billing.ts';
 import { getOrganizationEntitlements } from '../_shared/entitlements.ts';
+import { validateOutgoingWebhookAction } from '../_shared/webhook-security.ts';
 
 const TRIGGER_TYPES = new Set(['employee.created', 'contact.created', 'expense.status_changed', 'incoming_webhook', 'schedule']);
 const CONDITION_OPERATORS = new Set(['equals', 'not_equals', 'contains', 'greater_than', 'less_than', 'is_empty', 'is_not_empty', 'changed_from', 'changed_to']);
@@ -38,15 +39,6 @@ function validateConditions(conditions: unknown) {
   }
 }
 
-function isObviouslyUnsafeHost(hostname: string) {
-  const host = hostname.toLowerCase().replace(/^\[|\]$/g, '');
-  if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local') || host === '::1' || host.startsWith('fc') || host.startsWith('fd')) return true;
-  const ipv4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
-  if (!ipv4) return false;
-  const octets = ipv4.slice(1).map(Number);
-  return octets.some((octet) => octet > 255) || octets[0] === 10 || octets[0] === 127 || (octets[0] === 169 && octets[1] === 254) || (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) || (octets[0] === 192 && octets[1] === 168);
-}
-
 function validateActions(actions: unknown) {
   if (!Array.isArray(actions) || actions.length > MAX_ACTIONS || JSON.stringify(actions).length > 16384) throw new Error(`Use no more than ${MAX_ACTIONS} actions.`);
   for (const action of actions) {
@@ -55,10 +47,7 @@ function validateActions(actions: unknown) {
       if (!hasOnlyKeys(action.config, ['title', 'message']) || !stringValue(action.config.title, 160) || !stringValue(action.config.message, 2000)) throw new Error('create_notification requires a title and message.');
       continue;
     }
-    if (!hasOnlyKeys(action.config, ['url', 'method']) || action.config.method !== 'POST' || !stringValue(action.config.url, 2048)) throw new Error('outgoing_webhook requires an HTTPS POST URL.');
-    let url: URL;
-    try { url = new URL(String(action.config.url)); } catch { throw new Error('outgoing_webhook URL is invalid.'); }
-    if (url.protocol !== 'https:' || url.username || url.password || isObviouslyUnsafeHost(url.hostname)) throw new Error('outgoing_webhook URL is not allowed.');
+    validateOutgoingWebhookAction(action);
   }
 }
 
