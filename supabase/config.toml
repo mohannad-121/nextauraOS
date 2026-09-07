@@ -1,2 +1,5 @@
 [functions.external-api]
 verify_jwt = false
+
+[functions.automation-worker]
+verify_jwt = false
