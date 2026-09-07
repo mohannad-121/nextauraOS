@@ -11,6 +11,10 @@ export interface OrganizationService {
 export interface PlanEntitlements {
   plan: 'one_app_free' | 'standard' | 'custom';
   access_active: boolean;
+  organization_id: string;
+  billing_root_organization_id: string;
+  organization_lifecycle_status: 'active' | 'locked' | 'archived';
+  billing_root_lifecycle_status: 'active' | 'locked' | 'archived';
   max_apps: number | null;
   all_apps: boolean;
   max_organizations: number | null;

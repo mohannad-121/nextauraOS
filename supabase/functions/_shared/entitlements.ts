@@ -3,6 +3,10 @@ const ACCESS_STATUSES = new Set(['active', 'trialing', 'past_due']);
 export interface PlanCapabilities {
   plan: 'one_app_free' | 'standard' | 'custom';
   access_active: boolean;
+  organization_id: string;
+  billing_root_organization_id: string;
+  organization_lifecycle_status: 'active' | 'locked' | 'archived';
+  billing_root_lifecycle_status: 'active' | 'locked' | 'archived';
   max_apps: number | null;
   all_apps: boolean;
   max_organizations: number | null;
@@ -14,12 +18,44 @@ export interface PlanCapabilities {
 }
 
 export async function getOrganizationEntitlements(admin: any, organizationId: string): Promise<PlanCapabilities> {
-  const { data: subscription, error: subscriptionError } = await admin.from('organization_subscriptions').select('plan,status').eq('organization_id', organizationId).maybeSingle();
+  const { data: organization, error: organizationError } = await admin
+    .from('organizations')
+    .select('id,billing_root_organization_id,lifecycle_status')
+    .eq('id', organizationId)
+    .maybeSingle();
+  if (organizationError) throw organizationError;
+  if (!organization) throw new Error('Organization not found.');
+
+  const billingRootOrganizationId = organization.billing_root_organization_id || organization.id;
+  const { data: billingRoot, error: billingRootError } = await admin
+    .from('organizations')
+    .select('id,billing_root_organization_id,lifecycle_status')
+    .eq('id', billingRootOrganizationId)
+    .maybeSingle();
+  if (billingRootError) throw billingRootError;
+  if (!billingRoot || billingRoot.billing_root_organization_id !== null) {
+    throw new Error('Invalid billing root relationship.');
+  }
+
+  const { data: subscription, error: subscriptionError } = await admin
+    .from('organization_subscriptions')
+    .select('plan,status')
+    .eq('organization_id', billingRootOrganizationId)
+    .maybeSingle();
   if (subscriptionError) throw subscriptionError;
   const plan = (subscription?.plan || 'one_app_free') as PlanCapabilities['plan'];
   const { data: capability, error: capabilityError } = await admin.from('plan_capabilities').select('*').eq('plan', plan).single();
   if (capabilityError || !capability) throw capabilityError || new Error(`No capabilities configured for ${plan}.`);
-  return { ...capability, access_active: subscription ? ACCESS_STATUSES.has(subscription.status) : true } as PlanCapabilities;
+  return {
+    ...capability,
+    organization_id: organization.id,
+    billing_root_organization_id: billingRootOrganizationId,
+    organization_lifecycle_status: organization.lifecycle_status,
+    billing_root_lifecycle_status: billingRoot.lifecycle_status,
+    access_active: organization.lifecycle_status === 'active'
+      && billingRoot.lifecycle_status === 'active'
+      && (subscription ? ACCESS_STATUSES.has(subscription.status) : true),
+  } as PlanCapabilities;
 }
 
 export async function syncOrganizationServiceEntitlements(admin: any, organizationId: string) {

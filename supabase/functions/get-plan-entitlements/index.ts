@@ -10,10 +10,11 @@ Deno.serve(async (req) => {
     const { data: membership, error: membershipError } = await admin.from('organization_members')
       .select('organization_id').eq('organization_id', organizationId).eq('user_id', user.id).eq('status', 'Active').maybeSingle();
     if (membershipError || !membership) return json({ success: false, error: 'Unauthorized organization access.' }, 403);
-    const [entitlements, activeServices, organizations] = await Promise.all([
-      getOrganizationEntitlements(admin, organizationId),
+    const entitlements = await getOrganizationEntitlements(admin, organizationId);
+    const [activeServices, organizations] = await Promise.all([
       admin.from('organization_services').select('service_key').eq('organization_id', organizationId).eq('status', 'active'),
-      admin.from('organization_members').select('organization_id').eq('user_id', user.id).eq('status', 'Active'),
+      admin.from('organizations').select('id')
+        .or(`id.eq.${entitlements.billing_root_organization_id},billing_root_organization_id.eq.${entitlements.billing_root_organization_id}`),
     ]);
     if (activeServices.error) throw activeServices.error;
     if (organizations.error) throw organizations.error;
