@@ -39,6 +39,8 @@ export const integrationConnectionService = {
   },
   createGenericApi: (organizationId: string, name: string, baseUrl: string, secret: string) =>
     call({ operation: 'createGenericApi', organizationId, name, baseUrl, secret }),
+  startGoogleOAuth: (organizationId: string, connectionId?: string) =>
+    call({ operation: 'startGoogleOAuth', organizationId, ...(connectionId ? { connectionId } : {}) }),
   rename: (organizationId: string, connectionId: string, name: string) =>
     call({ operation: 'rename', organizationId, connectionId, name }),
   test: (organizationId: string, connectionId: string) =>

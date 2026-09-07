@@ -63,6 +63,13 @@ const NextAuraAI = React.lazy(() => import('./pages/ai/NextAuraAI').then((module
 const AppContent: React.FC = () => {
   const { activeApp, activeSubView, signDocuments, navigate, currentOrg, user } = useApp();
 
+  React.useEffect(() => {
+    const callbackResult = new URLSearchParams(window.location.search).get('google');
+    if (callbackResult !== 'connected' && callbackResult !== 'error') return;
+    window.history.replaceState({}, document.title, window.location.pathname);
+    navigate('automations');
+  }, [navigate]);
+
   const renderCurrentView = () => {
     if (window.location.pathname.replace(/\/$/, '') === '/billing/success') return <BillingSuccessPage />;
     switch (activeApp) {
