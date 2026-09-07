@@ -11,11 +11,12 @@ import { billingService, type OrganizationSubscription } from '../../services/bi
 type SettingsTab = 'company' | 'team' | 'billing' | 'audit';
 
 export const SettingsPage: React.FC = () => {
-  const { currentOrg, user, auditLogs, navigate } = useApp();
+  const { currentOrg, user, auditLogs, navigate, activeSubView } = useApp();
   const [activeTab, setActiveTab] = useState<SettingsTab>('company');
   const [subscription, setSubscription] = useState<OrganizationSubscription | null>(null);
   const [seatCount, setSeatCount] = useState(1); const [billingBusy, setBillingBusy] = useState(false); const [billingError, setBillingError] = useState('');
   useEffect(() => { billingService.getSubscription(currentOrg.id).then((value) => { setSubscription(value); if (value) setSeatCount(value.seat_count); }).catch((err) => setBillingError(err.message)); }, [currentOrg.id]);
+  useEffect(() => { if (activeSubView === 'billing') setActiveTab('billing'); }, [activeSubView]);
   const updateSeats = async () => { setBillingBusy(true); setBillingError(''); try { await billingService.updateSeats(currentOrg.id, seatCount); setSubscription(await billingService.getSubscription(currentOrg.id)); } catch (err: any) { setBillingError(err.message); } finally { setBillingBusy(false); } };
   const openPortal = async () => { setBillingBusy(true); setBillingError(''); try { const result = await billingService.openPortal(currentOrg.id); if (result.url) window.location.assign(result.url); } catch (err: any) { setBillingError(err.message); } finally { setBillingBusy(false); } };
   const tabs: Array<{ id: SettingsTab; label: string }> = [

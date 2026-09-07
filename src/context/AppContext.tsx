@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useReducer } from 'react';
 import type {
   Organization,
   User,
@@ -282,6 +282,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Navigation
   const [activeApp, setActiveApp] = useState<AppView>('launchpad');
   const [activeSubView, setActiveSubView] = useState<string>('overview');
+  const [, rerenderAfterSuccessNavigation] = useReducer((value: number) => value + 1, 0);
   const [aiEntryContext, setAIEntryContext] = useState<{ app: AppView; subView: string }>({
     app: 'launchpad',
     subView: 'overview',
@@ -619,6 +620,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, [theme]);
 
   const navigate = (app: AppView, subView: string = 'overview', resourceId?: string) => {
+    // Paddle returns to a real success URL. This app otherwise uses in-memory
+    // navigation, so retaining that URL would keep rendering the success view
+    // even after a sidebar or topbar click updates application state.
+    if (window.location.pathname.replace(/\/$/, '') === '/billing/success') {
+      window.history.replaceState({}, document.title, '/');
+      rerenderAfterSuccessNavigation();
+    }
     if (app === 'ai' && activeApp !== 'ai') {
       setAIEntryContext({ app: activeApp, subView: activeSubView });
     }
