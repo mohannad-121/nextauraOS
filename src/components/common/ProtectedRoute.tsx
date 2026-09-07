@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Lock, ArrowRight, ShieldAlert } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { getServiceByAppId } from '../../data/appRegistry';
@@ -10,6 +10,7 @@ interface ProtectedRouteProps {
 
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   const { activeApp, activeServices, currentOrg, refreshServices, navigate } = useApp();
+  const [activationError, setActivationError] = useState('');
 
   // Core apps accessible to all authenticated org members
   const coreApps = ['launchpad', 'home', 'contacts', 'documents', 'analytics', 'ai', 'pricing', 'settings', 'auth'];
@@ -25,8 +26,13 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
 
   const handleActivateThisService = async () => {
     if (!serviceDef || !currentOrg) return;
-    await entitlementService.activateOrganizationServices(currentOrg.id, [serviceDef.key]);
-    if (refreshServices) refreshServices();
+    setActivationError('');
+    try {
+      await entitlementService.activateOrganizationServices(currentOrg.id, [serviceDef.key]);
+      if (refreshServices) refreshServices();
+    } catch (error: any) {
+      setActivationError(error.message || 'Unable to activate this service.');
+    }
   };
 
   if (!isEntitled && serviceDef) {
@@ -48,6 +54,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
         <p className="text-sm text-slate-500 dark:text-slate-400 max-w-lg mt-3 leading-relaxed">
           {serviceDef.name} is not currently active for your workspace. You can activate it instantly below.
         </p>
+        {activationError && <p className="mt-3 max-w-lg text-sm font-medium text-rose-700 dark:text-rose-300">{activationError}</p>}
 
         <div className="flex items-center gap-4 mt-8">
           <button

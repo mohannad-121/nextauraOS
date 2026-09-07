@@ -46,6 +46,17 @@ export const CustomerServicesPage: React.FC = () => {
     }
   };
 
+  const handleActivateSingleService = async (serviceKey: string) => {
+    if (!currentOrg?.id) return;
+    setErrorMsg('');
+    try {
+      await entitlementService.activateOrganizationServices(currentOrg.id, [serviceKey]);
+      if (refreshServices) refreshServices();
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to activate this application.');
+    }
+  };
+
   return (
     <div className="space-y-8">
       {/* Page Header */}
@@ -65,6 +76,12 @@ export const CustomerServicesPage: React.FC = () => {
           </Button>
         }
       />
+
+      {errorMsg && !isCatalogModalOpen && (
+        <div className="rounded-xl border border-rose-200 bg-rose-50 p-3 text-xs font-medium text-rose-700 dark:border-rose-800/50 dark:bg-rose-950/30 dark:text-rose-400">
+          {errorMsg}
+        </div>
+      )}
 
       {/* ACTIVE SERVICES GRID */}
       <div className="space-y-4">
@@ -137,11 +154,7 @@ export const CustomerServicesPage: React.FC = () => {
                     variant="outline"
                     size="sm"
                     className="w-full"
-                    onClick={async () => {
-                      if (!currentOrg?.id) return;
-                      await entitlementService.activateOrganizationServices(currentOrg.id, [service.key]);
-                      if (refreshServices) refreshServices();
-                    }}
+                    onClick={() => handleActivateSingleService(service.key)}
                   >
                     + Activate Instantly
                   </Button>

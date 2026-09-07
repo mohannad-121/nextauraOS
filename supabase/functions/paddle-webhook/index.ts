@@ -1,4 +1,5 @@
 import { adminClient, corsHeaders, json, recordAudit } from '../_shared/billing.ts';
+import { syncOrganizationServiceEntitlements } from '../_shared/entitlements.ts';
 import { planByPaddlePrice } from '../_shared/paddleConfig.ts';
 
 function hex(bytes: Uint8Array) { return [...bytes].map((byte) => byte.toString(16).padStart(2, '0')).join(''); }
@@ -80,6 +81,7 @@ async function syncSubscription(admin: any, event: any, organizationId: string) 
   }, { onConflict: 'organization_id' });
   if (error) throw error;
   await admin.from('organizations').update({ requested_seats: itemQuantity(item) }).eq('id', organizationId);
+  await syncOrganizationServiceEntitlements(admin, organizationId);
   await recordAudit(admin, organizationId, `billing.${event.event_type.replaceAll('.', '_')}`, `Paddle subscription state synchronized (${status}).`);
 }
 
@@ -107,6 +109,7 @@ Deno.serve(async (req) => {
     if (organizationId && event.event_type.startsWith('subscription.')) await syncSubscription(admin, event, organizationId);
     if (organizationId && event.event_type === 'transaction.payment_failed') {
       await admin.from('organization_subscriptions').update({ status: 'past_due' }).eq('organization_id', organizationId).eq('billing_provider', 'paddle');
+      await syncOrganizationServiceEntitlements(admin, organizationId);
       await recordAudit(admin, organizationId, 'billing.payment_failed', 'Paddle reported a failed payment; workspace billing is past due.');
     }
     if (organizationId && event.event_type === 'transaction.completed') await recordAudit(admin, organizationId, 'billing.transaction_completed', 'Paddle completed a transaction; waiting for subscription state synchronization.');
