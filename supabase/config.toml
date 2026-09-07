@@ -1,0 +1,2 @@
+[functions.external-api]
+verify_jwt = false

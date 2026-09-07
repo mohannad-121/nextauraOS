@@ -7,8 +7,9 @@ import { Button } from '../../components/common/Button';
 import { Surface } from '../../components/common/WorkspacePrimitives';
 import { formatDate } from '../../utils/formatters';
 import { billingService, type OrganizationSubscription } from '../../services/billingService';
+import { DeveloperApiPage } from './DeveloperApiPage';
 
-type SettingsTab = 'company' | 'team' | 'billing' | 'audit';
+type SettingsTab = 'company' | 'team' | 'billing' | 'developer' | 'audit';
 
 export const SettingsPage: React.FC = () => {
   const { currentOrg, user, auditLogs, navigate, activeSubView } = useApp();
@@ -23,6 +24,7 @@ export const SettingsPage: React.FC = () => {
     { id: 'company', label: 'Company' },
     { id: 'team', label: 'Team & permissions' },
     { id: 'billing', label: 'Billing & plans' },
+    { id: 'developer', label: 'Developer & API' },
     { id: 'audit', label: 'Audit log' },
   ];
 
@@ -100,6 +102,8 @@ export const SettingsPage: React.FC = () => {
             <div className="border-t border-slate-200 px-6 py-6 dark:border-slate-700"><dl className="mb-6 grid grid-cols-1 gap-4 text-sm sm:grid-cols-4"><div><dt className="text-slate-500">Current plan</dt><dd className="mt-1 font-medium">{subscription?.plan === 'one_app_free' ? 'One App Free' : subscription?.plan || 'Not active'}</dd></div><div><dt className="text-slate-500">Billing cycle</dt><dd className="mt-1 font-medium capitalize">{subscription?.billing_cycle || '—'}</dd></div><div><dt className="text-slate-500">Status</dt><dd className="mt-1 font-medium capitalize">{subscription?.status || '—'}</dd></div><div><dt className="text-slate-500">Renewal date</dt><dd className="mt-1 font-medium">{subscription?.next_billed_at ? formatDate(subscription.next_billed_at) : subscription?.current_period_end ? formatDate(subscription.current_period_end) : '—'}</dd></div></dl><label className="block max-w-xs text-sm font-medium">Seat quantity<input type="number" min={1} max={10000} value={seatCount} onChange={(e) => setSeatCount(Math.max(1, Number(e.target.value) || 1))} className="mt-2 w-full rounded-lg border border-slate-300 px-3 py-2 dark:border-slate-700 dark:bg-slate-950" /></label><Button className="mt-3" disabled={billingBusy || !subscription} onClick={updateSeats}>Save seat quantity</Button>{billingError && <p className="mt-3 text-sm text-rose-600">{billingError}</p>}</div>
           </Surface>
         )}
+
+        {activeTab === 'developer' && <DeveloperApiPage />}
 
         {activeTab === 'audit' && (
           <Surface padding="none" className="overflow-hidden">
