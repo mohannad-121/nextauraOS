@@ -2,12 +2,14 @@ import { adminClient } from '../_shared/billing.ts';
 import { getOrganizationEntitlements } from '../_shared/entitlements.ts';
 import { assertPublicWebhookTarget, discardBoundedResponse, isRetryableWebhookStatus, validateOutgoingWebhookAction, WebhookActionError } from '../_shared/webhook-security.ts';
 import { AutomationConditionError, evaluateAutomationCondition } from '../_shared/automation-condition.ts';
+import { getValidGoogleAccessToken } from '../_shared/google-oauth.ts';
 
 const DEFAULT_BATCH_SIZE = 25;
 const LEASE_SECONDS = 120;
 const NO_SUPPORTED_ACTIONS_SUMMARY = 'Definition matched; no supported action execution is configured.';
 const NOTIFICATION_RESULT_SUMMARY = 'Notification action completed.';
 const WEBHOOK_RESULT_SUMMARY = 'Webhook action completed.';
+const GMAIL_RESULT_SUMMARY = 'Gmail action completed.';
 const NOTIFICATION_FAILURE_SUMMARY = 'Automation notification action could not be completed.';
 
 type AutomationRun = Record<string, unknown>;
@@ -113,6 +115,15 @@ async function executeOutgoingWebhook(admin: any, run: AutomationRun, event: Aut
   }
 }
 
+function gmailConfig(action: unknown) { const config = (action as any)?.config; if (!config || typeof config !== 'object' || (action as any).type !== 'gmail_send_email' || !config.connection_id || !config.to || !config.subject || !config.body) throw new WebhookActionError('Gmail send configuration is invalid.', false); return config as Record<string, string>; }
+function mime(config: Record<string, string>) { const header = (name: string, value?: string) => value ? `${name}: ${value.replace(/[\r\n]/g, ' ')}` : ''; return [header('To', config.to), header('Cc', config.cc), header('Bcc', config.bcc), header('Subject', config.subject), 'MIME-Version: 1.0', 'Content-Type: text/plain; charset=UTF-8', '', config.body.replace(/\r?\n/g, '\r\n')].filter(Boolean).join('\r\n'); }
+async function executeGmailSend(admin: any, run: AutomationRun, action: unknown, actionIndex: number) {
+  const organizationId = String(run.organization_id); const runId = String(run.id); const config = gmailConfig(action); const { data: prior } = await admin.from('automation_action_deliveries').select('id,status,attempt_count').eq('organization_id', organizationId).eq('run_id', runId).eq('action_index', actionIndex).maybeSingle(); if (prior?.status === 'succeeded') return;
+  const now = new Date().toISOString(); const delivery = prior ? await admin.from('automation_action_deliveries').update({ status: 'running', attempt_count: Number(prior.attempt_count || 0) + 1, error_summary: null, started_at: now, completed_at: null }).eq('id', prior.id).select('id').single() : await admin.from('automation_action_deliveries').insert({ organization_id: organizationId, run_id: runId, action_index: actionIndex, action_type: 'gmail_send_email', status: 'running', attempt_count: 1, started_at: now }).select('id').single(); if (delivery.error || !delivery.data) throw new WebhookActionError('Gmail delivery could not be claimed.', true);
+  try { const { data: connection } = await admin.from('integration_connections').select('scopes,status,provider,auth_type').eq('id', config.connection_id).eq('organization_id', organizationId).maybeSingle(); if (!connection || connection.status !== 'active' || connection.provider !== 'google' || connection.auth_type !== 'oauth' || !Array.isArray(connection.scopes) || !connection.scopes.includes('https://www.googleapis.com/auth/gmail.send')) throw new WebhookActionError('Gmail permission is required for this connection.', false); const { accessToken } = await getValidGoogleAccessToken(config.connection_id, organizationId); const raw = btoa(unescape(encodeURIComponent(mime(config)))).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', ''); const response = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/messages/send', { method: 'POST', headers: { Authorization: `Bearer ${accessToken}`, 'content-type': 'application/json' }, body: JSON.stringify({ raw }), signal: AbortSignal.timeout(10_000) }); const status = response.status; const payload = await response.json().catch(() => ({})); if (!response.ok) throw new WebhookActionError('Gmail rejected the email request.', status === 429 || status >= 500); await admin.from('automation_action_deliveries').update({ status: 'succeeded', http_status: status, completed_at: new Date().toISOString(), error_summary: null }).eq('id', delivery.data.id); await recordWebhookAudit(admin, organizationId, 'automation.gmail.succeeded', { workflow_id: run.workflow_id, run_id: runId, action_index: actionIndex, recipient: config.to, gmail_message_id: typeof payload?.id === 'string' ? payload.id : null }); }
+  catch (error) { const e = error instanceof WebhookActionError ? error : new WebhookActionError('Gmail delivery could not be completed.', true); await admin.from('automation_action_deliveries').update({ status: 'failed', error_summary: e.message.slice(0, 1000), completed_at: new Date().toISOString() }).eq('id', delivery.data.id); throw e; }
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> { return Boolean(value) && typeof value === 'object' && !Array.isArray(value); }
 
 function resolveWorkflowActions(workflow: Record<string, unknown>, event: AutomationEvent): { actions: ResolvedAction[]; selectedBranch: 'true' | 'false' | 'linear' } {
@@ -154,15 +165,18 @@ async function executeActions(admin: any, run: AutomationRun) {
   const { actions, selectedBranch } = resolveWorkflowActions(workflow, event);
   let notificationActions = 0;
   let webhookActions = 0;
+  let gmailActions = 0;
   for (const { action, actionIndex } of actions) {
     if (!action || typeof action !== 'object' || Array.isArray(action)) throw new WebhookActionError('Automation action is invalid.', false);
     const actionType = (action as Record<string, unknown>).type;
     if (actionType === 'create_notification') { await executeNotificationAction(admin, run, action, actionIndex); notificationActions += 1; continue; }
     if (actionType === 'outgoing_webhook') { await executeOutgoingWebhook(admin, run, event, action, actionIndex); webhookActions += 1; continue; }
+    if (actionType === 'gmail_send_email') { await executeGmailSend(admin, run, action, actionIndex); gmailActions += 1; continue; }
     throw new WebhookActionError('Automation action is not supported.', false);
   }
   const branchSuffix = ` (${selectedBranch} branch)`;
   if (webhookActions) return WEBHOOK_RESULT_SUMMARY + branchSuffix;
+  if (gmailActions) return GMAIL_RESULT_SUMMARY + branchSuffix;
   if (notificationActions) return NOTIFICATION_RESULT_SUMMARY + branchSuffix;
   return NO_SUPPORTED_ACTIONS_SUMMARY + branchSuffix;
 }

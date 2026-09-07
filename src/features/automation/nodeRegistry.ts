@@ -55,6 +55,9 @@ export type AutomationNodeDefinition = {
 const anyConfig = () => true;
 const definitions: AutomationNodeDefinition[] = [
   {
+    type: "gmail_send_email", title: "Gmail · Send Email", category: "Integration", description: "Send an email through Gmail", icon: Mail, accent: "purple", available: true, kind: "integration", inputs: ["default"], outputs: ["default"], fields: [], defaultConfig: { connection_id: "", to: "", cc: "", bcc: "", subject: "", body: "" }, validate: anyConfig, provider: "google", requires_connection: true, connection_type: "oauth", required_scopes: ["https://www.googleapis.com/auth/gmail.send"], adapterKey: "gmail.send_email", entitlement: "automation_access",
+  },
+  {
     type: "employee_created",
     title: "Employee Created",
     category: "Trigger",
@@ -248,7 +251,6 @@ const definitions: AutomationNodeDefinition[] = [
     entitlement: "automation_access",
   },
   ...[
-    ["gmail", "Gmail", Mail, "google"],
     ["slack", "Slack", Send, "slack"],
     ["whatsapp", "WhatsApp", Send, "meta"],
     ["google_sheets", "Google Sheets", Sheet, "google"],

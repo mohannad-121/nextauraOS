@@ -5,7 +5,7 @@ import { createIncomingWebhookToken, hashIncomingWebhookToken } from '../_shared
 
 const TRIGGER_TYPES = new Set(['employee.created', 'contact.created', 'expense.status_changed', 'incoming_webhook', 'schedule']);
 const CONDITION_OPERATORS = new Set(['equals', 'not_equals', 'contains', 'greater_than', 'less_than', 'is_empty', 'is_not_empty', 'changed_from', 'changed_to']);
-const ACTION_TYPES = new Set(['create_notification', 'outgoing_webhook']);
+const ACTION_TYPES = new Set(['create_notification', 'outgoing_webhook', 'gmail_send_email']);
 const MAX_WORKFLOWS = 50;
 const MAX_CONDITIONS = 10;
 const MAX_ACTIONS = 10;
@@ -15,7 +15,7 @@ const hasOnlyKeys = (value: Record<string, unknown>, keys: string[]) => Object.k
 const stringValue = (value: unknown, maximum: number) => typeof value === 'string' && value.trim().length > 0 && value.length <= maximum;
 const simpleValue = (value: unknown) => value === null || ['string', 'number', 'boolean'].includes(typeof value);
 const publicWorkflow = (workflow: Record<string, unknown>) => { const { incoming_webhook_token_hash: _hash, ...safe } = workflow; return safe; };
-const GRAPH_TYPES = new Set(['employee_created','contact_created','expense_status_changed','incoming_webhook','if','create_notification','outgoing_webhook']);
+const GRAPH_TYPES = new Set(['employee_created','contact_created','expense_status_changed','incoming_webhook','if','create_notification','outgoing_webhook','gmail_send_email']);
 const GRAPH_TRIGGER_TYPES = new Map([['employee_created', 'employee.created'], ['contact_created', 'contact.created'], ['expense_status_changed', 'expense.status_changed'], ['incoming_webhook', 'incoming_webhook']]);
 const CONNECTION_NODE_REQUIREMENTS: Record<string, { provider: string; authType: string; scopes: string[] }> = {
   gmail: { provider: 'google', authType: 'oauth', scopes: [] },
@@ -23,6 +23,7 @@ const CONNECTION_NODE_REQUIREMENTS: Record<string, { provider: string; authType:
   google_calendar: { provider: 'google', authType: 'oauth', scopes: [] },
   slack: { provider: 'slack', authType: 'oauth', scopes: [] },
   whatsapp: { provider: 'meta', authType: 'oauth', scopes: [] },
+  gmail_send_email: { provider: 'google', authType: 'oauth', scopes: ['https://www.googleapis.com/auth/gmail.send'] },
 };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 function validateGraph(nodes: unknown, edges: unknown) {
@@ -85,6 +86,12 @@ function validateActions(actions: unknown) {
     if (!isObject(action) || !hasOnlyKeys(action, ['type', 'config']) || typeof action.type !== 'string' || !ACTION_TYPES.has(action.type) || !isObject(action.config)) throw new Error('Invalid automation action.');
     if (action.type === 'create_notification') {
       if (!hasOnlyKeys(action.config, ['title', 'message']) || !stringValue(action.config.title, 160) || !stringValue(action.config.message, 2000)) throw new Error('create_notification requires a title and message.');
+      continue;
+    }
+    if (action.type === 'gmail_send_email') {
+      const config = action.config as Record<string, unknown>;
+      const addresses = ['to', 'cc', 'bcc'];
+      if (!hasOnlyKeys(config, ['connection_id', 'to', 'cc', 'bcc', 'subject', 'body']) || !stringValue(config.connection_id, 36) || !UUID.test(String(config.connection_id)) || !stringValue(config.to, 1000) || !String(config.to).split(',').every((email) => /^[^\s@,]+@[^\s@,]+\.[^\s@,]+$/.test(email.trim())) || addresses.slice(1).some((key) => config[key] !== undefined && config[key] !== '' && (!stringValue(config[key], 1000) || !String(config[key]).split(',').every((email) => /^[^\s@,]+@[^\s@,]+\.[^\s@,]+$/.test(email.trim())))) || !stringValue(config.subject, 300) || !stringValue(config.body, 20000)) throw new Error('Gmail send requires a valid Google connection, recipient, subject, and body.');
       continue;
     }
     validateOutgoingWebhookAction(action);
@@ -152,9 +159,9 @@ function safeRunActions(workflow: Record<string, unknown>, branch: 'true' | 'fal
     const indexes = new Map<string, number>();
     for (const [index, action] of all.entries()) if (isObject(action) && typeof action.node_id === 'string') indexes.set(action.node_id, index);
     const selected = branch === 'false' ? plan.false_actions : plan.true_actions;
-    return selected.flatMap((action) => { if (!isObject(action) || typeof action.node_id !== 'string' || (action.type !== 'create_notification' && action.type !== 'outgoing_webhook')) return []; const action_index = indexes.get(action.node_id); return action_index === undefined ? [] : [{ action_index, type: action.type }]; });
+    return selected.flatMap((action) => { if (!isObject(action) || typeof action.node_id !== 'string' || (action.type !== 'create_notification' && action.type !== 'outgoing_webhook' && action.type !== 'gmail_send_email')) return []; const action_index = indexes.get(action.node_id); return action_index === undefined ? [] : [{ action_index, type: action.type }]; });
   }
-  return Array.isArray(workflow.actions) ? workflow.actions.flatMap((action, action_index) => isObject(action) && (action.type === 'create_notification' || action.type === 'outgoing_webhook') ? [{ action_index, type: action.type }] : []) : [];
+  return Array.isArray(workflow.actions) ? workflow.actions.flatMap((action, action_index) => isObject(action) && (action.type === 'create_notification' || action.type === 'outgoing_webhook' || action.type === 'gmail_send_email') ? [{ action_index, type: action.type }] : []) : [];
 }
 
 Deno.serve(async (req) => {

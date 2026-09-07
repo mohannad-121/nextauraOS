@@ -141,6 +141,8 @@ const accentClasses: Record<
     stripe: "bg-blue-400",
     glow: "shadow-blue-500/10",
   },
+  purple: { border: "border-purple-400/50", icon: "bg-purple-400/15 text-purple-200", stripe: "bg-purple-400", glow: "shadow-purple-500/10" },
+  cyan: { border: "border-cyan-400/50", icon: "bg-cyan-400/15 text-cyan-200", stripe: "bg-cyan-400", glow: "shadow-cyan-500/10" },
 };
 const defaults: Record<string, Record<string, unknown>> = {
   expense_status_changed: { to_status: "Pending" },
@@ -150,6 +152,7 @@ const defaults: Record<string, Record<string, unknown>> = {
     message: "A workflow event was completed.",
   },
   outgoing_webhook: { url: "", method: "POST" },
+  gmail_send_email: { connection_id: "", to: "", cc: "", bcc: "", subject: "", body: "" },
 };
 
 function restoreGraph(workflow: any) {
@@ -231,7 +234,7 @@ function compatibilityDefinition(nodes: WorkflowNode[], edges: Edge[]) {
   const actions = nodes
     .filter(
       (node) =>
-        node.type === "create_notification" || node.type === "outgoing_webhook",
+        node.type === "create_notification" || node.type === "outgoing_webhook" || node.type === "gmail_send_email",
     )
     .map((node) => ({ type: node.type, config: node.data.config || {} }));
   if (!actions.length) throw Error("Add at least one action node.");
@@ -246,7 +249,7 @@ function compatibilityDefinition(nodes: WorkflowNode[], edges: Edge[]) {
 function WorkflowNodeCard({ id, data, selected }: NodeProps<WorkflowNode>) {
   const info = nodeInfo[data.nodeType] || nodeInfo.create_notification;
   const Icon = info.icon;
-  const accent = accentClasses[info.accent];
+  const accent = accentClasses[info.accent] || accentClasses.blue;
   return (
     <div
       className={`relative min-w-[230px] overflow-hidden rounded-2xl border bg-slate-900/95 text-slate-100 shadow-xl backdrop-blur transition ${accent.border} ${accent.glow} ${selected ? "ring-2 ring-white/70" : "hover:-translate-y-0.5 hover:shadow-2xl"}`}
@@ -394,7 +397,7 @@ function NodePicker({
                         className={`flex items-center gap-3 rounded-xl border border-white/10 p-3 text-left ${node.available ? "hover:border-cyan-300/50 hover:bg-white/5" : "cursor-not-allowed opacity-45"}`}
                       >
                         <div
-                          className={`flex h-9 w-9 items-center justify-center rounded-lg ${accentClasses[node.accent].icon}`}
+                          className={`flex h-9 w-9 items-center justify-center rounded-lg ${(accentClasses[node.accent] || accentClasses.blue).icon}`}
                         >
                           <Icon className="h-4 w-4" />
                         </div>
@@ -427,11 +430,13 @@ function ConfigPanel({
   update,
   connections,
   connectionLoading,
+  onAddGmailPermission,
 }: {
   node: WorkflowNode | null;
   update: (config: Record<string, unknown>) => void;
   connections: IntegrationConnection[];
   connectionLoading: boolean;
+  onAddGmailPermission: (connectionId: string) => void;
 }) {
   if (!node)
     return (
@@ -499,7 +504,7 @@ function ConfigPanel({
               className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/70 disabled:opacity-60"
             >
               <option value="">{connectionLoading ? "Loading connections…" : "Select an active connection"}</option>
-              {connections.filter((connection) => connection.status === "active" && connection.provider === info.provider && (!info.connection_type || connection.auth_type === info.connection_type)).map((connection) => <option key={connection.id} value={connection.id}>{connection.name}{connection.account_label ? ` · ${connection.account_label}` : ""}</option>)}
+              {connections.filter((connection) => connection.status === "active" && connection.provider === info.provider && (!info.connection_type || connection.auth_type === info.connection_type)).map((connection) => <option key={connection.id} value={connection.id}>{connection.name}{connection.account_label ? ` · ${connection.account_label}` : ""}{info.required_scopes?.some((scope) => !connection.scopes.includes(scope)) ? " · Permission required" : ""}</option>)}
             </select>
             <span className="mt-1 block text-[11px] font-normal leading-4 text-slate-500">Only active {info.provider} connections in this company are shown. Credentials are never stored in the workflow.</span>
           </label>
@@ -580,6 +585,17 @@ function ConfigPanel({
                 POST
               </span>
             </div>
+          </>
+        )}
+        {node.type === "gmail_send_email" && (
+          <>
+            <p className="rounded-xl border border-purple-400/20 bg-purple-400/10 p-3 text-xs text-purple-100">Sends through the selected Google account. Gmail send permission is required.</p>
+            {input("To", "to", "recipient@example.com", "email")}
+            {input("CC", "cc", "Optional recipients", "text")}
+            {input("BCC", "bcc", "Optional recipients", "text")}
+            {input("Subject", "subject", "Email subject")}
+            <label className="block text-xs font-medium text-slate-300">Body<textarea value={String(config.body || "")} onChange={(event) => field("body", event.target.value)} className="mt-1.5 h-32 w-full resize-none rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/70" /></label>
+            {String(config.connection_id || "") && info?.required_scopes?.some((scope) => !connections.find((item) => item.id === config.connection_id)?.scopes.includes(scope)) && <div className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-xs text-amber-100">Gmail permission required<button onClick={() => onAddGmailPermission(String(config.connection_id))} className="mt-2 block font-semibold underline">Add Gmail permission</button></div>}
           </>
         )}
         {["employee_created", "contact_created", "incoming_webhook"].includes(
@@ -817,6 +833,7 @@ export function WorkflowBuilder({
       current ? { ...current, data: { ...current.data, config } } : current,
     );
   };
+  const addGmailPermission = (connectionId: string) => { integrationConnectionService.startGoogleOAuth(organizationId, connectionId, ['https://www.googleapis.com/auth/gmail.send']).then((result) => window.location.assign(result.authorizationUrl)).catch((reason) => setError(reason.message || 'Unable to add Gmail permission.')); };
   const save = async () => {
     try {
       setSaving(true);
@@ -993,7 +1010,7 @@ export function WorkflowBuilder({
                           >
                             <GripVertical className="h-3 w-3 text-slate-600 group-hover:text-slate-400" />
                             <div
-                              className={`flex h-8 w-8 items-center justify-center rounded-lg ${accentClasses[item.accent].icon}`}
+                              className={`flex h-8 w-8 items-center justify-center rounded-lg ${(accentClasses[item.accent] || accentClasses.blue).icon}`}
                             >
                               <Icon className="h-4 w-4" />
                             </div>
@@ -1083,7 +1100,7 @@ export function WorkflowBuilder({
               </div>
             )}
           </main>
-          <ConfigPanel node={selected} update={updateConfig} connections={connections} connectionLoading={connectionLoading} />
+          <ConfigPanel node={selected} update={updateConfig} connections={connections} connectionLoading={connectionLoading} onAddGmailPermission={addGmailPermission} />
         </div>
       </div>
     </div>
