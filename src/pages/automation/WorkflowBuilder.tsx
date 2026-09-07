@@ -34,6 +34,11 @@ import {
   Webhook,
 } from "lucide-react";
 import { automationService } from "../../services/automationService";
+import {
+  nodeByType,
+  nodeRegistry,
+  type AutomationNodeDefinition,
+} from "../../features/automation/nodeRegistry";
 
 type WorkflowNode = Node<Record<string, any>>;
 type PaletteItem = {
@@ -50,7 +55,7 @@ const triggerMap: Record<string, string> = {
   expense_status_changed: "expense.status_changed",
   incoming_webhook: "incoming_webhook",
 };
-const palette: PaletteItem[] = [
+const legacyPalette: PaletteItem[] = [
   {
     type: "employee_created",
     title: "Employee Created",
@@ -108,7 +113,9 @@ const palette: PaletteItem[] = [
     accent: "blue",
   },
 ];
-const nodeInfo = Object.fromEntries(palette.map((item) => [item.type, item]));
+void legacyPalette;
+const palette = nodeRegistry;
+const nodeInfo = nodeByType;
 const accentClasses: Record<
   string,
   { border: string; icon: string; stripe: string; glow: string }
@@ -261,7 +268,7 @@ function WorkflowNodeCard({ data, selected }: NodeProps<WorkflowNode>) {
             </span>
           </div>
           <p className="mt-1 text-[11px] leading-4 text-slate-400">
-            {info.subtitle}
+            {info.description}
           </p>
         </div>
       </div>
@@ -487,7 +494,11 @@ export function WorkflowBuilder({
   const [search, setSearch] = useState("");
   const flowRef = useRef<ReactFlowInstance | null>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
-  const add = (item: PaletteItem, position?: { x: number; y: number }) =>
+  const add = (
+    item: AutomationNodeDefinition,
+    position?: { x: number; y: number },
+  ) => {
+    if (!item.available) return;
     setNodes((current) => [
       ...current,
       {
@@ -497,9 +508,13 @@ export function WorkflowBuilder({
           x: 180 + current.length * 40,
           y: 140 + current.length * 35,
         },
-        data: { nodeType: item.type, config: defaults[item.type] || {} },
+        data: {
+          nodeType: item.type,
+          config: item.defaultConfig || defaults[item.type] || {},
+        },
       },
     ]);
+  };
   const connect = useCallback(
     (connection: Connection) =>
       setEdges((current) =>
@@ -587,7 +602,7 @@ export function WorkflowBuilder({
     }
   };
   const filtered = palette.filter((item) =>
-    `${item.title} ${item.category} ${item.subtitle}`
+    `${item.title} ${item.category} ${item.description}`
       .toLowerCase()
       .includes(search.toLowerCase()),
   );
@@ -654,7 +669,17 @@ export function WorkflowBuilder({
               />
             </div>
             <div className="mt-5 space-y-5">
-              {(["Trigger", "Logic", "Action"] as const).map((category) => (
+              {(
+                [
+                  "Trigger",
+                  "Logic",
+                  "Action",
+                  "Integration",
+                  "AI",
+                  "Data",
+                  "Utility",
+                ] as const
+              ).map((category) => (
                 <section key={category}>
                   <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.16em] text-slate-500">
                     {category}s
@@ -667,7 +692,8 @@ export function WorkflowBuilder({
                         return (
                           <button
                             key={item.type}
-                            draggable
+                            draggable={item.available}
+                            disabled={!item.available}
                             onDragStart={(event) =>
                               event.dataTransfer.setData(
                                 "application/nextaura-node",
@@ -675,7 +701,7 @@ export function WorkflowBuilder({
                               )
                             }
                             onClick={() => add(item)}
-                            className="group flex w-full items-center gap-3 rounded-xl border border-white/8 bg-white/[0.025] p-2.5 text-left transition hover:border-white/20 hover:bg-white/[0.06]"
+                            className={`group flex w-full items-center gap-3 rounded-xl border border-white/8 bg-white/[0.025] p-2.5 text-left transition hover:border-white/20 hover:bg-white/[0.06] ${item.available ? "" : "cursor-not-allowed opacity-50"}`}
                           >
                             <GripVertical className="h-3 w-3 text-slate-600 group-hover:text-slate-400" />
                             <div
@@ -688,10 +714,16 @@ export function WorkflowBuilder({
                                 {item.title}
                               </p>
                               <p className="truncate text-[10px] text-slate-500">
-                                {item.subtitle}
+                                {item.description}
                               </p>
                             </div>
-                            <Plus className="ms-auto h-4 w-4 text-slate-600 group-hover:text-slate-300" />
+                            {item.available ? (
+                              <Plus className="ms-auto h-4 w-4 text-slate-600 group-hover:text-slate-300" />
+                            ) : (
+                              <span className="ms-auto text-[9px] font-bold uppercase tracking-wide text-purple-300">
+                                Soon
+                              </span>
+                            )}
                           </button>
                         );
                       })}
@@ -729,7 +761,12 @@ export function WorkflowBuilder({
               defaultEdgeOptions={{ type: "smoothstep" }}
               fitView
             >
-            <Background color="#284158" gap={22} size={1} variant={BackgroundVariant.Dots} />
+              <Background
+                color="#284158"
+                gap={22}
+                size={1}
+                variant={BackgroundVariant.Dots}
+              />
               <Controls className="!border-white/10 !bg-slate-900 !fill-slate-300 !shadow-xl" />
               <MiniMap
                 className="!border !border-white/10 !bg-slate-900/90"
