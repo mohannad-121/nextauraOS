@@ -23,9 +23,18 @@ function requestResource(req: Request): Resource | null {
   return value && value in resources ? value as Resource : null;
 }
 
-function boundedNumber(value: string | null, fallback: number, maximum: number) {
+function boundedLimit(value: string | null) {
+  if (value === null || value.trim() === '') return 50;
   const parsed = Number(value);
-  return Number.isInteger(parsed) && parsed >= 0 ? Math.min(parsed, maximum) : fallback;
+  if (!Number.isInteger(parsed) || parsed < 1) return 50;
+  return Math.min(parsed, 100);
+}
+
+function boundedOffset(value: string | null) {
+  if (value === null || value.trim() === '') return 0;
+  const parsed = Number(value);
+  if (!Number.isInteger(parsed) || parsed < 0) return 0;
+  return Math.min(parsed, 10_000);
 }
 
 Deno.serve(async (req) => {
@@ -78,8 +87,8 @@ Deno.serve(async (req) => {
     await admin.from('organization_api_keys').update({ last_used_at: new Date().toISOString() }).eq('id', apiKey.id);
     if (!config.table || !config.columns) return json({ error: `${resource} records are not persisted in NextAura yet.`, code: 'RESOURCE_NOT_AVAILABLE' }, 501);
     const url = new URL(req.url);
-    const limit = boundedNumber(url.searchParams.get('limit'), 50, 100);
-    const offset = boundedNumber(url.searchParams.get('offset'), 0, 10_000);
+    const limit = boundedLimit(url.searchParams.get('limit'));
+    const offset = boundedOffset(url.searchParams.get('offset'));
     const { data, error } = await admin.from(config.table).select(config.columns).eq('organization_id', apiKey.organization_id).order('created_at', { ascending: false }).range(offset, offset + limit - 1);
     if (error) throw error;
     return json({ data: data || [], meta: { resource, count: data?.length || 0, limit, offset } });
