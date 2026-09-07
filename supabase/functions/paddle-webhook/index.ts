@@ -42,14 +42,20 @@ async function resolveOrganizationId(admin: any, data: any) {
     return request.organization_id;
   }
   if (data?.id && String(data?.id).startsWith('sub_')) {
-    const { data: existing } = await admin.from('organization_subscriptions').select('organization_id')
-      .eq('billing_provider', 'paddle').eq('provider_subscription_id', data.id).maybeSingle();
+    const { data: existing } = await admin.from('paddle_subscription_states').select('organization_id')
+      .eq('provider_subscription_id', data.id).maybeSingle();
     if (existing?.organization_id) return existing.organization_id;
+    const { data: legacy } = await admin.from('organization_subscriptions').select('organization_id')
+      .eq('billing_provider', 'paddle').eq('provider_subscription_id', data.id).maybeSingle();
+    if (legacy?.organization_id) return legacy.organization_id;
   }
   if (data?.subscription_id) {
-    const { data: existing } = await admin.from('organization_subscriptions').select('organization_id')
-      .eq('billing_provider', 'paddle').eq('provider_subscription_id', data.subscription_id).maybeSingle();
+    const { data: existing } = await admin.from('paddle_subscription_states').select('organization_id')
+      .eq('provider_subscription_id', data.subscription_id).maybeSingle();
     if (existing?.organization_id) return existing.organization_id;
+    const { data: legacy } = await admin.from('organization_subscriptions').select('organization_id')
+      .eq('billing_provider', 'paddle').eq('provider_subscription_id', data.subscription_id).maybeSingle();
+    if (legacy?.organization_id) return legacy.organization_id;
   }
   return null;
 }
@@ -64,27 +70,32 @@ async function syncSubscription(admin: any, event: any, organizationId: string) 
   const scheduledChange = subscription.scheduled_change || null;
   const currentPeriod = subscription.current_billing_period || {};
   const status = event.event_type === 'subscription.canceled' ? 'canceled' : subscription.status || 'unknown';
-  const { error } = await admin.from('organization_subscriptions').upsert({
-    organization_id: billingRootOrganizationId,
-    plan: mapped.plan,
-    billing_cycle: mapped.billingCycle,
-    status,
-    seat_count: itemQuantity(item),
-    billing_provider: 'paddle',
-    provider_customer_id: subscription.customer_id || null,
-    provider_subscription_id: subscription.id,
-    provider_item_id: item?.id || null,
-    provider_price_id: priceId,
-    current_period_start: currentPeriod.starts_at || null,
-    current_period_end: currentPeriod.ends_at || null,
-    next_billed_at: subscription.next_billed_at || currentPeriod.ends_at || null,
-    scheduled_change: scheduledChange,
-  }, { onConflict: 'organization_id' });
-  if (error) throw error;
+  const occurredAt = event.occurred_at || event.occurredAt || subscription.updated_at || subscription.updatedAt;
+  const providerEventOccurredAt = occurredAt ? new Date(occurredAt) : null;
+  if (!providerEventOccurredAt || Number.isNaN(providerEventOccurredAt.getTime())) {
+    throw new Error('Paddle subscription event is missing a valid occurred_at timestamp.');
+  }
+  const { data: canonical, error } = await admin.rpc('apply_paddle_subscription_event', {
+    p_organization_id: billingRootOrganizationId,
+    p_provider_subscription_id: subscription.id,
+    p_provider_customer_id: subscription.customer_id || null,
+    p_provider_item_id: item?.id || null,
+    p_provider_price_id: priceId,
+    p_plan: mapped.plan,
+    p_billing_cycle: mapped.billingCycle,
+    p_status: status,
+    p_seat_count: itemQuantity(item),
+    p_current_period_start: currentPeriod.starts_at || null,
+    p_current_period_end: currentPeriod.ends_at || null,
+    p_next_billed_at: subscription.next_billed_at || currentPeriod.ends_at || null,
+    p_scheduled_change: scheduledChange,
+    p_provider_event_occurred_at: providerEventOccurredAt.toISOString(),
+  });
+  if (error || !canonical?.provider_subscription_id) throw error || new Error('Unable to resolve the canonical Paddle subscription.');
   await admin.from('organizations').update({ requested_seats: itemQuantity(item) }).eq('id', billingRootOrganizationId);
-  await reconcileOrganizationFamilyForPlan(admin, billingRootOrganizationId, lifecyclePlanForSubscription(mapped.plan, status));
+  await reconcileOrganizationFamilyForPlan(admin, billingRootOrganizationId, lifecyclePlanForSubscription(canonical.plan, canonical.status));
   await syncOrganizationServiceEntitlements(admin, billingRootOrganizationId);
-  await recordAudit(admin, billingRootOrganizationId, `billing.${event.event_type.replaceAll('.', '_')}`, `Paddle subscription state synchronized (${status}).`);
+  await recordAudit(admin, billingRootOrganizationId, `billing.${event.event_type.replaceAll('.', '_')}`, `Paddle subscription state synchronized (${canonical.status}; canonical plan ${canonical.plan}).`);
 }
 
 Deno.serve(async (req) => {
@@ -109,11 +120,7 @@ Deno.serve(async (req) => {
 
     const organizationId = await resolveOrganizationId(admin, event.data);
     if (organizationId && event.event_type.startsWith('subscription.')) await syncSubscription(admin, event, organizationId);
-    if (organizationId && event.event_type === 'transaction.payment_failed') {
-      await admin.from('organization_subscriptions').update({ status: 'past_due' }).eq('organization_id', organizationId).eq('billing_provider', 'paddle');
-      await syncOrganizationServiceEntitlements(admin, organizationId);
-      await recordAudit(admin, organizationId, 'billing.payment_failed', 'Paddle reported a failed payment; workspace billing is past due.');
-    }
+    if (organizationId && event.event_type === 'transaction.payment_failed') await recordAudit(admin, organizationId, 'billing.payment_failed', 'Paddle reported a failed payment; waiting for the authoritative subscription update.');
     if (organizationId && event.event_type === 'transaction.completed') await recordAudit(admin, organizationId, 'billing.transaction_completed', 'Paddle completed a transaction; waiting for subscription state synchronization.');
     await admin.from('paddle_webhook_events').update({ organization_id: organizationId, processed_at: new Date().toISOString() }).eq('paddle_event_id', event.event_id);
     return json({ received: true });

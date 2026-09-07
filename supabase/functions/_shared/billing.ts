@@ -1,4 +1,6 @@
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+// Pin a Deno-compatible SDK build. The unpinned latest esm.sh resolution can
+// select a denonext-only transitive module that the Supabase Edge bundler cannot fetch.
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.8';
 
 export const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
