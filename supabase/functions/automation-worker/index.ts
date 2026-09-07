@@ -25,7 +25,9 @@ function requireInternalServiceCall(req: Request) {
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
   const authorization = req.headers.get('authorization') ?? '';
   const apiKey = req.headers.get('apikey') ?? '';
-  if (!serviceRoleKey || (authorization !== `Bearer ${serviceRoleKey}` && apiKey !== serviceRoleKey)) throw new Error('Unauthorized internal worker invocation.');
+  const schedulerSecret = Deno.env.get('AUTOMATION_WORKER_SECRET') ?? '';
+  const schedulerAuthorized = Boolean(schedulerSecret) && req.headers.get('x-automation-worker-secret') === schedulerSecret;
+  if (!schedulerAuthorized && (!serviceRoleKey || (authorization !== `Bearer ${serviceRoleKey}` && apiKey !== serviceRoleKey))) throw new Error('Unauthorized internal worker invocation.');
 }
 
 function validateNotificationAction(action: unknown) {

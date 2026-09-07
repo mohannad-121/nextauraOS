@@ -838,7 +838,13 @@ export function WorkflowBuilder({
     );
   };
   const addGmailPermission = (connectionId: string) => { integrationConnectionService.startGoogleOAuth(organizationId, connectionId, ['https://www.googleapis.com/auth/gmail.send']).then((result) => window.location.assign(result.authorizationUrl)).catch((reason) => setError(reason.message || 'Unable to add Gmail permission.')); };
-  const save = async () => {
+  const save = async ({
+    enabledOverride = enabled,
+    closeOnSuccess = true,
+  }: {
+    enabledOverride?: boolean;
+    closeOnSuccess?: boolean;
+  } = {}) => {
     try {
       setSaving(true);
       setError("");
@@ -860,18 +866,32 @@ export function WorkflowBuilder({
           sourceHandle: edge.sourceHandle,
           targetHandle: edge.targetHandle,
         })),
-        enabled,
+        enabled: enabledOverride,
       };
       if (workflow)
         await automationService.update({ ...body, workflowId: workflow.id });
       else await automationService.create(body);
       onSaved();
-      onClose();
+      if (closeOnSuccess) onClose();
+      return true;
     } catch (saveError: any) {
       setError(saveError.message || "Unable to save graph.");
+      return false;
     } finally {
       setSaving(false);
     }
+  };
+  const toggleEnabled = async () => {
+    const nextEnabled = !enabled;
+    if (!workflow) {
+      setEnabled(nextEnabled);
+      setError("Save the workflow before changing its enabled status.");
+      return;
+    }
+
+    setEnabled(nextEnabled);
+    const persisted = await save({ enabledOverride: nextEnabled, closeOnSuccess: false });
+    if (!persisted) setEnabled(!nextEnabled);
   };
   const filtered = palette.filter((item) =>
     `${item.title} ${item.category} ${item.description}`
@@ -940,8 +960,9 @@ export function WorkflowBuilder({
             </>
           )}
           <button
-            onClick={() => setEnabled((value) => !value)}
-            className="rounded-xl border border-white/10 px-3 py-2 text-xs font-medium text-slate-300 hover:bg-white/5"
+            onClick={() => void toggleEnabled()}
+            disabled={saving}
+            className="rounded-xl border border-white/10 px-3 py-2 text-xs font-medium text-slate-300 hover:bg-white/5 disabled:opacity-60"
           >
             {enabled ? "Disable" : "Enable"}
           </button>
