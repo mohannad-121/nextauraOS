@@ -334,7 +334,7 @@ async function generateWithGemini({
   const apiKey = Deno.env.get("GEMINI_API_KEY");
   if (!apiKey) throw new Error("Website AI is not configured.");
   const overrideModel = Deno.env.get("GEMINI_MODEL");
-  let model = overrideModel || "gemini-2.5-flash-lite";
+  let model = overrideModel || "gemini-3.5-flash-lite";
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 25_000);
   const request = (requestedModel: string) =>
@@ -377,7 +377,7 @@ async function generateWithGemini({
   try {
     response = await request(model);
     if (response.status === 404 && !overrideModel) {
-      model = "gemini-2.5-flash";
+      model = "gemini-3.5-flash";
       response = await request(model);
     }
   } catch (error) {
