@@ -309,56 +309,101 @@ function validatePlan(value: unknown): Plan {
 
 const systemInstruction = `You create JSON website plans only. Never publish, never include HTML, CSS, JavaScript, image URLs, secrets, database operations, or markdown. Use only sections: hero, text, image, button_group, spacer, features, services, testimonials, pricing, faq, contact, gallery, stats, team. Return exactly one JSON object matching this shape: {version:1,site:{name,slugSuggestion,language,theme:{preset,primaryColor,backgroundColor,textColor,headingFont,bodyFont,radius,direction}},pages:[{clientId,name,slug,isHomepage,seo:{title,description},sections:[{type,props,style}]}],navigation:[{label,targetPageClientId}],header:{type:'header',props,style},footer:{type:'footer',props,style}}. Be business-specific, use no images or external URLs, and honor Arabic with language ar and direction rtl.`;
 
-async function generateWithModel(
-  prompt: string,
-  businessName: string,
-  language: string,
-  styleHint: string,
-  repair?: string,
-) {
-  const apiKey = Deno.env.get("OPENAI_API_KEY");
-  if (!apiKey) throw new Error("Website AI is not configured yet.");
-  const response = await fetch(
-    Deno.env.get("WEBSITE_AGENT_MODEL_URL") ||
-      "https://api.openai.com/v1/chat/completions",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: Deno.env.get("WEBSITE_AGENT_MODEL") || "gpt-4o-mini",
-        temperature: 0.7,
-        max_tokens: 6000,
-        response_format: { type: "json_object" },
-        messages: [
-          { role: "system", content: systemInstruction },
-          {
-            role: "user",
-            content: JSON.stringify({
-              request: prompt,
-              businessName: businessName || undefined,
-              language,
-              styleHint,
-              repair,
-            }),
+type WebsiteAgentRequest = {
+  prompt: string;
+  businessName: string;
+  language: string;
+  styleHint: string;
+  repair?: string;
+};
+
+async function generateWithGemini({
+  prompt,
+  businessName,
+  language,
+  styleHint,
+  repair,
+}: WebsiteAgentRequest) {
+  const apiKey = Deno.env.get("GEMINI_API_KEY");
+  if (!apiKey) throw new Error("Website AI is not configured.");
+  const model = Deno.env.get("GEMINI_MODEL") || "gemini-2.5-flash-lite";
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 25_000);
+  let response: Response;
+  try {
+    response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+      {
+        method: "POST",
+        signal: controller.signal,
+        headers: {
+          "x-goog-api-key": apiKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: systemInstruction }] },
+          contents: [
+            {
+              role: "user",
+              parts: [
+                {
+                  text: JSON.stringify({
+                    request: prompt,
+                    businessName: businessName || undefined,
+                    language,
+                    styleHint,
+                    repair,
+                  }),
+                },
+              ],
+            },
+          ],
+          generationConfig: {
+            responseMimeType: "application/json",
+            temperature: 0.7,
+            maxOutputTokens: 6000,
           },
-        ],
-      }),
-    },
-  );
-  if (!response.ok) throw new Error("Website AI is temporarily unavailable.");
+        }),
+      },
+    );
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error("Website AI took too long to respond. Please try again.");
+    }
+    throw new Error(
+      "Website AI is temporarily unavailable. Please try again later.",
+    );
+  } finally {
+    clearTimeout(timeout);
+  }
+  if (response.status === 429) {
+    throw new Error(
+      "Website AI is temporarily unavailable due to usage limits. Please try again later.",
+    );
+  }
+  if ([400, 401, 403].includes(response.status)) {
+    throw new Error("Website AI is not configured correctly.");
+  }
+  if (!response.ok) {
+    throw new Error(
+      "Website AI is temporarily unavailable. Please try again later.",
+    );
+  }
   const payload = await response.json();
-  const content = payload?.choices?.[0]?.message?.content;
-  if (typeof content !== "string" || content.length > 262144)
+  const content = payload?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (typeof content !== "string" || content.length > 262144) {
     throw new Error("Website AI returned an invalid response.");
+  }
   try {
     return JSON.parse(content);
   } catch {
     throw new Error("Website AI returned an invalid response.");
   }
 }
+
+const websiteAgentModel = {
+  generateStructuredPlan: generateWithGemini,
+};
 
 async function authorize(admin: any, userId: string, organizationId: string) {
   await requireBillingAdmin(admin, userId, organizationId);
@@ -384,7 +429,7 @@ async function authorize(admin: any, userId: string, organizationId: string) {
 function publicError(error: unknown) {
   const message = error instanceof Error ? error.message : "";
   if (
-    /^(Missing Authorization header|Invalid authentication token|Only workspace owners and administrators can manage billing|Website Builder is not available for this organization\.|Activate Website Builder in Services before using Website AI\.|Website AI is not configured yet\.|Website AI is temporarily unavailable\.|This website plan has already been applied\.|This website plan has expired\. Generate a new plan\.|Website plan not found\.)$/.test(
+    /^(Missing Authorization header|Invalid authentication token|Only workspace owners and administrators can manage billing|Website Builder is not available for this organization\.|Activate Website Builder in Services before using Website AI\.|Website AI is not configured\.|Website AI is not configured correctly\.|Website AI is temporarily unavailable\. Please try again later\.|Website AI is temporarily unavailable due to usage limits\. Please try again later\.|Website AI took too long to respond\. Please try again\.|This website plan has already been applied\.|This website plan has expired\. Generate a new plan\.|Website plan not found\.)$/.test(
       message,
     )
   )
@@ -435,19 +480,25 @@ Deno.serve(async (req) => {
       let plan: Plan;
       try {
         plan = validatePlan(
-          await generateWithModel(prompt, businessName, language, styleHint),
-        );
-      } catch (firstError) {
-        plan = validatePlan(
-          await generateWithModel(
+          await websiteAgentModel.generateStructuredPlan({
             prompt,
             businessName,
             language,
             styleHint,
-            firstError instanceof Error
-              ? firstError.message.slice(0, 500)
-              : "Validate the plan.",
-          ),
+          }),
+        );
+      } catch (firstError) {
+        plan = validatePlan(
+          await websiteAgentModel.generateStructuredPlan({
+            prompt,
+            businessName,
+            language,
+            styleHint,
+            repair:
+              firstError instanceof Error
+                ? firstError.message.slice(0, 500)
+                : "Validate the plan.",
+          }),
         );
       }
       const { data, error } = await admin
@@ -461,21 +512,19 @@ Deno.serve(async (req) => {
         .select("id,expires_at,plan_json")
         .single();
       if (error) throw error;
-      await admin
-        .from("audit_logs")
-        .insert({
-          organization_id: organizationId,
-          user_name: user.id,
-          action: "website_agent.plan_generated",
-          details: JSON.stringify({
-            plan_id: data.id,
-            page_count: plan.pages.length,
-            section_count: plan.pages.reduce(
-              (sum: number, page: any) => sum + page.sections.length,
-              0,
-            ),
-          }),
-        });
+      await admin.from("audit_logs").insert({
+        organization_id: organizationId,
+        user_name: user.id,
+        action: "website_agent.plan_generated",
+        details: JSON.stringify({
+          plan_id: data.id,
+          page_count: plan.pages.length,
+          section_count: plan.pages.reduce(
+            (sum: number, page: any) => sum + page.sections.length,
+            0,
+          ),
+        }),
+      });
       return json({
         success: true,
         planId: data.id,
