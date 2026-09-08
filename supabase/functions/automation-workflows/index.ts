@@ -3,7 +3,7 @@ import { getOrganizationEntitlements } from '../_shared/entitlements.ts';
 import { validateOutgoingWebhookAction } from '../_shared/webhook-security.ts';
 import { createIncomingWebhookToken, hashIncomingWebhookToken } from '../_shared/incoming-webhook.ts';
 
-const TRIGGER_TYPES = new Set(['employee.created', 'contact.created', 'expense.status_changed', 'incoming_webhook', 'schedule']);
+const TRIGGER_TYPES = new Set(['employee.created', 'contact.created', 'expense.status_changed', 'incoming_webhook', 'website.form_submitted', 'schedule']);
 const CONDITION_OPERATORS = new Set(['equals', 'not_equals', 'contains', 'greater_than', 'less_than', 'is_empty', 'is_not_empty', 'changed_from', 'changed_to']);
 const ACTION_TYPES = new Set(['create_notification', 'outgoing_webhook', 'gmail_send_email']);
 const MAX_WORKFLOWS = 50;
@@ -15,8 +15,8 @@ const hasOnlyKeys = (value: Record<string, unknown>, keys: string[]) => Object.k
 const stringValue = (value: unknown, maximum: number) => typeof value === 'string' && value.trim().length > 0 && value.length <= maximum;
 const simpleValue = (value: unknown) => value === null || ['string', 'number', 'boolean'].includes(typeof value);
 const publicWorkflow = (workflow: Record<string, unknown>) => { const { incoming_webhook_token_hash: _hash, ...safe } = workflow; return safe; };
-const GRAPH_TYPES = new Set(['employee_created','contact_created','expense_status_changed','incoming_webhook','if','create_notification','outgoing_webhook','gmail_send_email']);
-const GRAPH_TRIGGER_TYPES = new Map([['employee_created', 'employee.created'], ['contact_created', 'contact.created'], ['expense_status_changed', 'expense.status_changed'], ['incoming_webhook', 'incoming_webhook']]);
+const GRAPH_TYPES = new Set(['employee_created','contact_created','expense_status_changed','incoming_webhook','website_form_submitted','if','create_notification','outgoing_webhook','gmail_send_email']);
+const GRAPH_TRIGGER_TYPES = new Map([['employee_created', 'employee.created'], ['contact_created', 'contact.created'], ['expense_status_changed', 'expense.status_changed'], ['incoming_webhook', 'incoming_webhook'], ['website_form_submitted', 'website.form_submitted']]);
 const CONNECTION_NODE_REQUIREMENTS: Record<string, { provider: string; authType: string; scopes: string[] }> = {
   gmail: { provider: 'google', authType: 'oauth', scopes: [] },
   google_sheets: { provider: 'google', authType: 'oauth', scopes: [] },
