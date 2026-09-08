@@ -8,7 +8,7 @@ const call = async (body: Record<string, unknown>) => {
 export const websiteBuilderService = {
   listSites: (organizationId: string) => call({ operation: 'listSites', organizationId }),
   getSite: (organizationId: string, siteId: string) => call({ operation: 'getSite', organizationId, siteId }),
-  createSite: (organizationId: string, name: string, slug?: string) => call({ operation: 'createSite', organizationId, name, slug }),
+  createSite: (organizationId: string, name: string, slug?: string, templateId?: string) => call({ operation: 'createSite', organizationId, name, slug, templateId }),
   listPages: (organizationId: string, siteId: string) => call({ operation: 'listPages', organizationId, siteId }),
   createPage: (organizationId: string, siteId: string, name: string, slug: string) => call({ operation: 'createPage', organizationId, siteId, name, slug }),
   setHomepage: (organizationId: string, siteId: string, pageId: string) => call({ operation: 'setHomepage', organizationId, siteId, pageId }),
