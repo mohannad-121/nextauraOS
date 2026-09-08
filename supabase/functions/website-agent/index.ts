@@ -597,10 +597,12 @@ function validateGeneratedPlan(value: unknown, attempt: number): Plan {
 
 type WebsiteAgentRequest = {
   prompt: string;
-  businessName: string;
-  language: string;
-  styleHint: string;
+  businessName?: string;
+  language?: string;
+  styleHint?: string;
   repair?: string;
+  system?: string;
+  context?: Record<string, unknown>;
 };
 
 class GeminiProviderError extends Error {
@@ -616,6 +618,8 @@ async function generateWithGemini({
   language,
   styleHint,
   repair,
+  system = systemInstruction,
+  context,
 }: WebsiteAgentRequest) {
   const apiKey = Deno.env.get("GEMINI_API_KEY");
   if (!apiKey) throw new Error("Website AI is not configured.");
@@ -634,7 +638,7 @@ async function generateWithGemini({
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          systemInstruction: { parts: [{ text: systemInstruction }] },
+          systemInstruction: { parts: [{ text: system }] },
           contents: [
             {
               role: "user",
@@ -646,6 +650,7 @@ async function generateWithGemini({
                     language,
                     styleHint,
                     repair,
+                    context,
                   }),
                 },
               ],
@@ -747,6 +752,119 @@ async function authorize(admin: any, userId: string, organizationId: string) {
     );
 }
 
+const editOperations = new Set([
+  "add_section", "update_section", "remove_section", "move_section", "duplicate_section",
+  "update_site_theme", "update_site_metadata", "update_global_header", "update_global_footer",
+  "create_page", "rename_page", "update_page_slug", "update_page_seo",
+  "add_navigation_item", "update_navigation_item", "remove_navigation_item",
+]);
+const safeJson = (value: unknown) => JSON.stringify(value ?? null);
+const exactKeys = (value: Record<string, unknown>, keys: string[]) =>
+  Object.keys(value).length === keys.length && keys.every((key) => key in value);
+const hasOnly = (value: Record<string, unknown>, keys: string[]) =>
+  Object.keys(value).every((key) => keys.includes(key));
+const integer = (value: unknown, min: number, max: number) =>
+  typeof value === "number" && Number.isInteger(value) && value >= min && value <= max;
+const editFailure = (code: string, path: string) =>
+  failPlan(code, "Website edit plan is invalid.", path);
+
+function validateEditPlan(value: unknown, context: { pageIds: Set<string>; sectionIds: Set<string>; navigationIds: Set<string> }): Plan {
+  if (!record(value) || !exactKeys(value, ["version", "summary", "operations"]) || value.version !== 1 ||
+    typeof value.summary !== "string" || !value.summary.trim() || value.summary.length > 500 ||
+    !Array.isArray(value.operations) || value.operations.length < 1 || value.operations.length > 30 || dangerous.test(safeJson(value))) {
+    editFailure("AI_EDIT_INVALID_PLAN", "plan");
+  }
+  const createdRefs = new Set<string>();
+  const validPageTarget = (operation: Record<string, unknown>, path: string) => {
+    const pageId = operation.pageId;
+    const pageRef = operation.pageRef;
+    if ((typeof pageId === "string") === (typeof pageRef === "string")) editFailure("AI_EDIT_INVALID_TARGET", path);
+    if (typeof pageId === "string" && !context.pageIds.has(pageId)) editFailure("AI_EDIT_INVALID_TARGET", path);
+    if (typeof pageRef === "string" && !createdRefs.has(pageRef)) editFailure("AI_EDIT_INVALID_TARGET", path);
+  };
+  const operations = value.operations.map((raw, index) => {
+    if (!record(raw) || typeof raw.op !== "string" || !editOperations.has(raw.op)) editFailure("AI_EDIT_UNSUPPORTED_OPERATION", `operations.${index}`);
+    const operation = raw as Record<string, unknown>;
+    const op = operation.op as string;
+    if (op === "create_page") {
+      if (!exactKeys(operation, ["op", "tempRef", "name", "slug", "seo", "sections"]) || typeof operation.tempRef !== "string" ||
+        !/^new:[a-z0-9][a-z0-9_-]{0,60}$/.test(operation.tempRef) || createdRefs.has(operation.tempRef) ||
+        typeof operation.name !== "string" || !operation.name.trim() || operation.name.length > 120 ||
+        typeof operation.slug !== "string" || !/^\/[a-z0-9](?:[a-z0-9/-]{0,190}[a-z0-9])?$/.test(operation.slug) ||
+        !record(operation.seo) || !hasOnly(operation.seo, ["title", "description"]) ||
+        !Array.isArray(operation.sections) || operation.sections.length > 100) editFailure("AI_EDIT_INVALID_PAGE", `operations.${index}`);
+      createdRefs.add(operation.tempRef);
+      operation.sections.forEach((section) => validateSection(section));
+    } else if (op === "update_site_theme") {
+      if (!exactKeys(operation, ["op", "theme"]) || !record(operation.theme) || !hasOnly(operation.theme, ["preset", "primaryColor", "secondaryColor", "surfaceColor", "mutedTextColor", "backgroundColor", "textColor", "headingFont", "bodyFont", "radius", "direction"]) || !Object.keys(operation.theme).length) editFailure("AI_EDIT_INVALID_THEME", `operations.${index}`);
+    } else if (op === "update_site_metadata") {
+      if (!exactKeys(operation, ["op", "changes"]) || !record(operation.changes) || !hasOnly(operation.changes, ["name", "language"]) || !Object.keys(operation.changes).length) editFailure("AI_EDIT_INVALID_METADATA", `operations.${index}`);
+    } else if (op === "update_global_header" || op === "update_global_footer") {
+      if (!exactKeys(operation, ["op", "changes"]) || !record(operation.changes) || !hasOnly(operation.changes, ["props", "style"]) || !Object.keys(operation.changes).length) editFailure("AI_EDIT_INVALID_GLOBAL_SECTION", `operations.${index}`);
+    } else if (op === "add_navigation_item") {
+      if (!hasOnly(operation, ["op", "label", "index", "targetPageId", "targetPageRef"]) || typeof operation.label !== "string" || !operation.label.trim() || operation.label.length > 80 || !integer(operation.index, 0, 20) || ((typeof operation.targetPageId === "string") === (typeof operation.targetPageRef === "string"))) editFailure("AI_EDIT_INVALID_NAVIGATION", `operations.${index}`);
+      if (typeof operation.targetPageId === "string" && !context.pageIds.has(operation.targetPageId)) editFailure("AI_EDIT_NAV_TARGET_INVALID", `operations.${index}`);
+      if (typeof operation.targetPageRef === "string" && !createdRefs.has(operation.targetPageRef)) editFailure("AI_EDIT_NAV_TARGET_INVALID", `operations.${index}`);
+    } else if (op === "update_navigation_item") {
+      if (!exactKeys(operation, ["op", "navigationId", "changes"]) || typeof operation.navigationId !== "string" || !context.navigationIds.has(operation.navigationId) || !record(operation.changes) || !hasOnly(operation.changes, ["label", "index", "targetPageId", "targetPageRef"]) || !Object.keys(operation.changes).length) editFailure("AI_EDIT_INVALID_NAVIGATION", `operations.${index}`);
+    } else if (op === "remove_navigation_item") {
+      if (!exactKeys(operation, ["op", "navigationId"]) || typeof operation.navigationId !== "string" || !context.navigationIds.has(operation.navigationId)) editFailure("AI_EDIT_INVALID_NAVIGATION", `operations.${index}`);
+    } else {
+      validPageTarget(operation, `operations.${index}`);
+      if (op === "add_section") {
+        if (!hasOnly(operation, ["op", "pageId", "pageRef", "index", "section"]) || !integer(operation.index, 0, 100) || !record(operation.section)) editFailure("AI_EDIT_INVALID_SECTION", `operations.${index}`);
+        validateSection(operation.section);
+      } else if (op === "update_section") {
+        if (!hasOnly(operation, ["op", "pageId", "pageRef", "sectionId", "changes"]) || typeof operation.sectionId !== "string" || !context.sectionIds.has(operation.sectionId) || !record(operation.changes) || !hasOnly(operation.changes, ["props", "style"]) || !Object.keys(operation.changes).length) editFailure("AI_EDIT_INVALID_SECTION", `operations.${index}`);
+      } else if (op === "remove_section") {
+        if (!hasOnly(operation, ["op", "pageId", "pageRef", "sectionId"]) || typeof operation.sectionId !== "string" || !context.sectionIds.has(operation.sectionId)) editFailure("AI_EDIT_INVALID_SECTION", `operations.${index}`);
+      } else if (op === "move_section" || op === "duplicate_section") {
+        if (!hasOnly(operation, ["op", "pageId", "pageRef", "sectionId", "index"]) || typeof operation.sectionId !== "string" || !context.sectionIds.has(operation.sectionId) || !integer(operation.index, 0, 100)) editFailure("AI_EDIT_INVALID_SECTION", `operations.${index}`);
+      } else if (op === "rename_page") {
+        if (!hasOnly(operation, ["op", "pageId", "pageRef", "name"]) || typeof operation.name !== "string" || !operation.name.trim() || operation.name.length > 120) editFailure("AI_EDIT_INVALID_PAGE", `operations.${index}`);
+      } else if (op === "update_page_slug") {
+        if (!hasOnly(operation, ["op", "pageId", "pageRef", "slug"]) || typeof operation.slug !== "string" || !/^\/$|^\/[a-z0-9](?:[a-z0-9/-]{0,190}[a-z0-9])?$/.test(operation.slug)) editFailure("AI_EDIT_INVALID_PAGE", `operations.${index}`);
+      } else if (op === "update_page_seo") {
+        if (!hasOnly(operation, ["op", "pageId", "pageRef", "seo"]) || !record(operation.seo) || !hasOnly(operation.seo, ["title", "description"]) || !Object.keys(operation.seo).length) editFailure("AI_EDIT_INVALID_SEO", `operations.${index}`);
+      }
+    }
+    return operation;
+  });
+  return { version: 1, summary: value.summary.trim(), operations };
+}
+
+const editOperationReference = `Return only JSON with root keys version, summary, operations. version=1; summary is 1-500 characters; 1-30 operations. Never publish, release, deploy, HTML, CSS, JavaScript, arbitrary code, assets, billing, auth, or integrations. Use only IDs supplied in context.
+Operations: add_section {op,pageId|pageRef,index,section}; update_section {op,pageId|pageRef,sectionId,changes:{props?,style?}}; remove_section {op,pageId|pageRef,sectionId}; move_section {op,pageId|pageRef,sectionId,index}; duplicate_section {op,pageId|pageRef,sectionId,index}; update_site_theme {op,theme}; update_site_metadata {op,changes:{name?,language?}}; update_global_header/update_global_footer {op,changes:{props?,style?}}; create_page {op,tempRef,name,slug,seo:{title?,description?},sections}; rename_page {op,pageId|pageRef,name}; update_page_slug {op,pageId|pageRef,slug}; update_page_seo {op,pageId|pageRef,seo:{title?,description?}}; add_navigation_item {op,label,index,targetPageId|targetPageRef}; update_navigation_item {op,navigationId,changes:{label?,index?,targetPageId?,targetPageRef?}}; remove_navigation_item {op,navigationId}. A new page tempRef must be new:lowercase_name and can be referenced only after its create_page operation. Section has exactly type,props,style. Allowed section types and keys: ${sectionReference}. Theme keys: preset,primaryColor,secondaryColor,surfaceColor,mutedTextColor,backgroundColor,textColor,headingFont,bodyFont,radius,direction. No extra fields.`;
+
+function editSystemInstruction() {
+  return `You create safe draft-only Website Builder edit proposals. ${editOperationReference} Existing content context is informational and IDs are authoritative. If the request cannot be completed with those operations, return no operations is not allowed; instead return a safe operation only when valid. Do not claim publication. Arabic requests use Arabic content, language ar, direction rtl, and allowed Arabic fonts.`;
+}
+
+async function loadEditContext(admin: any, organizationId: string, siteId: string) {
+  const { data: site, error: siteError } = await admin.from("website_sites")
+    .select("id,name,default_locale,global_version,global_sections")
+    .eq("id", siteId).eq("organization_id", organizationId).is("archived_at", null).maybeSingle();
+  if (siteError) throw siteError;
+  if (!site) throw new Error("Website plan not found.");
+  const { data: pages, error: pagesError } = await admin.from("website_pages")
+    .select("id,name,slug,seo_title,seo_description,draft_version,updated_at,draft_document")
+    .eq("organization_id", organizationId).eq("site_id", siteId).order("sort_order");
+  if (pagesError) throw pagesError;
+  const pageRows = pages || [];
+  const globals = record(site.global_sections) ? site.global_sections : {};
+  const navigation = Array.isArray(globals.navigation) ? globals.navigation : [];
+  const context = {
+    site: { id: site.id, name: site.name, language: site.default_locale, globalVersion: site.global_version, header: globals.header ?? null, footer: globals.footer ?? null, navigation },
+    pages: pageRows.map((page: any) => ({ id: page.id, name: page.name, slug: page.slug, seo: { title: page.seo_title, description: page.seo_description }, draftVersion: page.draft_version, sections: Array.isArray(page.draft_document?.sections) ? page.draft_document.sections.map((section: any) => ({ id: section.id, type: section.type, props: section.props, style: section.style })) : [] })),
+  };
+  const baseVersions = {
+    global_version: site.global_version,
+    pages: Object.fromEntries(pageRows.map((page: any) => [page.id, page.draft_version])),
+    page_updated_at: Object.fromEntries(pageRows.map((page: any) => [page.id, page.updated_at])),
+  };
+  return { context, baseVersions, pageIds: new Set(pageRows.map((page: any) => page.id)), sectionIds: new Set(pageRows.flatMap((page: any) => Array.isArray(page.draft_document?.sections) ? page.draft_document.sections.map((section: any) => section.id) : [])), navigationIds: new Set(navigation.map((item: any) => item?.id).filter(Boolean)) };
+}
+
 function publicError(error: unknown) {
   const message = error instanceof Error ? error.message : "";
   const safeMessages = new Set([
@@ -765,6 +883,9 @@ function publicError(error: unknown) {
     "This website plan has already been applied.",
     "This website plan has expired. Generate a new plan.",
     "Website plan not found.",
+    "This website changed after the AI suggestion was created. Generate the suggestion again.",
+    "This AI suggestion expired. Generate it again.",
+    "That change isn't supported by the Website Builder yet.",
   ]);
   if (safeMessages.has(message)) return message;
   return "We couldn't generate a valid site structure. Please try again.";
@@ -881,6 +1002,73 @@ Deno.serve(async (req) => {
         siteId: data.site_id,
         homepageId: data.homepage_id,
       });
+    }
+    if (operation === "generateEditPlan") {
+      const siteId = String(body.siteId || "");
+      if (!uuid(siteId)) throw new Error("Website plan not found.");
+      const instruction = text(body.instruction, 6000, "instruction");
+      const since = new Date(Date.now() - 60_000).toISOString();
+      const { count } = await admin.from("website_agent_edit_plans")
+        .select("id", { count: "exact", head: true })
+        .eq("created_by", user.id).gte("created_at", since);
+      if ((count || 0) >= 5) return json({ success: false, error: "Please wait a moment before generating another edit suggestion." }, 429);
+      const loaded = await loadEditContext(admin, organizationId, siteId);
+      let plan: Plan;
+      try {
+        plan = validateEditPlan(await websiteAgentModel.generateStructuredPlan({
+          prompt: instruction,
+          system: editSystemInstruction(),
+          context: { currentPageId: typeof body.currentPageId === "string" && loaded.pageIds.has(body.currentPageId) ? body.currentPageId : undefined, website: loaded.context },
+        }), loaded);
+      } catch (firstError) {
+        if (firstError instanceof GeminiProviderError) throw firstError;
+        const validationError = firstError instanceof PlanValidationError ? firstError : classifyPlanError(firstError);
+        try {
+          plan = validateEditPlan(await websiteAgentModel.generateStructuredPlan({
+            prompt: instruction,
+            system: editSystemInstruction(),
+            context: { currentPageId: typeof body.currentPageId === "string" && loaded.pageIds.has(body.currentPageId) ? body.currentPageId : undefined, website: loaded.context },
+            repair: `Previous output failed ${validationError.code} at ${validationError.path}. Return the complete corrected JSON using only the exact operation contract.`,
+          }), loaded);
+        } catch (repairError) {
+          console.error("website_agent_edit_plan_validation_failed", { code: repairError instanceof PlanValidationError ? repairError.code : "AI_EDIT_INVALID_PLAN" });
+          return json({ success: false, error: "That change isn't supported by the Website Builder yet." }, 400);
+        }
+      }
+      const { data, error } = await admin.from("website_agent_edit_plans").insert({
+        organization_id: organizationId, site_id: siteId, created_by: user.id,
+        instruction, plan_json: plan, base_versions: loaded.baseVersions,
+      }).select("id,expires_at,plan_json,created_at").single();
+      if (error) throw error;
+      await admin.from("audit_logs").insert({
+        organization_id: organizationId, user_name: user.id, action: "website_agent.edit_plan_generated",
+        details: JSON.stringify({ proposal_id: data.id, operation_count: plan.operations.length }),
+      });
+      console.log("website_agent_edit_plan_generated", { model: Deno.env.get("GEMINI_MODEL") || "gemini-3.5-flash-lite", operation_count: plan.operations.length, proposal_id: data.id });
+      return json({ success: true, proposal: { id: data.id, expiresAt: data.expires_at, createdAt: data.created_at, plan: data.plan_json } });
+    }
+    if (operation === "applyEditPlan") {
+      const planId = String(body.planId || "");
+      if (!uuid(planId)) throw new Error("Website plan not found.");
+      const { data, error } = await admin.rpc("apply_website_agent_edit_plan", {
+        p_plan_id: planId, p_organization_id: organizationId, p_actor_id: user.id,
+      });
+      if (error) {
+        if (String(error.message).includes("AI_EDIT_STALE_PROPOSAL")) throw new Error("This website changed after the AI suggestion was created. Generate the suggestion again.");
+        if (String(error.message).includes("AI_EDIT_EXPIRED")) throw new Error("This AI suggestion expired. Generate it again.");
+        throw error;
+      }
+      return json({ success: true, result: data });
+    }
+    if (operation === "listEditPlans") {
+      const siteId = String(body.siteId || "");
+      if (!uuid(siteId)) throw new Error("Website plan not found.");
+      const { data, error } = await admin.from("website_agent_edit_plans")
+        .select("id,instruction,plan_json,status,created_at,expires_at,applied_at")
+        .eq("organization_id", organizationId).eq("site_id", siteId).eq("created_by", user.id)
+        .order("created_at", { ascending: false }).limit(5);
+      if (error) throw error;
+      return json({ success: true, proposals: data || [] });
     }
     return json(
       { success: false, error: "Unsupported Website AI operation." },

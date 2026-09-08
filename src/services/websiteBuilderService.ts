@@ -92,4 +92,10 @@ export const websiteBuilderService = {
     agentCall({ operation: "generatePlan", ...body }),
   applyAgentPlan: (organizationId: string, planId: string) =>
     agentCall({ operation: "applyPlan", organizationId, planId }),
+  generateEditPlan: (body: Record<string, unknown>) =>
+    agentCall({ operation: "generateEditPlan", ...body }),
+  applyEditPlan: (organizationId: string, planId: string) =>
+    agentCall({ operation: "applyEditPlan", organizationId, planId }),
+  listEditPlans: (organizationId: string, siteId: string) =>
+    agentCall({ operation: "listEditPlans", organizationId, siteId }),
 };

@@ -32,6 +32,7 @@ import {
   WebsiteSectionRenderer,
 } from "../../features/websites/sectionRegistry";
 import { MediaLibrary } from "./MediaLibrary";
+import { WebsiteAiEditDrawer } from "./WebsiteAiEditDrawer";
 
 const blank: WebsiteDocument = {
   version: 1,
@@ -102,6 +103,7 @@ export function WebsiteEditor({
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
   const [publishReviewOpen, setPublishReviewOpen] = useState(false);
+  const [aiEditOpen, setAiEditOpen] = useState(false);
   const [releases, setReleases] = useState<any[]>([]);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
@@ -516,6 +518,16 @@ export function WebsiteEditor({
             )}
           </button>
           <button
+            onClick={() => setAiEditOpen(true)}
+            disabled={!site || !page || saving || publishing}
+            aria-label="Edit with AI"
+            className="inline-flex items-center gap-1 rounded-lg border border-violet-300/30 bg-violet-400/10 px-2 py-2 text-xs font-bold text-violet-100 hover:bg-violet-400/20 disabled:opacity-50 sm:px-3"
+          >
+            <Wand2 className="h-3.5 w-3.5" />
+            <span className="sm:hidden">AI</span>
+            <span className="hidden sm:inline">Edit with AI</span>
+          </button>
+          <button
             onClick={() => void save()}
             disabled={saving || (saved && !globalsDirty)}
             className="inline-flex items-center gap-1 rounded-lg bg-blue-500 px-3 py-2 text-xs font-bold disabled:opacity-50"
@@ -680,6 +692,18 @@ export function WebsiteEditor({
           saving={saving}
         />
       )}
+      <WebsiteAiEditDrawer
+        open={aiEditOpen}
+        onClose={() => setAiEditOpen(false)}
+        organizationId={currentOrg.id}
+        siteId={siteId}
+        currentPageId={page?.id || pageId}
+        pages={pages}
+        onApplied={async () => {
+          await load(page?.id || pageId);
+          setNotice("Changes applied to draft. Review your changes before publishing.");
+        }}
+      />
       <div className="flex min-h-0 flex-1">
         {!preview && (
           <aside className="hidden w-60 shrink-0 border-r border-white/10 bg-[#0b1224] p-3 lg:block">
