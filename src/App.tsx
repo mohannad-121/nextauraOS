@@ -58,6 +58,7 @@ import { PricingPage, PublicPricingPage } from './pages/PricingPage';
 import { BillingSuccessPage } from './pages/billing/BillingSuccessPage';
 import { AutomationsPage } from './pages/AutomationsPage';
 import { WebsitesPage } from './pages/websites/WebsitesPage';
+import { PublicWebsitePage } from './pages/websites/PublicWebsitePage';
 
 const NextAuraAI = React.lazy(() => import('./pages/ai/NextAuraAI').then((module) => ({ default: module.NextAuraAI })));
 
@@ -210,6 +211,7 @@ const AppContent: React.FC = () => {
 };
 
 export function App() {
+  if (window.location.pathname.startsWith('/site/')) return <PublicWebsitePage />;
   if (window.location.pathname.replace(/\/$/, '') === '/pricing') {
     return <PublicPricingPage />;
   }

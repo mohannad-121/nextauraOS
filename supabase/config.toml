@@ -23,3 +23,6 @@ entrypoint = "./functions/website-builder/index.ts"
 
 [functions.website-form-submit]
 verify_jwt = false
+
+[functions.website-public]
+verify_jwt = false
