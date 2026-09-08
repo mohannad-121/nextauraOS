@@ -47,6 +47,11 @@ const agentCall = async (body: Record<string, unknown>) => {
   return data;
 };
 export const websiteBuilderService = {
+  githubExport: async (body: { organizationId: string; siteId: string; source: "draft" | "published"; repositoryName: string; visibility: "private" | "public"; description?: string; connectionId: string }) => {
+    const { data, error } = await supabase.functions.invoke("website-github-export", { body });
+    if (error || !data?.success) throw new Error(data?.error || "Unable to export to GitHub.");
+    return data.repository as { owner: string; name: string; url: string; visibility: string };
+  },
   exportCode: async (organizationId: string, siteId: string, source: "draft" | "published") => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) throw new Error("Please sign in again before exporting.");

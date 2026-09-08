@@ -3,7 +3,7 @@ import { supabase } from './supabaseClient';
 export type IntegrationConnection = {
   id: string;
   organization_id: string;
-  provider: 'google' | 'slack' | 'meta' | 'generic_api';
+  provider: 'google' | 'github' | 'slack' | 'meta' | 'generic_api';
   name: string;
   status: 'active' | 'expired' | 'revoked' | 'error';
   auth_type: 'api_key' | 'oauth';
@@ -41,6 +41,8 @@ export const integrationConnectionService = {
     call({ operation: 'createGenericApi', organizationId, name, baseUrl, secret }),
   startGoogleOAuth: (organizationId: string, connectionId?: string, additionalScopes?: string[]) =>
     call({ operation: 'startGoogleOAuth', organizationId, ...(connectionId ? { connectionId } : {}), ...(additionalScopes?.length ? { additionalScopes } : {}) }),
+  startGithubOAuth: (organizationId: string, connectionId?: string) =>
+    call({ operation: 'startGithubOAuth', organizationId, ...(connectionId ? { connectionId } : {}) }),
   rename: (organizationId: string, connectionId: string, name: string) =>
     call({ operation: 'rename', organizationId, connectionId, name }),
   test: (organizationId: string, connectionId: string) =>

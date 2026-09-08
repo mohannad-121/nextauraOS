@@ -4,7 +4,7 @@ import { useApp } from '../../context/AppContext';
 import { entitlementService, type PlanEntitlements } from '../../services/entitlementService';
 import { integrationConnectionService, type IntegrationConnection } from '../../services/integrationConnectionService';
 
-const providerLabel: Record<IntegrationConnection['provider'], string> = { generic_api: 'Generic API', google: 'Google', slack: 'Slack', meta: 'WhatsApp / Meta' };
+const providerLabel: Record<IntegrationConnection['provider'], string> = { generic_api: 'Generic API', google: 'Google', github: 'GitHub', slack: 'Slack', meta: 'WhatsApp / Meta' };
 const statusStyle: Record<IntegrationConnection['status'], string> = { active: 'bg-emerald-50 text-emerald-700', expired: 'bg-amber-50 text-amber-700', revoked: 'bg-slate-100 text-slate-600', error: 'bg-rose-50 text-rose-700' };
 const date = (value: string | null) => value ? new Date(value).toLocaleDateString() : '—';
 

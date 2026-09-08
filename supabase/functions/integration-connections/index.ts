@@ -2,6 +2,7 @@ import { authenticate, corsHeaders, json, requireBillingAdmin } from '../_shared
 import { getOrganizationEntitlements } from '../_shared/entitlements.ts';
 import { assertPublicWebhookTarget } from '../_shared/webhook-security.ts';
 import { GOOGLE_FOUNDATION_SCOPES, getValidGoogleAccessToken, googleAccount, googleClient, randomOAuthState, sha256 } from '../_shared/google-oauth.ts';
+import { githubClient } from '../_shared/github-oauth.ts';
 
 const encoder = new TextEncoder();
 const fromBase64 = (value: string) => Uint8Array.from(atob(value), (character) => character.charCodeAt(0));
@@ -41,6 +42,16 @@ Deno.serve(async (req) => {
     const { admin, user } = await authenticate(req); const body = await req.json(); const organizationId = String(body.organizationId || '');
     if (!organizationId) return json({ success: false, error: 'organizationId is required.' }, 400);
     if (body.operation === 'list') { await requireMembership(admin, user.id, organizationId); const { data, error } = await admin.from('integration_connections').select('id,organization_id,provider,name,status,auth_type,scopes,account_label,expires_at,last_verified_at,revoked_at,created_at,updated_at').eq('organization_id', organizationId).order('created_at', { ascending: false }); if (error) throw error; return json({ success: true, connections: data || [] }); }
+    if (body.operation === 'startGithubOAuth') {
+      await requireBillingAdmin(admin, user.id, organizationId); const entitlements = await getOrganizationEntitlements(admin, organizationId);
+      if (!entitlements.access_active || !entitlements.website_github_export) throw new Error('GitHub export is not included in your current plan.');
+      const connectionId = body.connectionId ? String(body.connectionId) : null;
+      if (connectionId) { const { data: connection } = await admin.from('integration_connections').select('id').eq('id', connectionId).eq('organization_id', organizationId).eq('provider', 'github').maybeSingle(); if (!connection) return json({ success: false, error: 'GitHub connection not found.' }, 404); }
+      const state = randomOAuthState(), expiresAt = new Date(Date.now() + 10 * 60_000).toISOString();
+      const { error } = await admin.from('integration_oauth_states').insert({ state_hash: await sha256(state), provider: 'github', organization_id: organizationId, user_id: user.id, connection_id: connectionId, expires_at: expiresAt }); if (error) throw error;
+      const client = githubClient(), authorizationUrl = new URL('https://github.com/login/oauth/authorize'); authorizationUrl.searchParams.set('client_id', client.clientId); authorizationUrl.searchParams.set('redirect_uri', client.redirectUri); authorizationUrl.searchParams.set('scope', 'repo'); authorizationUrl.searchParams.set('state', state);
+      await audit(admin, organizationId, user.id, connectionId ? 'integration.github.reconnect_initiated' : 'integration.github.initiated', connectionId || 'pending'); return json({ success: true, authorizationUrl: authorizationUrl.toString() });
+    }
     await requireConnectionAccess(admin, user.id, organizationId);
     if (body.operation === 'startGoogleOAuth') {
       const connectionId = body.connectionId ? String(body.connectionId) : null;

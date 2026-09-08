@@ -162,6 +162,22 @@ export function projectFiles(site: any, pages: any[], globals: any, faviconSrc: 
   ];
 }
 
+export async function generateStandaloneWebsiteProject(admin: any, userId: string, organizationId: string, siteId: string, source: "draft" | "published") {
+  await requireBillingAdmin(admin, userId, organizationId);
+  const entitlements: any = await getOrganizationEntitlements(admin, organizationId);
+  if (!entitlements.access_active || !entitlements.website_code_export) throw new Error("Website code export is not included in your current plan.");
+  const { data: site } = await admin.from("website_sites").select("*").eq("id", siteId).eq("organization_id", organizationId).maybeSingle();
+  if (!site) throw new Error("Website not found.");
+  let pages: any[], globals: any, faviconAssetId: string | null, exportSite = site;
+  if (source === "draft") { const { data, error } = await admin.from("website_pages").select("id,name,slug,seo_title,seo_description,og_image_asset_id,draft_document").eq("site_id", siteId).eq("organization_id", organizationId).order("sort_order"); if (error) throw error; pages = (data || []).map((page: any) => ({ ...page, document: page.draft_document })); globals = site.global_sections; faviconAssetId = site.favicon_asset_id; }
+  else { const { data: release, error } = await admin.from("website_releases").select("release_manifest").eq("id", site.published_release_id).eq("organization_id", organizationId).eq("site_id", siteId).eq("status", "published").maybeSingle(); if (error) throw error; const manifest = release?.release_manifest; if (!manifest || !Array.isArray(manifest.pages)) throw new Error("This website has no published version to export."); const versionIds = manifest.pages.map((page: any) => page.page_version_id).filter((id: unknown) => typeof id === "string"); const { data: versions, error: versionsError } = await admin.from("website_page_versions").select("id,document").eq("site_id", siteId).eq("organization_id", organizationId).in("id", versionIds); if (versionsError || (versions || []).length !== versionIds.length) throw new Error("The published website content is unavailable."); const documents = new Map((versions || []).map((version: any) => [version.id, version.document])); pages = manifest.pages.map((page: any) => ({ ...page, id: page.page_id, document: documents.get(page.page_version_id) })); globals = manifest.globals; faviconAssetId = manifest.site?.favicon_asset_id || null; exportSite = { ...site, name: manifest.site?.name || site.name, default_locale: manifest.site?.default_locale || site.default_locale }; }
+  if (!pages.length || pages.length > 8) throw new Error("This website exceeds the export page limit.");
+  const assetIds = collectWebsiteAssetIds(pages, globals, faviconAssetId, source === "draft" ? pages.map((page) => page.og_image_asset_id) : []), preliminaryFiles = projectFiles(exportSite, pages, globals, null, 0);
+  const baseBytes = preliminaryFiles.reduce((total, file) => total + (file.kind === "text" ? enc.encode(file.content).length : file.content.length), 0), assets = await loadExportAssets(admin, organizationId, siteId, assetIds, baseBytes), rewritten = rewriteWebsiteAssetReferences(pages, globals, faviconAssetId, assets.paths);
+  const entries = [...projectFiles(exportSite, rewritten.pages, rewritten.globals, rewritten.faviconSrc, assets.missing), ...assets.files]; assertSafeTextEntries(entries);
+  return { entries, site: exportSite, assetCount: assets.files.length, missingAssetCount: assets.missing, totalAssetBytes: assets.totalBytes, pageCount: pages.length };
+}
+
 async function exportWebsite(req: Request) {
   const { admin, user } = await authenticate(req);
   const body = await req.json(), organizationId = String(body.organizationId || ""), siteId = String(body.siteId || ""), source = body.source;
