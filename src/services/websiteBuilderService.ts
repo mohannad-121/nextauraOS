@@ -2,7 +2,17 @@ import { supabase } from './supabaseClient';
 
 const call = async (body: Record<string, unknown>) => {
   const { data, error } = await supabase.functions.invoke('website-builder', { body });
-  if (error || !data?.success) throw new Error(data?.error || 'Unable to manage websites.');
+  const functionError = error as { context?: Response; message?: string } | null;
+  let responseError = '';
+  if (functionError?.context) {
+    try {
+      const payload = await functionError.context.clone().json();
+      if (typeof payload?.error === 'string') responseError = payload.error;
+    } catch {
+      // Non-JSON responses intentionally fall back to a safe operation-specific message.
+    }
+  }
+  if (error || !data?.success) throw new Error(data?.error || responseError || 'Unable to manage websites.');
   return data;
 };
 export const websiteBuilderService = {
