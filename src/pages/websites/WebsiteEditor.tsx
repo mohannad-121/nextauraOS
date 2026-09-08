@@ -434,7 +434,9 @@ export function WebsiteEditor({
         new Date(page.updated_at) > new Date(latestRelease.published_at))),
   );
   const publicationStatus = !site?.published_release_id
-    ? "Draft"
+    ? saved && !globalsDirty
+      ? "Saved · Unpublished"
+      : "Unpublished · Draft changes pending"
     : changesPending
       ? "Published · Draft changes pending"
       : `Published · v${latestRelease?.version_number || "—"}`;
@@ -515,6 +517,20 @@ export function WebsiteEditor({
           </button>
           {site?.published_release_id ? (
             <>
+              {changesPending ? (
+                <button
+                  onClick={() => setPublishReviewOpen(true)}
+                  disabled={publishing}
+                  className="inline-flex items-center gap-1 rounded-lg bg-emerald-500 px-3 py-2 text-xs font-bold text-slate-950 disabled:opacity-50"
+                >
+                  <Upload className="h-3.5 w-3.5" />
+                  Publish changes
+                </button>
+              ) : (
+                <span className="hidden rounded-lg border border-emerald-300/20 bg-emerald-400/10 px-3 py-2 text-xs font-bold text-emerald-200 sm:inline">
+                  Published
+                </span>
+              )}
               <button
                 onClick={() =>
                   window.open(liveUrl, "_blank", "noopener,noreferrer")

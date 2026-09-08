@@ -1,5 +1,13 @@
 import React from "react";
 import {
+  ArrowRight,
+  Bot,
+  Building2,
+  Globe2,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react";
+import {
   WebsiteSectionRenderer,
   type GlobalSections,
   type WebsiteDocument,
@@ -260,12 +268,149 @@ export function PublicWebsitePage() {
 
 export function PublicWebsiteRoot() {
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-2 bg-white px-6 text-center text-slate-900">
-      <h1 className="text-2xl font-semibold">NextAura Sites</h1>
-      <p className="text-sm text-slate-600">
-        Enter a published website address to continue.
-      </p>
+    <main className="min-h-screen overflow-hidden bg-slate-950 text-white">
+      <div className="relative isolate">
+        <div className="absolute inset-x-0 top-0 -z-10 h-[34rem] bg-[radial-gradient(circle_at_20%_12%,rgba(37,99,235,.36),transparent_30%),radial-gradient(circle_at_82%_20%,rgba(14,165,233,.22),transparent_28%)]" />
+        <nav className="mx-auto flex max-w-6xl items-center justify-between px-6 py-6 sm:px-8">
+          <a
+            href="/"
+            className="flex items-center gap-2 text-sm font-bold tracking-tight"
+          >
+            <span className="grid h-8 w-8 place-items-center rounded-lg bg-blue-500 shadow-lg shadow-blue-500/30">
+              <Sparkles className="h-4 w-4" />
+            </span>
+            NextAura OS
+          </a>
+          <a
+            href="/app"
+            className="rounded-lg border border-white/15 px-3 py-2 text-sm font-semibold text-slate-100 transition hover:border-white/30 hover:bg-white/10"
+          >
+            Open NextAura
+          </a>
+        </nav>
+        <section className="mx-auto grid max-w-6xl gap-12 px-6 pb-20 pt-16 sm:px-8 md:grid-cols-[1.1fr_.9fr] md:items-center md:pb-28 md:pt-24">
+          <div>
+            <p className="inline-flex items-center gap-2 rounded-full border border-blue-300/20 bg-blue-400/10 px-3 py-1 text-xs font-semibold text-blue-100">
+              <Sparkles className="h-3.5 w-3.5" />
+              The connected business workspace
+            </p>
+            <h1 className="mt-6 max-w-3xl text-4xl font-semibold tracking-tight text-white sm:text-5xl lg:text-6xl">
+              Run your entire business from one intelligent workspace.
+            </h1>
+            <p className="mt-6 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
+              CRM, Finance, HR, Marketing, Automation, Websites, AI and
+              operations in one connected platform.
+            </p>
+            <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+              <a
+                href="/app"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-500 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/25 transition hover:bg-blue-400"
+              >
+                Open NextAura <ArrowRight className="h-4 w-4" />
+              </a>
+              <a
+                href="#features"
+                className="inline-flex items-center justify-center rounded-xl border border-white/15 px-5 py-3 text-sm font-bold text-slate-100 transition hover:bg-white/10"
+              >
+                Explore Features
+              </a>
+            </div>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/[.06] p-4 shadow-2xl shadow-black/30 backdrop-blur sm:p-5">
+            <div className="rounded-xl border border-white/10 bg-slate-900/80 p-5">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-slate-400">
+                    Today in NextAura
+                  </p>
+                  <p className="mt-1 text-lg font-semibold">
+                    Your business, connected.
+                  </p>
+                </div>
+                <div className="rounded-lg bg-emerald-400/10 px-2.5 py-1 text-xs font-semibold text-emerald-300">
+                  All systems active
+                </div>
+              </div>
+              <div className="mt-5 grid grid-cols-2 gap-3">
+                <Metric
+                  icon={Building2}
+                  label="Operations"
+                  value="One workspace"
+                />
+                <Metric icon={Bot} label="Automation" value="Ready to run" />
+                <Metric
+                  icon={Globe2}
+                  label="Websites"
+                  value="Publish with confidence"
+                />
+                <Metric
+                  icon={ShieldCheck}
+                  label="Control"
+                  value="Secure by design"
+                />
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+      <section
+        id="features"
+        className="border-t border-white/10 bg-slate-900/70 px-6 py-16 sm:px-8"
+      >
+        <div className="mx-auto max-w-6xl">
+          <p className="text-sm font-semibold text-blue-300">
+            One operating system
+          </p>
+          <h2 className="mt-3 max-w-2xl text-3xl font-semibold tracking-tight">
+            A clear view across every part of your company.
+          </h2>
+          <div className="mt-9 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Feature
+              title="Customer operations"
+              text="Bring leads, contacts and service delivery into one workflow."
+            />
+            <Feature
+              title="Finance and people"
+              text="Keep financial visibility and your workforce aligned."
+            />
+            <Feature
+              title="Automation and AI"
+              text="Turn repeatable work into reliable, governed execution."
+            />
+            <Feature
+              title="Your public presence"
+              text="Create, publish and manage websites from the same workspace."
+            />
+          </div>
+        </div>
+      </section>
     </main>
+  );
+}
+
+function Metric({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: typeof Building2;
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-white/[.04] p-3">
+      <Icon className="h-4 w-4 text-blue-300" />
+      <p className="mt-3 text-xs text-slate-400">{label}</p>
+      <p className="mt-1 text-sm font-semibold text-slate-100">{value}</p>
+    </div>
+  );
+}
+function Feature({ title, text }: { title: string; text: string }) {
+  return (
+    <article className="rounded-2xl border border-white/10 bg-white/[.03] p-5">
+      <h3 className="font-semibold">{title}</h3>
+      <p className="mt-2 text-sm leading-6 text-slate-400">{text}</p>
+    </article>
   );
 }
 
