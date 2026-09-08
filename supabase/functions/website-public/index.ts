@@ -3,6 +3,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.49.8';
 const cors = { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type' };
 const uuid = (value: unknown) => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 const publicSlug = (value: string | null) => Boolean(value && /^[a-z0-9](?:[a-z0-9-]{0,77}[a-z0-9])?$/.test(value));
+const publicBaseDomain = (Deno.env.get('WEBSITE_PUBLIC_BASE_DOMAIN') || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '');
+const reserved = new Set(['www', 'app', 'api', 'admin', 'auth', 'mail', 'support', 'dashboard', 'status', 'cdn', 'assets', 'static', 'sites']);
 const reply = (body: unknown, status = 200, cache = 'no-store') => new Response(JSON.stringify(body), { status, headers: { ...cors, 'Content-Type': 'application/json', 'Cache-Control': cache, Vary: 'Origin' } });
 
 function safePath(value: string | null) {
@@ -11,6 +13,7 @@ function safePath(value: string | null) {
   const normalized = raw.replace(/\/+$/, '');
   return normalized || '/';
 }
+function slugFromHostname(value: string | null) { const host = String(value || '').toLowerCase().replace(/\.$/, '').split(':')[0]; if (!publicBaseDomain || !host.endsWith(`.${publicBaseDomain}`)) return null; const label = host.slice(0, -(publicBaseDomain.length + 1)); return publicSlug(label) && !reserved.has(label) ? label : null; }
 
 function referencedIds(value: unknown, keys: Set<string>) {
   const result = new Set<string>();
@@ -27,7 +30,8 @@ function referencedIds(value: unknown, keys: Set<string>) {
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: cors });
   if (req.method !== 'GET') return reply({ success: false, error: 'Method not allowed.' }, 405);
-  const url = new URL(req.url); const slug = url.searchParams.get('site'); const requestedPath = safePath(url.searchParams.get('path'));
+  const url = new URL(req.url); const hostnameSlug = slugFromHostname(url.searchParams.get('hostname')); const requestedSlug = url.searchParams.get('site'); const slug = hostnameSlug || requestedSlug; const requestedPath = safePath(url.searchParams.get('path'));
+  if (hostnameSlug && requestedSlug && requestedSlug !== hostnameSlug) return reply({ success: false, error: 'Site not found.' }, 404);
   if (!publicSlug(slug) || !requestedPath) return reply({ success: false, error: 'Site not found.' }, 404);
   try {
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { autoRefreshToken: false, persistSession: false } });
@@ -35,7 +39,7 @@ Deno.serve(async (req) => {
     if (!site?.published_release_id) return reply({ success: false, error: 'Site not found.' }, 404);
     const { data: release } = await admin.from('website_releases').select('id,site_id,release_manifest').eq('id', site.published_release_id).eq('site_id', site.id).eq('status', 'published').maybeSingle();
     const manifest: any = release?.release_manifest;
-    if (!release || !manifest || !Array.isArray(manifest.pages) || !manifest.site || manifest.site.id !== site.id || (manifest.site.public_slug && manifest.site.public_slug !== slug)) return reply({ success: false, error: 'Site not found.' }, 404);
+    if (!release || !manifest || !Array.isArray(manifest.pages) || !manifest.site || manifest.site.id !== site.id) return reply({ success: false, error: 'Site not found.' }, 404);
     const pages = manifest.pages.filter((item: any) => item && uuid(item.page_id) && uuid(item.page_version_id) && typeof item.slug === 'string' && typeof item.name === 'string');
     const page = pages.find((item: any) => item.slug === requestedPath);
     if (!page) return reply({ success: false, error: 'Page not found.' }, 404, 'public, max-age=60, stale-while-revalidate=300');
