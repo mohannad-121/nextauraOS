@@ -140,6 +140,14 @@ export function WebsiteEditor({
   useEffect(() => {
     void load();
   }, [currentOrg.id, siteId, pageId]);
+  useEffect(() => {
+    if (window.sessionStorage.getItem("nextaura-ai-draft-site") === siteId) {
+      setNotice(
+        "AI-generated draft — review and edit your website before publishing.",
+      );
+      window.sessionStorage.removeItem("nextaura-ai-draft-site");
+    }
+  }, [siteId]);
   const change = (next: WebsiteDocument) => {
     setHistory((items) => [...items.slice(-39), doc]);
     setFuture([]);

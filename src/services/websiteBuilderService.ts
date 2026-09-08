@@ -23,6 +23,29 @@ const call = async (body: Record<string, unknown>) => {
     );
   return data;
 };
+const agentCall = async (body: Record<string, unknown>) => {
+  const { data, error } = await supabase.functions.invoke("website-agent", {
+    body,
+  });
+  const functionError = error as {
+    context?: Response;
+    message?: string;
+  } | null;
+  let responseError = "";
+  if (functionError?.context) {
+    try {
+      const payload = await functionError.context.clone().json();
+      if (typeof payload?.error === "string") responseError = payload.error;
+    } catch {
+      /* safe fallback below */
+    }
+  }
+  if (error || !data?.success)
+    throw new Error(
+      data?.error || responseError || "Website AI is unavailable.",
+    );
+  return data;
+};
 export const websiteBuilderService = {
   listSites: (organizationId: string) =>
     call({ operation: "listSites", organizationId }),
@@ -65,4 +88,8 @@ export const websiteBuilderService = {
     call({ operation: "publishSite", organizationId, siteId }),
   unpublishSite: (organizationId: string, siteId: string) =>
     call({ operation: "unpublishSite", organizationId, siteId }),
+  generateAgentPlan: (body: Record<string, unknown>) =>
+    agentCall({ operation: "generatePlan", ...body }),
+  applyAgentPlan: (organizationId: string, planId: string) =>
+    agentCall({ operation: "applyPlan", organizationId, planId }),
 };

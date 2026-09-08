@@ -32,6 +32,16 @@ export function WebsitesPage() {
   const [name, setName] = useState("");
   const [slug, setSlug] = useState("");
   const [saving, setSaving] = useState(false);
+  const [agentOpen, setAgentOpen] = useState(false);
+  const [agentStep, setAgentStep] = useState<"prompt" | "review">("prompt");
+  const [agentPrompt, setAgentPrompt] = useState("");
+  const [businessName, setBusinessName] = useState("");
+  const [language, setLanguage] = useState("auto");
+  const [styleHint, setStyleHint] = useState("Modern");
+  const [agentPlan, setAgentPlan] = useState<any>(null);
+  const [agentPlanId, setAgentPlanId] = useState("");
+  const [agentLoading, setAgentLoading] = useState(false);
+  const [agentStage, setAgentStage] = useState(0);
   const load = async () => {
     setLoading(true);
     setError("");
@@ -79,6 +89,63 @@ export function WebsitesPage() {
       data.site.website_pages?.[0];
     if (page) navigate("websites", "editor", `${siteId}:${page.id}`);
   };
+  const closeAgent = () => {
+    if (agentLoading) return;
+    setAgentOpen(false);
+    setAgentStep("prompt");
+    setAgentPlan(null);
+    setAgentPlanId("");
+    setAgentStage(0);
+  };
+  const generateAgentPlan = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setError("");
+    setAgentLoading(true);
+    setAgentStage(0);
+    const timer = window.setInterval(
+      () => setAgentStage((current) => Math.min(current + 1, 3)),
+      900,
+    );
+    try {
+      const result = await websiteBuilderService.generateAgentPlan({
+        organizationId: currentOrg.id,
+        prompt: agentPrompt,
+        businessName: businessName || undefined,
+        language,
+        styleHint,
+      });
+      setAgentPlan(result.plan);
+      setAgentPlanId(result.planId);
+      setAgentStep("review");
+    } catch (reason: any) {
+      setError(
+        reason.message ||
+          "We couldn't generate a valid site structure. Please try again.",
+      );
+    } finally {
+      window.clearInterval(timer);
+      setAgentLoading(false);
+    }
+  };
+  const applyAgentPlan = async () => {
+    if (!agentPlanId) return;
+    setError("");
+    setAgentLoading(true);
+    try {
+      const result = await websiteBuilderService.applyAgentPlan(
+        currentOrg.id,
+        agentPlanId,
+      );
+      window.sessionStorage.setItem("nextaura-ai-draft-site", result.siteId);
+      closeAgent();
+      await load();
+      navigate("websites", "editor", `${result.siteId}:${result.homepageId}`);
+    } catch (reason: any) {
+      setError(reason.message || "Unable to create your draft website.");
+    } finally {
+      setAgentLoading(false);
+    }
+  };
   const route =
     activeSubView === "editor" ? selectedResourceId?.split(":") : null;
   if (route?.length === 2)
@@ -95,13 +162,22 @@ export function WebsitesPage() {
             Websites
           </h1>
         </div>
-        <button
-          onClick={() => setOpen(true)}
-          className="inline-flex gap-2 rounded-xl bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white"
-        >
-          <Plus className="h-4 w-4" />
-          Create website
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setOpen(true)}
+            className="inline-flex gap-2 rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800"
+          >
+            <Plus className="h-4 w-4" />
+            Create website
+          </button>
+          <button
+            onClick={() => setAgentOpen(true)}
+            className="inline-flex gap-2 rounded-xl bg-gradient-to-r from-violet-700 to-blue-700 px-4 py-2.5 text-sm font-semibold text-white shadow-sm"
+          >
+            <Sparkles className="h-4 w-4" />
+            Build with AI
+          </button>
+        </div>
       </header>
       {error && (
         <p
@@ -244,6 +320,173 @@ export function WebsitesPage() {
               </button>
             </div>
           </form>
+        )}
+      </Modal>
+      <Modal
+        isOpen={agentOpen}
+        onClose={closeAgent}
+        title={
+          agentStep === "prompt"
+            ? "Describe your website"
+            : "Review your AI website plan"
+        }
+        subtitle={
+          agentStep === "prompt"
+            ? "AI creates a draft. You decide when to publish."
+            : "Nothing is created until you confirm."
+        }
+        maxWidth="4xl"
+      >
+        {agentStep === "prompt" ? (
+          <form onSubmit={generateAgentPlan} className="space-y-5">
+            <label className="block text-sm font-medium">
+              Describe the website
+              <textarea
+                required
+                minLength={12}
+                maxLength={6000}
+                value={agentPrompt}
+                onChange={(event) => setAgentPrompt(event.target.value)}
+                placeholder="Build a modern fitness coaching website with a dark premium look, pricing, coach profiles, testimonials and a contact form."
+                className="mt-2 min-h-40 w-full resize-y rounded-xl border border-slate-300 p-3 leading-6 outline-none focus:border-blue-600 focus:ring-2 focus:ring-blue-100"
+              />
+            </label>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <label className="text-sm font-medium">
+                Business name{" "}
+                <input
+                  value={businessName}
+                  onChange={(event) => setBusinessName(event.target.value)}
+                  maxLength={120}
+                  className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2.5"
+                />
+              </label>
+              <label className="text-sm font-medium">
+                Language
+                <select
+                  value={language}
+                  onChange={(event) => setLanguage(event.target.value)}
+                  className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2.5"
+                >
+                  <option value="auto">Auto</option>
+                  <option value="en">English</option>
+                  <option value="ar">Arabic</option>
+                </select>
+              </label>
+              <label className="text-sm font-medium">
+                Style
+                <select
+                  value={styleHint}
+                  onChange={(event) => setStyleHint(event.target.value)}
+                  className="mt-2 w-full rounded-xl border border-slate-300 px-3 py-2.5"
+                >
+                  {[
+                    "Modern",
+                    "Luxury",
+                    "Minimal",
+                    "Bold",
+                    "Elegant",
+                    "Playful",
+                    "Professional",
+                  ].map((style) => (
+                    <option key={style}>{style}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+            <p className="rounded-xl bg-violet-50 p-3 text-sm text-violet-900">
+              <Sparkles className="mr-2 inline h-4 w-4" />
+              Your content is planned as safe editable sections. It will never
+              publish automatically.
+            </p>
+            {agentLoading && (
+              <div
+                className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-sm text-blue-900"
+                aria-live="polite"
+              >
+                {
+                  [
+                    "Understanding your business",
+                    "Planning pages",
+                    "Designing sections",
+                    "Preparing your draft",
+                  ][agentStage]
+                }
+                …
+              </div>
+            )}
+            <div className="flex justify-end gap-3">
+              <button
+                type="button"
+                onClick={closeAgent}
+                className="rounded-xl px-4 py-2"
+              >
+                Cancel
+              </button>
+              <button
+                disabled={agentLoading}
+                className="rounded-xl bg-blue-700 px-4 py-2 font-semibold text-white disabled:opacity-60"
+              >
+                {agentLoading ? "Generating…" : "Generate website"}
+              </button>
+            </div>
+          </form>
+        ) : (
+          <div className="space-y-6">
+            <div className="rounded-2xl border border-violet-100 bg-violet-50/60 p-5">
+              <p className="text-xs font-bold uppercase tracking-wider text-violet-700">
+                Website
+              </p>
+              <h3 className="mt-1 text-xl font-semibold text-slate-950">
+                {agentPlan?.site?.name}
+              </h3>
+              <p className="mt-1 text-sm text-slate-600">
+                {agentPlan?.site?.theme?.preset} ·{" "}
+                {agentPlan?.site?.language === "ar"
+                  ? "Arabic / RTL"
+                  : "English / LTR"}
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2">
+              {agentPlan?.pages?.map((page: any) => (
+                <article
+                  key={page.clientId}
+                  className="rounded-xl border border-slate-200 p-4"
+                >
+                  <h4 className="font-semibold">
+                    {page.name}
+                    {page.isHomepage ? " · Home" : ""}
+                  </h4>
+                  <p className="mt-2 text-xs text-slate-500">
+                    {page.sections
+                      .map((section: any) => section.type.replaceAll("_", " "))
+                      .join(" · ")}
+                  </p>
+                </article>
+              ))}
+            </div>
+            <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
+              This will create an AI-generated draft only. Review and edit it in
+              Website Editor before using the existing Publish action.
+            </p>
+            <div className="flex justify-between gap-3">
+              <button
+                type="button"
+                disabled={agentLoading}
+                onClick={() => setAgentStep("prompt")}
+                className="rounded-xl px-4 py-2"
+              >
+                Generate again
+              </button>
+              <button
+                disabled={agentLoading}
+                onClick={() => void applyAgentPlan()}
+                className="rounded-xl bg-blue-700 px-4 py-2 font-semibold text-white disabled:opacity-60"
+              >
+                {agentLoading ? "Creating draft…" : "Create draft"}
+              </button>
+            </div>
+          </div>
         )}
       </Modal>
     </div>
