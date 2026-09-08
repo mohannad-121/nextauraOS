@@ -46,7 +46,7 @@ BEGIN
     IF (v_plan.base_versions->'pages'->>v_page.id::text) IS NOT NULL AND v_page.draft_version <> (v_plan.base_versions->'pages'->>v_page.id::text)::int THEN RAISE EXCEPTION 'AI_EDIT_STALE_PROPOSAL'; END IF;
   END LOOP;
   FOR v_op IN SELECT value FROM jsonb_array_elements(v_plan.plan_json->'operations') LOOP
-    IF v_op->>'op'='update_site_theme' THEN UPDATE public.website_pages SET draft_document=jsonb_set(draft_document,'{theme}',v_op->'theme',true), draft_version=draft_version+1, updated_at=now() WHERE site_id=v_site.id AND organization_id=p_organization_id; 
+    IF v_op->>'op'='update_site_theme' THEN UPDATE public.website_pages SET draft_document=jsonb_set(draft_document,'{theme}',v_op->'theme',true), draft_version=draft_version+1, updated_at=now() WHERE site_id=v_site.id AND organization_id=p_organization_id;
     ELSIF v_op->>'op'='create_page' THEN
       v_new_page_id:=gen_random_uuid(); INSERT INTO public.website_pages(id,organization_id,site_id,name,slug,page_type,is_homepage,draft_document,draft_version,created_by) VALUES(v_new_page_id,p_organization_id,v_site.id,v_op->>'name',v_op->>'slug','standard',false,jsonb_build_object('version',1,'sections',coalesce(v_op->'sections','[]'::jsonb)),1,p_actor_id); v_page_ids:=v_page_ids || jsonb_build_object(coalesce(v_op->>'tempRef',v_new_page_id::text),v_new_page_id::text);
     END IF;
