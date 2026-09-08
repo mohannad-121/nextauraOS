@@ -1,61 +1,1203 @@
-import { authenticate, corsHeaders, json, requireBillingAdmin } from '../_shared/billing.ts';
-import { getOrganizationEntitlements } from '../_shared/entitlements.ts';
+import {
+  authenticate,
+  corsHeaders,
+  json,
+  requireBillingAdmin,
+} from "../_shared/billing.ts";
+import { getOrganizationEntitlements } from "../_shared/entitlements.ts";
 
-const sectionTypes = new Set(['hero', 'text', 'image', 'button_group', 'spacer', 'header', 'footer', 'features', 'services', 'testimonials', 'pricing', 'faq', 'contact', 'gallery', 'stats', 'team']);
-const imageMimes = new Set(['image/png', 'image/jpeg', 'image/webp']); const maxImageBytes = 10 * 1024 * 1024;
-const isRecord = (value: unknown): value is Record<string, unknown> => Boolean(value) && typeof value === 'object' && !Array.isArray(value);
-const uuid = (value: unknown) => typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(value);
-const safeUrl = (value: unknown) => typeof value === 'string' && /^(https?:\/\/|mailto:|tel:|#|\/)/i.test(value);
-const slugify = (value: string) => value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 63);
-const reservedPublicSlugs = new Set(['www', 'app', 'api', 'admin', 'auth', 'mail', 'support', 'dashboard', 'status', 'cdn', 'assets', 'static', 'sites']);
+const sectionTypes = new Set([
+  "hero",
+  "text",
+  "image",
+  "button_group",
+  "spacer",
+  "header",
+  "footer",
+  "features",
+  "services",
+  "testimonials",
+  "pricing",
+  "faq",
+  "contact",
+  "gallery",
+  "stats",
+  "team",
+]);
+const imageMimes = new Set(["image/png", "image/jpeg", "image/webp"]);
+const maxImageBytes = 10 * 1024 * 1024;
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  Boolean(value) && typeof value === "object" && !Array.isArray(value);
+const uuid = (value: unknown) =>
+  typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(value);
+const safeUrl = (value: unknown) =>
+  typeof value === "string" && /^(https?:\/\/|mailto:|tel:|#|\/)/i.test(value);
+const slugify = (value: string) =>
+  value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 63);
+const reservedPublicSlugs = new Set([
+  "www",
+  "app",
+  "api",
+  "admin",
+  "auth",
+  "mail",
+  "support",
+  "dashboard",
+  "status",
+  "cdn",
+  "assets",
+  "static",
+  "sites",
+]);
 const safeFailure = (operation: string, error: unknown) => {
-  const message = error instanceof Error ? error.message : '';
-  if (/^(Missing Authorization header|Invalid authentication token|organizationId is required\.|You do not have access to this organization\.|Only workspace owners and administrators can manage billing|Website Builder is not available for this organization\.|Activate Website Builder in Services before creating or viewing websites\.|Organization not found\.|Invalid billing root relationship\.|Enter a name, URL-safe slug, and valid starter template\.|Your plan has reached its Website Builder site limit\.)$/.test(message)) return message;
-  return operation === 'listSites' ? 'Unable to load websites.' : operation === 'createSite' ? 'Unable to create website.' : 'Unable to manage websites.';
+  const message = error instanceof Error ? error.message : "";
+  if (
+    /^(Missing Authorization header|Invalid authentication token|organizationId is required\.|You do not have access to this organization\.|Only workspace owners and administrators can manage billing|Website Builder is not available for this organization\.|Activate Website Builder in Services before creating or viewing websites\.|Organization not found\.|Invalid billing root relationship\.|Enter a name, URL-safe slug, and valid starter template\.|Your plan has reached its Website Builder site limit\.)$/.test(
+      message,
+    )
+  )
+    return message;
+  return operation === "listSites"
+    ? "Unable to load websites."
+    : operation === "createSite"
+      ? "Unable to create website."
+      : "Unable to manage websites.";
 };
 const starterTemplates: Record<string, { theme: any; sections: string[] }> = {
-  restaurant: { theme: { primaryColor: '#a16207', backgroundColor: '#fffbeb', textColor: '#292524', radius: 'md' }, sections: ['hero', 'features', 'services', 'stats', 'gallery', 'testimonials', 'contact'] },
-  agency: { theme: { primaryColor: '#2563eb', backgroundColor: '#f8fafc', textColor: '#0f172a', radius: 'md' }, sections: ['hero', 'services', 'stats', 'features', 'testimonials', 'team', 'contact'] },
-  saas: { theme: { primaryColor: '#4f46e5', backgroundColor: '#f8fafc', textColor: '#111827', radius: 'lg' }, sections: ['hero', 'features', 'stats', 'pricing', 'testimonials', 'faq', 'button_group'] },
-  portfolio: { theme: { primaryColor: '#0f172a', backgroundColor: '#fafafa', textColor: '#111827', radius: 'sm' }, sections: ['hero', 'stats', 'gallery', 'services', 'testimonials', 'contact'] },
-  fitness: { theme: { primaryColor: '#15803d', backgroundColor: '#f0fdf4', textColor: '#14532d', radius: 'lg' }, sections: ['hero', 'services', 'stats', 'testimonials', 'pricing', 'team', 'contact'] },
-  beauty: { theme: { primaryColor: '#be185d', backgroundColor: '#fff1f2', textColor: '#4a044e', radius: 'lg' }, sections: ['hero', 'services', 'gallery', 'testimonials', 'pricing', 'team', 'contact'] },
+  restaurant: {
+    theme: {
+      primaryColor: "#a16207",
+      backgroundColor: "#fffbeb",
+      textColor: "#292524",
+      radius: "md",
+    },
+    sections: [
+      "hero",
+      "features",
+      "services",
+      "stats",
+      "gallery",
+      "testimonials",
+      "contact",
+    ],
+  },
+  agency: {
+    theme: {
+      primaryColor: "#2563eb",
+      backgroundColor: "#f8fafc",
+      textColor: "#0f172a",
+      radius: "md",
+    },
+    sections: [
+      "hero",
+      "services",
+      "stats",
+      "features",
+      "testimonials",
+      "team",
+      "contact",
+    ],
+  },
+  saas: {
+    theme: {
+      primaryColor: "#4f46e5",
+      backgroundColor: "#f8fafc",
+      textColor: "#111827",
+      radius: "lg",
+    },
+    sections: [
+      "hero",
+      "features",
+      "stats",
+      "pricing",
+      "testimonials",
+      "faq",
+      "button_group",
+    ],
+  },
+  portfolio: {
+    theme: {
+      primaryColor: "#0f172a",
+      backgroundColor: "#fafafa",
+      textColor: "#111827",
+      radius: "sm",
+    },
+    sections: [
+      "hero",
+      "stats",
+      "gallery",
+      "services",
+      "testimonials",
+      "contact",
+    ],
+  },
+  fitness: {
+    theme: {
+      primaryColor: "#15803d",
+      backgroundColor: "#f0fdf4",
+      textColor: "#14532d",
+      radius: "lg",
+    },
+    sections: [
+      "hero",
+      "services",
+      "stats",
+      "testimonials",
+      "pricing",
+      "team",
+      "contact",
+    ],
+  },
+  beauty: {
+    theme: {
+      primaryColor: "#be185d",
+      backgroundColor: "#fff1f2",
+      textColor: "#4a044e",
+      radius: "lg",
+    },
+    sections: [
+      "hero",
+      "services",
+      "gallery",
+      "testimonials",
+      "pricing",
+      "team",
+      "contact",
+    ],
+  },
 };
-const starterDocument = (templateId: string) => { const template = starterTemplates[templateId]; const section = (type: string) => ({ id: crypto.randomUUID(), type, props: type === 'hero' ? { eyebrow: 'Welcome', heading: 'Make your next chapter memorable', subheading: 'A considered online home for your business.', primaryLabel: 'Get started', primaryUrl: '#', secondaryLabel: 'Learn more', secondaryUrl: '#', alignment: 'left', minHeight: 480, overlayOpacity: 0.35, imageFit: 'cover' } : type === 'contact' ? { heading: 'Let’s talk', text: 'Tell us a little about what you need.', phone: '', email: '', address: '', showForm: true } : type === 'stats' ? { heading: '', items: [{ value: '10+', label: 'Years of experience' }, { value: '500+', label: 'Happy clients' }, { value: '99%', label: 'Would recommend us' }] } : { heading: type === 'pricing' ? 'Simple pricing' : type === 'team' ? 'Meet the team' : type === 'gallery' ? 'Our work' : 'Built around what matters', items: [] }, style: type === 'hero' || type === 'contact' ? { backgroundColor: '#0f172a', textColor: '#ffffff', paddingY: 80 } : { backgroundColor: '#ffffff', textColor: '#0f172a', paddingY: 80 } }); return template ? { version: 1, theme: template.theme, sections: template.sections.map(section) } : { version: 1, sections: [] }; };
-const filename = (value: unknown) => String(value || 'image').replace(/[^a-z0-9._-]/gi, '-').slice(0, 120) || 'image';
+const starterDocument = (templateId: string) => {
+  const template = starterTemplates[templateId];
+  const section = (type: string) => ({
+    id: crypto.randomUUID(),
+    type,
+    props:
+      type === "hero"
+        ? {
+            eyebrow: "Welcome",
+            heading: "Make your next chapter memorable",
+            subheading: "A considered online home for your business.",
+            primaryLabel: "Get started",
+            primaryUrl: "#",
+            secondaryLabel: "Learn more",
+            secondaryUrl: "#",
+            alignment: "left",
+            minHeight: 480,
+            overlayOpacity: 0.35,
+            imageFit: "cover",
+          }
+        : type === "contact"
+          ? {
+              heading: "Let’s talk",
+              text: "Tell us a little about what you need.",
+              phone: "",
+              email: "",
+              address: "",
+              showForm: true,
+            }
+          : type === "stats"
+            ? {
+                heading: "",
+                items: [
+                  { value: "10+", label: "Years of experience" },
+                  { value: "500+", label: "Happy clients" },
+                  { value: "99%", label: "Would recommend us" },
+                ],
+              }
+            : {
+                heading:
+                  type === "pricing"
+                    ? "Simple pricing"
+                    : type === "team"
+                      ? "Meet the team"
+                      : type === "gallery"
+                        ? "Our work"
+                        : "Built around what matters",
+                items: [],
+              },
+    style:
+      type === "hero" || type === "contact"
+        ? { backgroundColor: "#0f172a", textColor: "#ffffff", paddingY: 80 }
+        : { backgroundColor: "#ffffff", textColor: "#0f172a", paddingY: 80 },
+  });
+  return template
+    ? {
+        version: 1,
+        theme: template.theme,
+        sections: template.sections.map(section),
+      }
+    : { version: 1, sections: [] };
+};
+const filename = (value: unknown) =>
+  String(value || "image")
+    .replace(/[^a-z0-9._-]/gi, "-")
+    .slice(0, 120) || "image";
 
-function bytesFromBase64(value: unknown) { if (typeof value !== 'string' || value.length > Math.ceil(maxImageBytes * 1.4)) throw new Error('Image upload is invalid or too large.'); try { return Uint8Array.from(atob(value), (character) => character.charCodeAt(0)); } catch { throw new Error('Image upload is invalid.'); } }
-function detectImage(bytes: Uint8Array) {
-  if (bytes.length > 24 && bytes[0] === 137 && bytes[1] === 80 && bytes[2] === 78 && bytes[3] === 71) return { mime: 'image/png', width: new DataView(bytes.buffer, bytes.byteOffset + 16, 4).getUint32(0), height: new DataView(bytes.buffer, bytes.byteOffset + 20, 4).getUint32(0), extension: 'png' };
-  if (bytes.length > 10 && bytes[0] === 255 && bytes[1] === 216) { for (let i = 2; i + 9 < bytes.length; i += 1) { if (bytes[i] !== 255) continue; const marker = bytes[i + 1]; const length = (bytes[i + 2] << 8) + bytes[i + 3]; if (marker >= 192 && marker <= 195) return { mime: 'image/jpeg', width: (bytes[i + 7] << 8) + bytes[i + 8], height: (bytes[i + 5] << 8) + bytes[i + 6], extension: 'jpg' }; i += Math.max(1, length); } return { mime: 'image/jpeg', width: null, height: null, extension: 'jpg' }; }
-  if (bytes.length > 16 && String.fromCharCode(...bytes.slice(0, 4)) === 'RIFF' && String.fromCharCode(...bytes.slice(8, 12)) === 'WEBP') return { mime: 'image/webp', width: null, height: null, extension: 'webp' };
-  throw new Error('Only valid PNG, JPEG, and WebP images are supported.');
+function bytesFromBase64(value: unknown) {
+  if (
+    typeof value !== "string" ||
+    value.length > Math.ceil(maxImageBytes * 1.4)
+  )
+    throw new Error("Image upload is invalid or too large.");
+  try {
+    return Uint8Array.from(atob(value), (character) => character.charCodeAt(0));
+  } catch {
+    throw new Error("Image upload is invalid.");
+  }
 }
-function documentAssetIds(value: unknown) { const ids: string[] = []; const scan = (item: unknown) => { if (Array.isArray(item)) item.forEach(scan); else if (isRecord(item)) Object.entries(item).forEach(([key, child]) => { if (['assetId', 'backgroundAssetId', 'sideAssetId', 'logoAssetId'].includes(key) && uuid(child)) ids.push(child); else scan(child); }); }; scan(value); return [...new Set(ids)]; }
-async function assertAssets(admin: any, organizationId: string, siteId: string, ids: string[]) { if (!ids.length) return; if (ids.some((id) => !uuid(id))) throw new Error('An asset reference is invalid.'); const { data, error } = await admin.from('website_assets').select('id').eq('organization_id', organizationId).eq('site_id', siteId).is('deleted_at', null).in('id', ids); if (error || data?.length !== ids.length) throw new Error('An asset must belong to this website.'); }
-function validateDocument(value: unknown) { if (!isRecord(value) || value.version !== 1 || !Array.isArray(value.sections) || value.sections.length > 100 || new TextEncoder().encode(JSON.stringify(value)).length > 262144) throw new Error('Website document is invalid.'); if (value.theme !== undefined) { const theme = value.theme; if (!isRecord(theme) || !['primaryColor', 'backgroundColor', 'textColor', 'radius'].every((key) => key in theme) || !/^#[0-9a-f]{6}$/i.test(String(theme.primaryColor)) || !/^#[0-9a-f]{6}$/i.test(String(theme.backgroundColor)) || !/^#[0-9a-f]{6}$/i.test(String(theme.textColor)) || !['sm', 'md', 'lg'].includes(String(theme.radius))) throw new Error('Website theme is invalid.'); } const ids = new Set<string>(); const limits: Record<string, number> = { features: 12, services: 12, testimonials: 12, pricing: 4, faq: 20, gallery: 24, stats: 8, team: 16 }; for (const section of value.sections) { if (!isRecord(section) || typeof section.id !== 'string' || !section.id || section.id.length > 80 || ids.has(section.id) || !sectionTypes.has(String(section.type)) || !isRecord(section.props ?? {}) || !isRecord(section.style ?? {}) || Object.keys(section.props ?? {}).length > 40 || Object.keys(section.style ?? {}).length > 40 || /<\/?script|on[a-z]+\s*=|javascript:|<iframe/i.test(JSON.stringify(section)) || JSON.stringify(section).length > 16384) throw new Error('Website document contains unsupported content.'); const items = Array.isArray(section.props.items) ? section.props.items : Array.isArray(section.props.images) ? section.props.images : []; if (limits[String(section.type)] !== undefined && items.length > limits[String(section.type)]) throw new Error('Website section has too many items.'); if (String(section.type) === 'testimonials' && items.some((item: any) => item.rating !== undefined && (!Number.isInteger(item.rating) || item.rating < 1 || item.rating > 5))) throw new Error('Testimonial rating is invalid.'); if (JSON.stringify(section).match(/(?:target|Url|url)"\s*:\s*"(?!https?:\/\/|mailto:|tel:|#|\/)/i)) throw new Error('Website URL is invalid.'); ids.add(section.id); } return value; }
-function validateGlobals(value: unknown) { if (!isRecord(value) || value.version !== 1 || !Array.isArray(value.navigation) || value.navigation.length > 20) throw new Error('Global website settings are invalid.'); for (const item of value.navigation) { if (!isRecord(item) || typeof item.id !== 'string' || typeof item.label !== 'string' || !item.label.trim() || item.label.length > 80 || typeof item.visible !== 'boolean' || (item.pageId && !uuid(item.pageId)) || (item.externalUrl && !safeUrl(item.externalUrl)) || (!item.pageId && !item.externalUrl)) throw new Error('A navigation item is invalid.'); } for (const key of ['header', 'footer']) { const section = value[key]; if (section !== null && (!isRecord(section) || section.type !== key || !isRecord(section.props ?? {}) || !isRecord(section.style ?? {}) || /<\/?script|on[a-z]+\s*=|javascript:|<iframe/i.test(JSON.stringify(section)))) throw new Error(`Global ${key} is invalid.`); } return value; }
-async function authorize(admin: any, userId: string, organizationId: string, mutate: boolean) { if (!organizationId) throw new Error('organizationId is required.'); if (mutate) await requireBillingAdmin(admin, userId, organizationId); else { const { data } = await admin.from('organization_members').select('id').eq('organization_id', organizationId).eq('user_id', userId).eq('status', 'Active').maybeSingle(); if (!data) throw new Error('You do not have access to this organization.'); } const entitlements: any = await getOrganizationEntitlements(admin, organizationId); if (!entitlements.access_active || !entitlements.website_builder_access) throw new Error('Website Builder is not available for this organization.'); const { data: service } = await admin.from('organization_services').select('service_key').eq('organization_id', organizationId).eq('service_key', 'website_builder').eq('status', 'active').maybeSingle(); if (!service) throw new Error('Activate Website Builder in Services before creating or viewing websites.'); return entitlements; }
-async function audit(admin: any, organizationId: string, userId: string, action: string, details: Record<string, unknown>) { await admin.from('audit_logs').insert({ organization_id: organizationId, user_name: userId, action, details: JSON.stringify(details) }); }
-async function siteFor(admin: any, organizationId: string, siteId: string) { const { data, error } = await admin.from('website_sites').select('*').eq('id', siteId).eq('organization_id', organizationId).is('archived_at', null).maybeSingle(); if (error || !data) throw new Error('Website not found or archived.'); return data; }
+function detectImage(bytes: Uint8Array) {
+  if (
+    bytes.length > 24 &&
+    bytes[0] === 137 &&
+    bytes[1] === 80 &&
+    bytes[2] === 78 &&
+    bytes[3] === 71
+  )
+    return {
+      mime: "image/png",
+      width: new DataView(bytes.buffer, bytes.byteOffset + 16, 4).getUint32(0),
+      height: new DataView(bytes.buffer, bytes.byteOffset + 20, 4).getUint32(0),
+      extension: "png",
+    };
+  if (bytes.length > 10 && bytes[0] === 255 && bytes[1] === 216) {
+    for (let i = 2; i + 9 < bytes.length; i += 1) {
+      if (bytes[i] !== 255) continue;
+      const marker = bytes[i + 1];
+      const length = (bytes[i + 2] << 8) + bytes[i + 3];
+      if (marker >= 192 && marker <= 195)
+        return {
+          mime: "image/jpeg",
+          width: (bytes[i + 7] << 8) + bytes[i + 8],
+          height: (bytes[i + 5] << 8) + bytes[i + 6],
+          extension: "jpg",
+        };
+      i += Math.max(1, length);
+    }
+    return { mime: "image/jpeg", width: null, height: null, extension: "jpg" };
+  }
+  if (
+    bytes.length > 16 &&
+    String.fromCharCode(...bytes.slice(0, 4)) === "RIFF" &&
+    String.fromCharCode(...bytes.slice(8, 12)) === "WEBP"
+  )
+    return { mime: "image/webp", width: null, height: null, extension: "webp" };
+  throw new Error("Only valid PNG, JPEG, and WebP images are supported.");
+}
+function documentAssetIds(value: unknown) {
+  const ids: string[] = [];
+  const scan = (item: unknown) => {
+    if (Array.isArray(item)) item.forEach(scan);
+    else if (isRecord(item))
+      Object.entries(item).forEach(([key, child]) => {
+        if (
+          [
+            "assetId",
+            "backgroundAssetId",
+            "sideAssetId",
+            "logoAssetId",
+          ].includes(key) &&
+          uuid(child)
+        )
+          ids.push(child);
+        else scan(child);
+      });
+  };
+  scan(value);
+  return [...new Set(ids)];
+}
+async function assertAssets(
+  admin: any,
+  organizationId: string,
+  siteId: string,
+  ids: string[],
+) {
+  if (!ids.length) return;
+  if (ids.some((id) => !uuid(id)))
+    throw new Error("An asset reference is invalid.");
+  const { data, error } = await admin
+    .from("website_assets")
+    .select("id")
+    .eq("organization_id", organizationId)
+    .eq("site_id", siteId)
+    .is("deleted_at", null)
+    .in("id", ids);
+  if (error || data?.length !== ids.length)
+    throw new Error("An asset must belong to this website.");
+}
+const visualTokens = {
+  preset: new Set([
+    "minimal",
+    "centered-editorial",
+    "split-image",
+    "icon-cards",
+    "bordered-grid",
+    "editorial-list",
+    "image-cards",
+    "large-quote",
+    "inline-strip",
+    "featured-grid",
+  ]),
+  background: new Set([
+    "solid",
+    "soft",
+    "contrast",
+    "accent",
+    "gradient",
+    "split",
+  ]),
+  cardStyle: new Set(["flat", "bordered", "elevated", "glass"]),
+  animation: new Set([
+    "none",
+    "fade-up",
+    "fade-in",
+    "slide-left",
+    "slide-right",
+    "scale-in",
+  ]),
+  animationDelayPreset: new Set(["none", "short", "medium"]),
+};
+function validVisualStyle(style: Record<string, unknown>) {
+  return Object.entries(visualTokens).every(
+    ([key, values]) =>
+      style[key] === undefined || values.has(String(style[key])),
+  );
+}
+function validateDocument(value: unknown) {
+  if (
+    !isRecord(value) ||
+    value.version !== 1 ||
+    !Array.isArray(value.sections) ||
+    value.sections.length > 100 ||
+    new TextEncoder().encode(JSON.stringify(value)).length > 262144
+  )
+    throw new Error("Website document is invalid.");
+  if (value.theme !== undefined) {
+    const theme = value.theme;
+    if (
+      !isRecord(theme) ||
+      !["primaryColor", "backgroundColor", "textColor", "radius"].every(
+        (key) => key in theme,
+      ) ||
+      !/^#[0-9a-f]{6}$/i.test(String(theme.primaryColor)) ||
+      !/^#[0-9a-f]{6}$/i.test(String(theme.backgroundColor)) ||
+      !/^#[0-9a-f]{6}$/i.test(String(theme.textColor)) ||
+      !["sm", "md", "lg"].includes(String(theme.radius))
+    )
+      throw new Error("Website theme is invalid.");
+  }
+  const ids = new Set<string>();
+  const limits: Record<string, number> = {
+    features: 12,
+    services: 12,
+    testimonials: 12,
+    pricing: 4,
+    faq: 20,
+    gallery: 24,
+    stats: 8,
+    team: 16,
+  };
+  for (const section of value.sections) {
+    if (
+      !isRecord(section) ||
+      typeof section.id !== "string" ||
+      !section.id ||
+      section.id.length > 80 ||
+      ids.has(section.id) ||
+      !sectionTypes.has(String(section.type)) ||
+      !isRecord(section.props ?? {}) ||
+      !isRecord(section.style ?? {}) ||
+      !validVisualStyle(section.style) ||
+      Object.keys(section.props ?? {}).length > 40 ||
+      Object.keys(section.style ?? {}).length > 40 ||
+      /<\/?script|on[a-z]+\s*=|javascript:|<iframe/i.test(
+        JSON.stringify(section),
+      ) ||
+      JSON.stringify(section).length > 16384
+    )
+      throw new Error("Website document contains unsupported content.");
+    const items = Array.isArray(section.props.items)
+      ? section.props.items
+      : Array.isArray(section.props.images)
+        ? section.props.images
+        : [];
+    if (
+      limits[String(section.type)] !== undefined &&
+      items.length > limits[String(section.type)]
+    )
+      throw new Error("Website section has too many items.");
+    if (
+      String(section.type) === "testimonials" &&
+      items.some(
+        (item: any) =>
+          item.rating !== undefined &&
+          (!Number.isInteger(item.rating) ||
+            item.rating < 1 ||
+            item.rating > 5),
+      )
+    )
+      throw new Error("Testimonial rating is invalid.");
+    if (
+      JSON.stringify(section).match(
+        /(?:target|Url|url)"\s*:\s*"(?!https?:\/\/|mailto:|tel:|#|\/)/i,
+      )
+    )
+      throw new Error("Website URL is invalid.");
+    ids.add(section.id);
+  }
+  return value;
+}
+function validateGlobals(value: unknown) {
+  if (
+    !isRecord(value) ||
+    value.version !== 1 ||
+    !Array.isArray(value.navigation) ||
+    value.navigation.length > 20
+  )
+    throw new Error("Global website settings are invalid.");
+  for (const item of value.navigation) {
+    if (
+      !isRecord(item) ||
+      typeof item.id !== "string" ||
+      typeof item.label !== "string" ||
+      !item.label.trim() ||
+      item.label.length > 80 ||
+      typeof item.visible !== "boolean" ||
+      (item.pageId && !uuid(item.pageId)) ||
+      (item.externalUrl && !safeUrl(item.externalUrl)) ||
+      (!item.pageId && !item.externalUrl)
+    )
+      throw new Error("A navigation item is invalid.");
+  }
+  for (const key of ["header", "footer"]) {
+    const section = value[key];
+    if (
+      section !== null &&
+      (!isRecord(section) ||
+        section.type !== key ||
+        !isRecord(section.props ?? {}) ||
+        !isRecord(section.style ?? {}) ||
+        /<\/?script|on[a-z]+\s*=|javascript:|<iframe/i.test(
+          JSON.stringify(section),
+        ))
+    )
+      throw new Error(`Global ${key} is invalid.`);
+  }
+  return value;
+}
+async function authorize(
+  admin: any,
+  userId: string,
+  organizationId: string,
+  mutate: boolean,
+) {
+  if (!organizationId) throw new Error("organizationId is required.");
+  if (mutate) await requireBillingAdmin(admin, userId, organizationId);
+  else {
+    const { data } = await admin
+      .from("organization_members")
+      .select("id")
+      .eq("organization_id", organizationId)
+      .eq("user_id", userId)
+      .eq("status", "Active")
+      .maybeSingle();
+    if (!data) throw new Error("You do not have access to this organization.");
+  }
+  const entitlements: any = await getOrganizationEntitlements(
+    admin,
+    organizationId,
+  );
+  if (!entitlements.access_active || !entitlements.website_builder_access)
+    throw new Error("Website Builder is not available for this organization.");
+  const { data: service } = await admin
+    .from("organization_services")
+    .select("service_key")
+    .eq("organization_id", organizationId)
+    .eq("service_key", "website_builder")
+    .eq("status", "active")
+    .maybeSingle();
+  if (!service)
+    throw new Error(
+      "Activate Website Builder in Services before creating or viewing websites.",
+    );
+  return entitlements;
+}
+async function audit(
+  admin: any,
+  organizationId: string,
+  userId: string,
+  action: string,
+  details: Record<string, unknown>,
+) {
+  await admin
+    .from("audit_logs")
+    .insert({
+      organization_id: organizationId,
+      user_name: userId,
+      action,
+      details: JSON.stringify(details),
+    });
+}
+async function siteFor(admin: any, organizationId: string, siteId: string) {
+  const { data, error } = await admin
+    .from("website_sites")
+    .select("*")
+    .eq("id", siteId)
+    .eq("organization_id", organizationId)
+    .is("archived_at", null)
+    .maybeSingle();
+  if (error || !data) throw new Error("Website not found or archived.");
+  return data;
+}
 
-Deno.serve(async (req) => { if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders }); let operation = 'unknown'; let organizationId = ''; try { const { admin, user } = await authenticate(req); const body = await req.json(); operation = String(body.operation || ''); organizationId = String(body.organizationId || ''); const mutations = new Set(['createSite', 'updateSite', 'archiveSite', 'createPage', 'updatePageMetadata', 'setHomepage', 'savePageDocument', 'saveSiteSettings', 'uploadAsset', 'deleteAsset', 'publishSite', 'unpublishSite']); const entitlements = await authorize(admin, user.id, organizationId, mutations.has(operation));
-  if (operation === 'listSites') { const { data, error } = await admin.from('website_sites').select('id,name,slug,public_slug,status,published_release_id,default_locale,updated_at,created_at,website_pages(count)').eq('organization_id', organizationId).is('archived_at', null).order('updated_at', { ascending: false }); if (error) throw error; return json({ success: true, sites: data || [] }); }
-  if (operation === 'createSite') { const name = String(body.name || '').trim(); const rawSlug = body.slug ? String(body.slug) : slugify(name); const slug = slugify(rawSlug); const templateId = body.templateId ? String(body.templateId) : ''; if (!name || name.length > 120 || !slug || slug !== rawSlug || reservedPublicSlugs.has(slug) || (templateId && !starterTemplates[templateId])) return json({ success: false, error: 'Enter a name, URL-safe slug, and valid starter template.' }, 400); const { count } = await admin.from('website_sites').select('id', { count: 'exact', head: true }).eq('organization_id', organizationId).is('archived_at', null); if (entitlements.website_site_limit !== null && count! >= entitlements.website_site_limit) return json({ success: false, error: 'Your plan has reached its Website Builder site limit.' }, 409); const globals = templateId ? { version: 1, navigation: [], header: { id: crypto.randomUUID(), type: 'header', props: { siteName: name, ctaLabel: 'Get started', ctaUrl: '#', sticky: false }, style: { backgroundColor: '#ffffff', textColor: '#0f172a' } }, footer: { id: crypto.randomUUID(), type: 'footer', props: { siteName: name, description: 'Built with care.', copyright: `© ${name}` }, style: { backgroundColor: '#0f172a', textColor: '#ffffff' } } } : undefined; const { data: site, error } = await admin.from('website_sites').insert({ organization_id: organizationId, name, slug, public_slug: slug, ...(globals ? { global_sections: globals } : {}), created_by: user.id }).select('*').single(); if (error) throw error; const document = templateId ? starterDocument(templateId) : { version: 1, sections: [] }; const { data: page, error: pageError } = await admin.from('website_pages').insert({ organization_id: organizationId, site_id: site.id, name: 'Home', slug: '/', page_type: 'home', is_homepage: true, draft_document: document, created_by: user.id }).select('*').single(); if (pageError) throw pageError; await admin.from('website_page_versions').insert({ organization_id: organizationId, site_id: site.id, page_id: page.id, version_number: 1, document, created_by: user.id, change_summary: templateId ? `Starter template: ${templateId}` : 'Initial draft' }); await audit(admin, organizationId, user.id, 'website.created', { site_id: site.id, slug, template_id: templateId || null }); return json({ success: true, site, page }, 201); }
-  const siteId = String(body.siteId || ''); if (!siteId) return json({ success: false, error: 'siteId is required.' }, 400); const site = await siteFor(admin, organizationId, siteId);
-  if (operation === 'getSite') { const { data: pages, error } = await admin.from('website_pages').select('id,name,slug,page_type,is_homepage,updated_at').eq('site_id', siteId).eq('organization_id', organizationId).order('sort_order'); if (error) throw error; return json({ success: true, site: { ...site, website_pages: pages || [] } }); }
-  if (operation === 'listPages') { const { data, error } = await admin.from('website_pages').select('id,name,slug,page_type,is_homepage,updated_at,draft_version').eq('site_id', siteId).eq('organization_id', organizationId).order('sort_order'); if (error) throw error; return json({ success: true, pages: data || [] }); }
-  if (operation === 'createPage') { const name = String(body.name || '').trim(); const slug = String(body.slug || ''); if (!name || name.length > 120 || !/^\/[a-z0-9](?:[a-z0-9/-]{0,190}[a-z0-9])?$/.test(slug)) return json({ success: false, error: 'Page name or path is invalid.' }, 400); const document = { version: 1, sections: [] }; const { data: page, error } = await admin.from('website_pages').insert({ organization_id: organizationId, site_id: siteId, name, slug, draft_document: document, created_by: user.id }).select('*').single(); if (error) throw error; await admin.from('website_page_versions').insert({ organization_id: organizationId, site_id: siteId, page_id: page.id, version_number: 1, document, created_by: user.id, change_summary: 'Initial draft' }); await audit(admin, organizationId, user.id, 'website.page_created', { site_id: siteId, page_id: page.id }); return json({ success: true, page }, 201); }
-  if (operation === 'getPageDocument') { const { data, error } = await admin.from('website_pages').select('id,name,slug,seo_title,seo_description,draft_document,draft_version,updated_at').eq('id', body.pageId).eq('site_id', siteId).eq('organization_id', organizationId).maybeSingle(); if (error || !data) return json({ success: false, error: 'Page not found.' }, 404); return json({ success: true, page: data }); }
-  if (operation === 'updatePageMetadata') { const name = String(body.name || '').trim(); const slug = String(body.slug || ''); if (!name || name.length > 120 || !/^\/$|^\/[a-z0-9](?:[a-z0-9/-]{0,190}[a-z0-9])?$/.test(slug)) return json({ success: false, error: 'Page name or path is invalid.' }, 400); const { data, error } = await admin.from('website_pages').update({ name, slug, seo_title: body.seoTitle || null, seo_description: body.seoDescription || null }).eq('id', body.pageId).eq('site_id', siteId).eq('organization_id', organizationId).select('id,name,slug,updated_at').maybeSingle(); if (error || !data) return json({ success: false, error: 'Page not found or path is already used.' }, 400); await audit(admin, organizationId, user.id, 'website.page_updated', { site_id: siteId, page_id: data.id }); return json({ success: true, page: data }); }
-  if (operation === 'setHomepage') { const targetId = String(body.pageId || ''); const { data: previous } = await admin.from('website_pages').select('id').eq('site_id', siteId).eq('organization_id', organizationId).eq('is_homepage', true).maybeSingle(); if (previous && previous.id !== targetId) { const { error: releaseError } = await admin.from('website_pages').update({ is_homepage: false, page_type: 'standard', slug: `/previous-home-${previous.id.slice(0, 8)}` }).eq('id', previous.id); if (releaseError) throw releaseError; } const { data, error } = await admin.from('website_pages').update({ is_homepage: true, page_type: 'home', slug: '/' }).eq('id', targetId).eq('site_id', siteId).eq('organization_id', organizationId).select('id').maybeSingle(); if (error || !data) throw new Error('Page not found or home path is unavailable.'); await audit(admin, organizationId, user.id, 'website.homepage_updated', { site_id: siteId, page_id: data.id }); return json({ success: true }); }
-  if (operation === 'savePageDocument') { const document = validateDocument(body.document); await assertAssets(admin, organizationId, siteId, documentAssetIds(document)); const { data: current, error } = await admin.from('website_pages').select('draft_version').eq('id', body.pageId).eq('site_id', siteId).eq('organization_id', organizationId).maybeSingle(); if (error || !current) return json({ success: false, error: 'Page not found.' }, 404); if (body.expectedVersion !== undefined && Number(body.expectedVersion) !== current.draft_version) return json({ success: false, error: 'This page was updated elsewhere. Reload before saving.' }, 409); const next = current.draft_version + 1; const { error: versionError } = await admin.from('website_page_versions').insert({ organization_id: organizationId, site_id: siteId, page_id: body.pageId, version_number: next, document, created_by: user.id, change_summary: 'Editor save' }); if (versionError) throw versionError; const { data, error: updateError } = await admin.from('website_pages').update({ draft_document: document, draft_version: next }).eq('id', body.pageId).eq('organization_id', organizationId).select('id,draft_version,updated_at').single(); if (updateError) throw updateError; await audit(admin, organizationId, user.id, 'website.page_document_saved', { site_id: siteId, page_id: body.pageId, version: next }); return json({ success: true, page: data }); }
-  if (operation === 'saveSiteSettings') { const globals = validateGlobals(body.globalSections); await assertAssets(admin, organizationId, siteId, documentAssetIds(globals)); if (body.faviconAssetId) await assertAssets(admin, organizationId, siteId, [String(body.faviconAssetId)]); const name = String(body.name || site.name).trim(); const locale = String(body.defaultLocale || site.default_locale); const rawPublicSlug = String(body.publicSlug || site.public_slug); const publicSlug = slugify(rawPublicSlug); if (!name || name.length > 120 || !publicSlug || publicSlug !== rawPublicSlug || reservedPublicSlugs.has(publicSlug) || !/^[a-z]{2,3}(-[A-Z]{2})?$/.test(locale)) throw new Error('Site settings are invalid.'); const { data, error } = await admin.from('website_sites').update({ name, public_slug: publicSlug, default_locale: locale, favicon_asset_id: body.faviconAssetId || null, global_sections: globals, global_version: site.global_version + 1 }).eq('id', siteId).eq('organization_id', organizationId).select('*').single(); if (error) throw error; await audit(admin, organizationId, user.id, 'website.global_sections_updated', { site_id: siteId, public_slug: publicSlug }); return json({ success: true, site: data }); }
-  if (operation === 'listAssets') { const { data, error } = await admin.from('website_assets').select('id,file_name,mime_type,file_size,width,height,created_at').eq('organization_id', organizationId).eq('site_id', siteId).is('deleted_at', null).order('created_at', { ascending: false }).limit(100); if (error) throw error; const assets = await Promise.all((data || []).map(async (asset: any) => { const { data: path } = await admin.from('website_assets').select('storage_path').eq('id', asset.id).single(); const { data: signed } = await admin.storage.from('website-assets').createSignedUrl(path.storage_path, 3600); return { ...asset, preview_url: signed?.signedUrl || null }; })); return json({ success: true, assets }); }
-  if (operation === 'uploadAsset') { const bytes = bytesFromBase64(body.fileBase64); if (bytes.length > maxImageBytes) throw new Error('Images must be 10MB or smaller.'); const image = detectImage(bytes); if (!imageMimes.has(image.mime) || body.mimeType !== image.mime) throw new Error('Image content does not match its declared type.'); const id = crypto.randomUUID(); const path = `${organizationId}/${siteId}/${id}/${filename(body.fileName)}.${image.extension}`; const { error: storageError } = await admin.storage.from('website-assets').upload(path, bytes, { contentType: image.mime, upsert: false }); if (storageError) throw storageError; const { data, error } = await admin.from('website_assets').insert({ id, organization_id: organizationId, site_id: siteId, storage_path: path, file_name: filename(body.fileName), mime_type: image.mime, file_size: bytes.length, width: image.width, height: image.height, created_by: user.id }).select('id,file_name,mime_type,file_size,width,height,created_at').single(); if (error) { await admin.storage.from('website-assets').remove([path]); throw error; } const { data: signed } = await admin.storage.from('website-assets').createSignedUrl(path, 3600); await audit(admin, organizationId, user.id, 'website.asset_uploaded', { site_id: siteId, asset_id: id, mime_type: image.mime, file_size: bytes.length }); return json({ success: true, asset: { ...data, preview_url: signed?.signedUrl || null } }, 201); }
-  if (operation === 'deleteAsset') { const assetId = String(body.assetId || ''); const { data: asset, error } = await admin.from('website_assets').select('*').eq('id', assetId).eq('organization_id', organizationId).eq('site_id', siteId).is('deleted_at', null).maybeSingle(); if (error || !asset) throw new Error('Asset not found.'); const { data: pages } = await admin.from('website_pages').select('draft_document').eq('site_id', siteId).eq('organization_id', organizationId); if (documentAssetIds([site.global_sections, ...(pages || []).map((page: any) => page.draft_document)]).includes(assetId)) throw new Error('Asset is currently in use. Remove it from the page or global section first.'); const { error: storageError } = await admin.storage.from('website-assets').remove([asset.storage_path]); if (storageError) throw storageError; const { error: deleteError } = await admin.from('website_assets').delete().eq('id', assetId); if (deleteError) throw deleteError; await audit(admin, organizationId, user.id, 'website.asset_deleted', { site_id: siteId, asset_id: assetId }); return json({ success: true }); }
-  if (operation === 'listReleases') { const { data, error } = await admin.from('website_releases').select('id,version_number,status,created_at,published_at,unpublished_at,created_by').eq('organization_id', organizationId).eq('site_id', siteId).order('version_number', { ascending: false }); if (error) throw error; return json({ success: true, releases: data || [] }); }
-  if (operation === 'publishSite') { const { data: pages, error } = await admin.from('website_pages').select('id,name,slug,page_type,is_homepage,seo_title,seo_description,draft_version,draft_document').eq('organization_id', organizationId).eq('site_id', siteId).order('sort_order'); if (error || !pages?.some((page: any) => page.is_homepage)) throw new Error('A homepage is required before publishing.'); const slugs = new Set<string>(); const releasePages:any[]=[]; for (const page of pages) { if (slugs.has(page.slug)) throw new Error('Page paths must be unique.'); slugs.add(page.slug); const { data: frozen, error: versionError } = await admin.from('website_page_versions').select('id,version_number').eq('page_id', page.id).eq('version_number', page.draft_version).maybeSingle(); if (versionError || !frozen) throw new Error('A page draft is missing its immutable version. Save the page before publishing.'); releasePages.push({ page_id: page.id, slug: page.slug, name: page.name, page_type: page.page_type, seo_title: page.seo_title, seo_description: page.seo_description, page_version_id: frozen.id, page_version: frozen.version_number }); } await assertAssets(admin, organizationId, siteId, documentAssetIds([site.global_sections, ...pages.map((page: any) => page.draft_document)])); const manifest = { version: 1, site: { id: site.id, name: site.name, slug: site.slug, public_slug: site.public_slug, default_locale: site.default_locale, favicon_asset_id: site.favicon_asset_id }, globals: site.global_sections, pages: releasePages }; const { data: release, error: publishError } = await admin.rpc('publish_website_release', { p_organization_id: organizationId, p_site_id: siteId, p_actor_id: user.id, p_manifest: manifest }); if (publishError) throw publishError; await audit(admin, organizationId, user.id, 'website.published', { site_id: siteId, release_id: release.id, version_number: release.version_number }); return json({ success: true, release }); }
-  if (operation === 'unpublishSite') { const { data: releaseId, error } = await admin.rpc('unpublish_website_release', { p_organization_id: organizationId, p_site_id: siteId }); if (error) throw error; await audit(admin, organizationId, user.id, 'website.unpublished', { site_id: siteId, release_id: releaseId }); return json({ success: true }); }
-  return json({ success: false, error: 'Unsupported website operation.' }, 400);
-} catch (error: unknown) { console.error('website_builder_request_failed', { operation, organization_id_present: Boolean(organizationId), error_type: error instanceof Error ? error.name : typeof error }); return json({ success: false, error: safeFailure(operation, error) }, 400); } });
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS")
+    return new Response("ok", { headers: corsHeaders });
+  let operation = "unknown";
+  let organizationId = "";
+  try {
+    const { admin, user } = await authenticate(req);
+    const body = await req.json();
+    operation = String(body.operation || "");
+    organizationId = String(body.organizationId || "");
+    const mutations = new Set([
+      "createSite",
+      "updateSite",
+      "archiveSite",
+      "createPage",
+      "updatePageMetadata",
+      "setHomepage",
+      "savePageDocument",
+      "saveSiteSettings",
+      "uploadAsset",
+      "deleteAsset",
+      "publishSite",
+      "unpublishSite",
+    ]);
+    const entitlements = await authorize(
+      admin,
+      user.id,
+      organizationId,
+      mutations.has(operation),
+    );
+    if (operation === "listSites") {
+      const { data, error } = await admin
+        .from("website_sites")
+        .select(
+          "id,name,slug,public_slug,status,published_release_id,default_locale,updated_at,created_at,website_pages(count)",
+        )
+        .eq("organization_id", organizationId)
+        .is("archived_at", null)
+        .order("updated_at", { ascending: false });
+      if (error) throw error;
+      return json({ success: true, sites: data || [] });
+    }
+    if (operation === "createSite") {
+      const name = String(body.name || "").trim();
+      const rawSlug = body.slug ? String(body.slug) : slugify(name);
+      const slug = slugify(rawSlug);
+      const templateId = body.templateId ? String(body.templateId) : "";
+      if (
+        !name ||
+        name.length > 120 ||
+        !slug ||
+        slug !== rawSlug ||
+        reservedPublicSlugs.has(slug) ||
+        (templateId && !starterTemplates[templateId])
+      )
+        return json(
+          {
+            success: false,
+            error: "Enter a name, URL-safe slug, and valid starter template.",
+          },
+          400,
+        );
+      const { count } = await admin
+        .from("website_sites")
+        .select("id", { count: "exact", head: true })
+        .eq("organization_id", organizationId)
+        .is("archived_at", null);
+      if (
+        entitlements.website_site_limit !== null &&
+        count! >= entitlements.website_site_limit
+      )
+        return json(
+          {
+            success: false,
+            error: "Your plan has reached its Website Builder site limit.",
+          },
+          409,
+        );
+      const globals = templateId
+        ? {
+            version: 1,
+            navigation: [],
+            header: {
+              id: crypto.randomUUID(),
+              type: "header",
+              props: {
+                siteName: name,
+                ctaLabel: "Get started",
+                ctaUrl: "#",
+                sticky: false,
+              },
+              style: { backgroundColor: "#ffffff", textColor: "#0f172a" },
+            },
+            footer: {
+              id: crypto.randomUUID(),
+              type: "footer",
+              props: {
+                siteName: name,
+                description: "Built with care.",
+                copyright: `© ${name}`,
+              },
+              style: { backgroundColor: "#0f172a", textColor: "#ffffff" },
+            },
+          }
+        : undefined;
+      const { data: site, error } = await admin
+        .from("website_sites")
+        .insert({
+          organization_id: organizationId,
+          name,
+          slug,
+          public_slug: slug,
+          ...(globals ? { global_sections: globals } : {}),
+          created_by: user.id,
+        })
+        .select("*")
+        .single();
+      if (error) throw error;
+      const document = templateId
+        ? starterDocument(templateId)
+        : { version: 1, sections: [] };
+      const { data: page, error: pageError } = await admin
+        .from("website_pages")
+        .insert({
+          organization_id: organizationId,
+          site_id: site.id,
+          name: "Home",
+          slug: "/",
+          page_type: "home",
+          is_homepage: true,
+          draft_document: document,
+          created_by: user.id,
+        })
+        .select("*")
+        .single();
+      if (pageError) throw pageError;
+      await admin
+        .from("website_page_versions")
+        .insert({
+          organization_id: organizationId,
+          site_id: site.id,
+          page_id: page.id,
+          version_number: 1,
+          document,
+          created_by: user.id,
+          change_summary: templateId
+            ? `Starter template: ${templateId}`
+            : "Initial draft",
+        });
+      await audit(admin, organizationId, user.id, "website.created", {
+        site_id: site.id,
+        slug,
+        template_id: templateId || null,
+      });
+      return json({ success: true, site, page }, 201);
+    }
+    const siteId = String(body.siteId || "");
+    if (!siteId)
+      return json({ success: false, error: "siteId is required." }, 400);
+    const site = await siteFor(admin, organizationId, siteId);
+    if (operation === "getSite") {
+      const { data: pages, error } = await admin
+        .from("website_pages")
+        .select("id,name,slug,page_type,is_homepage,updated_at")
+        .eq("site_id", siteId)
+        .eq("organization_id", organizationId)
+        .order("sort_order");
+      if (error) throw error;
+      return json({
+        success: true,
+        site: { ...site, website_pages: pages || [] },
+      });
+    }
+    if (operation === "listPages") {
+      const { data, error } = await admin
+        .from("website_pages")
+        .select("id,name,slug,page_type,is_homepage,updated_at,draft_version")
+        .eq("site_id", siteId)
+        .eq("organization_id", organizationId)
+        .order("sort_order");
+      if (error) throw error;
+      return json({ success: true, pages: data || [] });
+    }
+    if (operation === "createPage") {
+      const name = String(body.name || "").trim();
+      const slug = String(body.slug || "");
+      if (
+        !name ||
+        name.length > 120 ||
+        !/^\/[a-z0-9](?:[a-z0-9/-]{0,190}[a-z0-9])?$/.test(slug)
+      )
+        return json(
+          { success: false, error: "Page name or path is invalid." },
+          400,
+        );
+      const document = { version: 1, sections: [] };
+      const { data: page, error } = await admin
+        .from("website_pages")
+        .insert({
+          organization_id: organizationId,
+          site_id: siteId,
+          name,
+          slug,
+          draft_document: document,
+          created_by: user.id,
+        })
+        .select("*")
+        .single();
+      if (error) throw error;
+      await admin
+        .from("website_page_versions")
+        .insert({
+          organization_id: organizationId,
+          site_id: siteId,
+          page_id: page.id,
+          version_number: 1,
+          document,
+          created_by: user.id,
+          change_summary: "Initial draft",
+        });
+      await audit(admin, organizationId, user.id, "website.page_created", {
+        site_id: siteId,
+        page_id: page.id,
+      });
+      return json({ success: true, page }, 201);
+    }
+    if (operation === "getPageDocument") {
+      const { data, error } = await admin
+        .from("website_pages")
+        .select(
+          "id,name,slug,seo_title,seo_description,draft_document,draft_version,updated_at",
+        )
+        .eq("id", body.pageId)
+        .eq("site_id", siteId)
+        .eq("organization_id", organizationId)
+        .maybeSingle();
+      if (error || !data)
+        return json({ success: false, error: "Page not found." }, 404);
+      return json({ success: true, page: data });
+    }
+    if (operation === "updatePageMetadata") {
+      const name = String(body.name || "").trim();
+      const slug = String(body.slug || "");
+      if (
+        !name ||
+        name.length > 120 ||
+        !/^\/$|^\/[a-z0-9](?:[a-z0-9/-]{0,190}[a-z0-9])?$/.test(slug)
+      )
+        return json(
+          { success: false, error: "Page name or path is invalid." },
+          400,
+        );
+      const { data, error } = await admin
+        .from("website_pages")
+        .update({
+          name,
+          slug,
+          seo_title: body.seoTitle || null,
+          seo_description: body.seoDescription || null,
+        })
+        .eq("id", body.pageId)
+        .eq("site_id", siteId)
+        .eq("organization_id", organizationId)
+        .select("id,name,slug,updated_at")
+        .maybeSingle();
+      if (error || !data)
+        return json(
+          { success: false, error: "Page not found or path is already used." },
+          400,
+        );
+      await audit(admin, organizationId, user.id, "website.page_updated", {
+        site_id: siteId,
+        page_id: data.id,
+      });
+      return json({ success: true, page: data });
+    }
+    if (operation === "setHomepage") {
+      const targetId = String(body.pageId || "");
+      const { data: previous } = await admin
+        .from("website_pages")
+        .select("id")
+        .eq("site_id", siteId)
+        .eq("organization_id", organizationId)
+        .eq("is_homepage", true)
+        .maybeSingle();
+      if (previous && previous.id !== targetId) {
+        const { error: releaseError } = await admin
+          .from("website_pages")
+          .update({
+            is_homepage: false,
+            page_type: "standard",
+            slug: `/previous-home-${previous.id.slice(0, 8)}`,
+          })
+          .eq("id", previous.id);
+        if (releaseError) throw releaseError;
+      }
+      const { data, error } = await admin
+        .from("website_pages")
+        .update({ is_homepage: true, page_type: "home", slug: "/" })
+        .eq("id", targetId)
+        .eq("site_id", siteId)
+        .eq("organization_id", organizationId)
+        .select("id")
+        .maybeSingle();
+      if (error || !data)
+        throw new Error("Page not found or home path is unavailable.");
+      await audit(admin, organizationId, user.id, "website.homepage_updated", {
+        site_id: siteId,
+        page_id: data.id,
+      });
+      return json({ success: true });
+    }
+    if (operation === "savePageDocument") {
+      const document = validateDocument(body.document);
+      await assertAssets(
+        admin,
+        organizationId,
+        siteId,
+        documentAssetIds(document),
+      );
+      const { data: current, error } = await admin
+        .from("website_pages")
+        .select("draft_version")
+        .eq("id", body.pageId)
+        .eq("site_id", siteId)
+        .eq("organization_id", organizationId)
+        .maybeSingle();
+      if (error || !current)
+        return json({ success: false, error: "Page not found." }, 404);
+      if (
+        body.expectedVersion !== undefined &&
+        Number(body.expectedVersion) !== current.draft_version
+      )
+        return json(
+          {
+            success: false,
+            error: "This page was updated elsewhere. Reload before saving.",
+          },
+          409,
+        );
+      const next = current.draft_version + 1;
+      const { error: versionError } = await admin
+        .from("website_page_versions")
+        .insert({
+          organization_id: organizationId,
+          site_id: siteId,
+          page_id: body.pageId,
+          version_number: next,
+          document,
+          created_by: user.id,
+          change_summary: "Editor save",
+        });
+      if (versionError) throw versionError;
+      const { data, error: updateError } = await admin
+        .from("website_pages")
+        .update({ draft_document: document, draft_version: next })
+        .eq("id", body.pageId)
+        .eq("organization_id", organizationId)
+        .select("id,draft_version,updated_at")
+        .single();
+      if (updateError) throw updateError;
+      await audit(
+        admin,
+        organizationId,
+        user.id,
+        "website.page_document_saved",
+        { site_id: siteId, page_id: body.pageId, version: next },
+      );
+      return json({ success: true, page: data });
+    }
+    if (operation === "saveSiteSettings") {
+      const globals = validateGlobals(body.globalSections);
+      await assertAssets(
+        admin,
+        organizationId,
+        siteId,
+        documentAssetIds(globals),
+      );
+      if (body.faviconAssetId)
+        await assertAssets(admin, organizationId, siteId, [
+          String(body.faviconAssetId),
+        ]);
+      const name = String(body.name || site.name).trim();
+      const locale = String(body.defaultLocale || site.default_locale);
+      const rawPublicSlug = String(body.publicSlug || site.public_slug);
+      const publicSlug = slugify(rawPublicSlug);
+      if (
+        !name ||
+        name.length > 120 ||
+        !publicSlug ||
+        publicSlug !== rawPublicSlug ||
+        reservedPublicSlugs.has(publicSlug) ||
+        !/^[a-z]{2,3}(-[A-Z]{2})?$/.test(locale)
+      )
+        throw new Error("Site settings are invalid.");
+      const { data, error } = await admin
+        .from("website_sites")
+        .update({
+          name,
+          public_slug: publicSlug,
+          default_locale: locale,
+          favicon_asset_id: body.faviconAssetId || null,
+          global_sections: globals,
+          global_version: site.global_version + 1,
+        })
+        .eq("id", siteId)
+        .eq("organization_id", organizationId)
+        .select("*")
+        .single();
+      if (error) throw error;
+      await audit(
+        admin,
+        organizationId,
+        user.id,
+        "website.global_sections_updated",
+        { site_id: siteId, public_slug: publicSlug },
+      );
+      return json({ success: true, site: data });
+    }
+    if (operation === "listAssets") {
+      const { data, error } = await admin
+        .from("website_assets")
+        .select("id,file_name,mime_type,file_size,width,height,created_at")
+        .eq("organization_id", organizationId)
+        .eq("site_id", siteId)
+        .is("deleted_at", null)
+        .order("created_at", { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      const assets = await Promise.all(
+        (data || []).map(async (asset: any) => {
+          const { data: path } = await admin
+            .from("website_assets")
+            .select("storage_path")
+            .eq("id", asset.id)
+            .single();
+          const { data: signed } = await admin.storage
+            .from("website-assets")
+            .createSignedUrl(path.storage_path, 3600);
+          return { ...asset, preview_url: signed?.signedUrl || null };
+        }),
+      );
+      return json({ success: true, assets });
+    }
+    if (operation === "uploadAsset") {
+      const bytes = bytesFromBase64(body.fileBase64);
+      if (bytes.length > maxImageBytes)
+        throw new Error("Images must be 10MB or smaller.");
+      const image = detectImage(bytes);
+      if (!imageMimes.has(image.mime) || body.mimeType !== image.mime)
+        throw new Error("Image content does not match its declared type.");
+      const id = crypto.randomUUID();
+      const path = `${organizationId}/${siteId}/${id}/${filename(body.fileName)}.${image.extension}`;
+      const { error: storageError } = await admin.storage
+        .from("website-assets")
+        .upload(path, bytes, { contentType: image.mime, upsert: false });
+      if (storageError) throw storageError;
+      const { data, error } = await admin
+        .from("website_assets")
+        .insert({
+          id,
+          organization_id: organizationId,
+          site_id: siteId,
+          storage_path: path,
+          file_name: filename(body.fileName),
+          mime_type: image.mime,
+          file_size: bytes.length,
+          width: image.width,
+          height: image.height,
+          created_by: user.id,
+        })
+        .select("id,file_name,mime_type,file_size,width,height,created_at")
+        .single();
+      if (error) {
+        await admin.storage.from("website-assets").remove([path]);
+        throw error;
+      }
+      const { data: signed } = await admin.storage
+        .from("website-assets")
+        .createSignedUrl(path, 3600);
+      await audit(admin, organizationId, user.id, "website.asset_uploaded", {
+        site_id: siteId,
+        asset_id: id,
+        mime_type: image.mime,
+        file_size: bytes.length,
+      });
+      return json(
+        {
+          success: true,
+          asset: { ...data, preview_url: signed?.signedUrl || null },
+        },
+        201,
+      );
+    }
+    if (operation === "deleteAsset") {
+      const assetId = String(body.assetId || "");
+      const { data: asset, error } = await admin
+        .from("website_assets")
+        .select("*")
+        .eq("id", assetId)
+        .eq("organization_id", organizationId)
+        .eq("site_id", siteId)
+        .is("deleted_at", null)
+        .maybeSingle();
+      if (error || !asset) throw new Error("Asset not found.");
+      const { data: pages } = await admin
+        .from("website_pages")
+        .select("draft_document")
+        .eq("site_id", siteId)
+        .eq("organization_id", organizationId);
+      if (
+        documentAssetIds([
+          site.global_sections,
+          ...(pages || []).map((page: any) => page.draft_document),
+        ]).includes(assetId)
+      )
+        throw new Error(
+          "Asset is currently in use. Remove it from the page or global section first.",
+        );
+      const { error: storageError } = await admin.storage
+        .from("website-assets")
+        .remove([asset.storage_path]);
+      if (storageError) throw storageError;
+      const { error: deleteError } = await admin
+        .from("website_assets")
+        .delete()
+        .eq("id", assetId);
+      if (deleteError) throw deleteError;
+      await audit(admin, organizationId, user.id, "website.asset_deleted", {
+        site_id: siteId,
+        asset_id: assetId,
+      });
+      return json({ success: true });
+    }
+    if (operation === "listReleases") {
+      const { data, error } = await admin
+        .from("website_releases")
+        .select(
+          "id,version_number,status,created_at,published_at,unpublished_at,created_by",
+        )
+        .eq("organization_id", organizationId)
+        .eq("site_id", siteId)
+        .order("version_number", { ascending: false });
+      if (error) throw error;
+      return json({ success: true, releases: data || [] });
+    }
+    if (operation === "publishSite") {
+      const { data: pages, error } = await admin
+        .from("website_pages")
+        .select(
+          "id,name,slug,page_type,is_homepage,seo_title,seo_description,draft_version,draft_document",
+        )
+        .eq("organization_id", organizationId)
+        .eq("site_id", siteId)
+        .order("sort_order");
+      if (error || !pages?.some((page: any) => page.is_homepage))
+        throw new Error("A homepage is required before publishing.");
+      const slugs = new Set<string>();
+      const releasePages: any[] = [];
+      for (const page of pages) {
+        if (slugs.has(page.slug)) throw new Error("Page paths must be unique.");
+        slugs.add(page.slug);
+        const { data: frozen, error: versionError } = await admin
+          .from("website_page_versions")
+          .select("id,version_number")
+          .eq("page_id", page.id)
+          .eq("version_number", page.draft_version)
+          .maybeSingle();
+        if (versionError || !frozen)
+          throw new Error(
+            "A page draft is missing its immutable version. Save the page before publishing.",
+          );
+        releasePages.push({
+          page_id: page.id,
+          slug: page.slug,
+          name: page.name,
+          page_type: page.page_type,
+          seo_title: page.seo_title,
+          seo_description: page.seo_description,
+          page_version_id: frozen.id,
+          page_version: frozen.version_number,
+        });
+      }
+      await assertAssets(
+        admin,
+        organizationId,
+        siteId,
+        documentAssetIds([
+          site.global_sections,
+          ...pages.map((page: any) => page.draft_document),
+        ]),
+      );
+      const manifest = {
+        version: 1,
+        site: {
+          id: site.id,
+          name: site.name,
+          slug: site.slug,
+          public_slug: site.public_slug,
+          default_locale: site.default_locale,
+          favicon_asset_id: site.favicon_asset_id,
+        },
+        globals: site.global_sections,
+        pages: releasePages,
+      };
+      const { data: release, error: publishError } = await admin.rpc(
+        "publish_website_release",
+        {
+          p_organization_id: organizationId,
+          p_site_id: siteId,
+          p_actor_id: user.id,
+          p_manifest: manifest,
+        },
+      );
+      if (publishError) throw publishError;
+      await audit(admin, organizationId, user.id, "website.published", {
+        site_id: siteId,
+        release_id: release.id,
+        version_number: release.version_number,
+      });
+      return json({ success: true, release });
+    }
+    if (operation === "unpublishSite") {
+      const { data: releaseId, error } = await admin.rpc(
+        "unpublish_website_release",
+        { p_organization_id: organizationId, p_site_id: siteId },
+      );
+      if (error) throw error;
+      await audit(admin, organizationId, user.id, "website.unpublished", {
+        site_id: siteId,
+        release_id: releaseId,
+      });
+      return json({ success: true });
+    }
+    return json(
+      { success: false, error: "Unsupported website operation." },
+      400,
+    );
+  } catch (error: unknown) {
+    console.error("website_builder_request_failed", {
+      operation,
+      organization_id_present: Boolean(organizationId),
+      error_type: error instanceof Error ? error.name : typeof error,
+    });
+    return json({ success: false, error: safeFailure(operation, error) }, 400);
+  }
+});

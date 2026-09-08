@@ -221,9 +221,14 @@ export function PublicWebsitePage() {
   return (
     <div
       className="min-h-screen bg-white text-slate-900"
+      dir={data.page.document.theme?.direction || "ltr"}
       style={{
         ["--website-primary" as string]:
           data.page.document.theme?.primaryColor || "#2563eb",
+        fontFamily:
+          data.page.document.theme?.bodyFont || "Inter, system-ui, sans-serif",
+        color: data.page.document.theme?.textColor || "#0f172a",
+        backgroundColor: data.page.document.theme?.backgroundColor || "#ffffff",
         borderRadius:
           data.page.document.theme?.radius === "lg"
             ? "1rem"

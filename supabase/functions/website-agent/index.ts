@@ -68,6 +68,18 @@ const slug = (value: unknown, field: string) => {
 
 type Plan = Record<string, any>;
 
+// Image acquisition is intentionally server-owned. Until an approved provider
+// credential is installed, plans carry only semantic intents and drafts remain
+// fully usable without remote URLs or invented asset IDs.
+type WebsiteImageProvider = {
+  readonly configured: boolean;
+  readonly mode: "intent-only" | "approved-provider";
+};
+const websiteImageProvider: WebsiteImageProvider = {
+  configured: false,
+  mode: "intent-only",
+};
+
 class PlanValidationError extends Error {
   constructor(
     readonly code: string,
@@ -154,6 +166,50 @@ const agentSectionSchemas: Record<
   },
 };
 
+// These are presentation tokens, not arbitrary CSS. They are shared with the
+// renderer so an AI plan can only select deliberate, reviewed treatments.
+const visualStyleKeys = [
+  "preset",
+  "background",
+  "cardStyle",
+  "animation",
+  "animationDelayPreset",
+];
+const visualPresets = new Set([
+  "minimal",
+  "centered-editorial",
+  "split-image",
+  "icon-cards",
+  "bordered-grid",
+  "editorial-list",
+  "image-cards",
+  "large-quote",
+  "inline-strip",
+  "featured-grid",
+]);
+const backgroundPresets = new Set([
+  "solid",
+  "soft",
+  "contrast",
+  "accent",
+  "gradient",
+  "split",
+]);
+const cardStylePresets = new Set(["flat", "bordered", "elevated", "glass"]);
+const animationPresets = new Set([
+  "none",
+  "fade-up",
+  "fade-in",
+  "slide-left",
+  "slide-right",
+  "scale-in",
+]);
+const animationDelayPresets = new Set(["none", "short", "medium"]);
+for (const [type, schema] of Object.entries(agentSectionSchemas)) {
+  schema.style = [...new Set([...schema.style, ...visualStyleKeys])];
+  if (type === "hero") schema.props.push("imageIntent");
+}
+
 function normalizePlan(value: unknown): unknown {
   const clean = (item: unknown, key = ""): unknown => {
     if (Array.isArray(item)) return item.map((child) => clean(child));
@@ -176,7 +232,14 @@ function normalizePlan(value: unknown): unknown {
     if (typeof output.slug === "string" && output.slug === "")
       output.slug = "/";
     if (record(output.theme)) {
-      for (const color of ["primaryColor", "backgroundColor", "textColor"]) {
+      for (const color of [
+        "primaryColor",
+        "secondaryColor",
+        "surfaceColor",
+        "mutedTextColor",
+        "backgroundColor",
+        "textColor",
+      ]) {
         if (typeof output.theme[color] === "string")
           output.theme[color] = output.theme[color].toLowerCase();
       }
@@ -229,6 +292,23 @@ function validateSection(section: unknown) {
       "PLAN_SECTION_INVALID",
       "Website plan section uses unsupported props or styles.",
       `section.${String(section.type)}`,
+    );
+  const style = section.style;
+  if (
+    (style.preset !== undefined && !visualPresets.has(String(style.preset))) ||
+    (style.background !== undefined &&
+      !backgroundPresets.has(String(style.background))) ||
+    (style.cardStyle !== undefined &&
+      !cardStylePresets.has(String(style.cardStyle))) ||
+    (style.animation !== undefined &&
+      !animationPresets.has(String(style.animation))) ||
+    (style.animationDelayPreset !== undefined &&
+      !animationDelayPresets.has(String(style.animationDelayPreset)))
+  )
+    failPlan(
+      "PLAN_VISUAL_INVALID",
+      "Website plan uses an unsupported visual preset.",
+      `section.${String(section.type)}.style`,
     );
   const items = Array.isArray(section.props.items)
     ? section.props.items
@@ -338,6 +418,9 @@ function validatePlan(value: unknown): Plan {
         ![
           "preset",
           "primaryColor",
+          "secondaryColor",
+          "surfaceColor",
+          "mutedTextColor",
           "backgroundColor",
           "textColor",
           "headingFont",
@@ -347,6 +430,9 @@ function validatePlan(value: unknown): Plan {
         ].includes(key),
     ) ||
     !/^#[0-9a-f]{6}$/i.test(String(theme.primaryColor)) ||
+    !/^#[0-9a-f]{6}$/i.test(String(theme.secondaryColor)) ||
+    !/^#[0-9a-f]{6}$/i.test(String(theme.surfaceColor)) ||
+    !/^#[0-9a-f]{6}$/i.test(String(theme.mutedTextColor)) ||
     !/^#[0-9a-f]{6}$/i.test(String(theme.backgroundColor)) ||
     !/^#[0-9a-f]{6}$/i.test(String(theme.textColor)) ||
     !fontAllowlist.has(String(theme.headingFont)) ||
@@ -448,6 +534,9 @@ function validatePlan(value: unknown): Plan {
       theme: {
         preset: text(theme.preset, 48, "theme preset"),
         primaryColor: theme.primaryColor,
+        secondaryColor: theme.secondaryColor,
+        surfaceColor: theme.surfaceColor,
+        mutedTextColor: theme.mutedTextColor,
         backgroundColor: theme.backgroundColor,
         textColor: theme.textColor,
         headingFont: theme.headingFont,
@@ -463,12 +552,12 @@ function validatePlan(value: unknown): Plan {
   };
 }
 
-const systemInstruction = `Generate exactly one JSON Website Plan and nothing else. Never publish. Never output HTML, CSS, JavaScript, markdown, image URLs, secrets, database operations, or fields not listed below.
+const systemInstruction = `Generate exactly one JSON Website Plan and nothing else. You are designing a premium website, not filling a form. Never publish. Never output HTML, CSS, JavaScript, markdown, image URLs, secrets, database operations, or fields not listed below.
 Root keys exactly: version, site, pages, navigation, header, footer. version is 1.
-site exactly: name, slugSuggestion, language, theme. language is only en or ar. theme exactly: preset, primaryColor, backgroundColor, textColor, headingFont, bodyFont, radius, direction. Colors are 6-digit #rrggbb. Fonts only: Inter, Manrope, Playfair Display, DM Sans, Noto Sans Arabic, IBM Plex Sans Arabic. radius only sm, md, lg. direction only ltr, rtl.
+site exactly: name, slugSuggestion, language, theme. language is only en or ar. theme exactly: preset, primaryColor, secondaryColor, surfaceColor, mutedTextColor, backgroundColor, textColor, headingFont, bodyFont, radius, direction. Colors are 6-digit #rrggbb. Fonts only: Inter, Manrope, Playfair Display, DM Sans, Noto Sans Arabic, IBM Plex Sans Arabic. radius only sm, md, lg. direction only ltr, rtl. Use intentional pairings: luxury=Playfair Display + Manrope, SaaS=Manrope + Inter, portfolio=DM Sans + Inter, Arabic luxury=IBM Plex Sans Arabic + Noto Sans Arabic.
 Each page exactly: clientId, name, slug, isHomepage, seo, sections. Exactly one homepage has slug "/" and isHomepage true; all other slugs are lowercase paths such as "/about". seo exactly has non-empty title and description. No null values.
-Every section exactly has type, props, style. props and style always exist; no id, label, metadata, or children outside props. Use only this reference: ${sectionReference}. Do not include image, map, social, booking, or other URLs. Omit optional CTA URLs and targets instead of using empty strings.
-navigation items exactly: label, targetPageClientId; targets must equal a page clientId. header exactly has type "header", props, style. footer exactly has type "footer", props, style. Be specific to the business request; Arabic requests must use Arabic content, ar, rtl, and an allowed Arabic font.`;
+Every section exactly has type, props, style. props and style always exist; no id, label, metadata, or children outside props. Use only this reference: ${sectionReference}. style presets: preset is one of minimal, centered-editorial, split-image, icon-cards, bordered-grid, editorial-list, image-cards, large-quote, inline-strip, featured-grid; background is solid, soft, contrast, accent, gradient, or split; cardStyle is flat, bordered, elevated, or glass; animation is none, fade-up, fade-in, slide-left, slide-right, or scale-in; animationDelayPreset is none, short, or medium. Vary adjacent sections deliberately: do not repeat a dark/card treatment. Use imageIntent only for a specific semantic description; it is not a URL or asset ID. Do not include image, map, social, booking, or other URLs. Omit optional CTA URLs and targets instead of using empty strings.
+navigation items exactly: label, targetPageClientId; targets must equal a page clientId. header exactly has type "header", props, style. footer exactly has type "footer", props, style. Be specific to the business request with concise copy, a clear primary and secondary CTA hierarchy, and a meaningful visual rhythm. Arabic requests must use Arabic content, ar, rtl, and an allowed Arabic font.`;
 
 function classifyPlanError(error: unknown): PlanValidationError {
   if (error instanceof PlanValidationError) return error;
@@ -774,6 +863,7 @@ Deno.serve(async (req) => {
         success: true,
         planId: data.id,
         expiresAt: data.expires_at,
+        imageProvider: websiteImageProvider,
         plan: data.plan_json,
       });
     }

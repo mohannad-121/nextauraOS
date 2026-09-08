@@ -465,6 +465,47 @@ export function WebsitesPage() {
                 </article>
               ))}
             </div>
+            <div className="grid gap-3 rounded-xl border border-slate-200 bg-slate-50 p-4 sm:grid-cols-3">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Typography
+                </p>
+                <p className="mt-1 text-sm text-slate-800">
+                  {agentPlan?.site?.theme?.headingFont} /{" "}
+                  {agentPlan?.site?.theme?.bodyFont}
+                </p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Palette
+                </p>
+                <div className="mt-2 flex gap-1.5">
+                  {[
+                    agentPlan?.site?.theme?.primaryColor,
+                    agentPlan?.site?.theme?.secondaryColor,
+                    agentPlan?.site?.theme?.backgroundColor,
+                    agentPlan?.site?.theme?.textColor,
+                  ]
+                    .filter(Boolean)
+                    .map((color: string) => (
+                      <span
+                        key={color}
+                        title={color}
+                        className="h-5 w-5 rounded-full border border-slate-200"
+                        style={{ backgroundColor: color }}
+                      />
+                    ))}
+                </div>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  Image strategy
+                </p>
+                <p className="mt-1 text-sm text-slate-700">
+                  Semantic image intents; add approved imagery in Media Library.
+                </p>
+              </div>
+            </div>
             <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">
               This will create an AI-generated draft only. Review and edit it in
               Website Editor before using the existing Publish action.

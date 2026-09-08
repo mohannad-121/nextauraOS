@@ -722,7 +722,14 @@ export function WebsiteEditor({
         <main className="min-w-0 flex-1 overflow-auto bg-[#111a2c] p-5">
           <div
             className={`mx-auto overflow-hidden bg-white shadow-2xl ${width}`}
-            dir="auto"
+            dir={doc.theme?.direction || "auto"}
+            style={{
+              fontFamily: doc.theme?.bodyFont || "Inter, system-ui, sans-serif",
+              color: doc.theme?.textColor,
+              backgroundColor: doc.theme?.backgroundColor,
+              ["--website-primary" as string]:
+                doc.theme?.primaryColor || "#2563eb",
+            }}
           >
             {globals.header && (
               <GlobalFrame
