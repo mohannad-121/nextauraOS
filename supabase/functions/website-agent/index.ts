@@ -256,7 +256,7 @@ const sectionReference = Object.entries(agentSectionSchemas)
   )
   .join("; ");
 
-function validateSection(section: unknown) {
+function validateSection(section: any) {
   if (
     !record(section) ||
     Object.keys(section).some(
@@ -768,7 +768,7 @@ const integer = (value: unknown, min: number, max: number) =>
 const editFailure = (code: string, path: string) =>
   failPlan(code, "Website edit plan is invalid.", path);
 
-function validateEditPlan(value: unknown, context: { pageIds: Set<string>; sectionIds: Set<string>; navigationIds: Set<string> }): Plan {
+function validateEditPlan(value: any, context: any): Plan {
   if (!record(value) || !exactKeys(value, ["version", "summary", "operations"]) || value.version !== 1 ||
     typeof value.summary !== "string" || !value.summary.trim() || value.summary.length > 500 ||
     !Array.isArray(value.operations) || value.operations.length < 1 || value.operations.length > 30 || dangerous.test(safeJson(value))) {
@@ -782,9 +782,9 @@ function validateEditPlan(value: unknown, context: { pageIds: Set<string>; secti
     if (typeof pageId === "string" && !context.pageIds.has(pageId)) editFailure("AI_EDIT_INVALID_TARGET", path);
     if (typeof pageRef === "string" && !createdRefs.has(pageRef)) editFailure("AI_EDIT_INVALID_TARGET", path);
   };
-  const operations = value.operations.map((raw, index) => {
+  const operations = (value.operations as any[]).map((raw: any, index: number) => {
     if (!record(raw) || typeof raw.op !== "string" || !editOperations.has(raw.op)) editFailure("AI_EDIT_UNSUPPORTED_OPERATION", `operations.${index}`);
-    const operation = raw as Record<string, unknown>;
+    const operation: any = raw;
     const op = operation.op as string;
     if (op === "create_page") {
       if (!exactKeys(operation, ["op", "tempRef", "name", "slug", "seo", "sections"]) || typeof operation.tempRef !== "string" ||
@@ -794,7 +794,7 @@ function validateEditPlan(value: unknown, context: { pageIds: Set<string>; secti
         !record(operation.seo) || !hasOnly(operation.seo, ["title", "description"]) ||
         !Array.isArray(operation.sections) || operation.sections.length > 100) editFailure("AI_EDIT_INVALID_PAGE", `operations.${index}`);
       createdRefs.add(operation.tempRef);
-      operation.sections.forEach((section) => validateSection(section));
+      operation.sections.forEach((section: any) => validateSection(section));
     } else if (op === "update_site_theme") {
       if (!exactKeys(operation, ["op", "theme"]) || !record(operation.theme) || !hasOnly(operation.theme, ["preset", "primaryColor", "secondaryColor", "surfaceColor", "mutedTextColor", "backgroundColor", "textColor", "headingFont", "bodyFont", "radius", "direction"]) || !Object.keys(operation.theme).length) editFailure("AI_EDIT_INVALID_THEME", `operations.${index}`);
     } else if (op === "update_site_metadata") {
@@ -816,6 +816,8 @@ function validateEditPlan(value: unknown, context: { pageIds: Set<string>; secti
         validateSection(operation.section);
       } else if (op === "update_section") {
         if (!hasOnly(operation, ["op", "pageId", "pageRef", "sectionId", "changes"]) || typeof operation.sectionId !== "string" || !context.sectionIds.has(operation.sectionId) || !record(operation.changes) || !hasOnly(operation.changes, ["props", "style"]) || !Object.keys(operation.changes).length) editFailure("AI_EDIT_INVALID_SECTION", `operations.${index}`);
+        const schema = agentSectionSchemas[context.sectionTypes.get(operation.sectionId) || ""];
+        if (!schema || (record(operation.changes.props) && !hasOnly(operation.changes.props, schema.props)) || (record(operation.changes.style) && !hasOnly(operation.changes.style, schema.style))) editFailure("AI_EDIT_SECTION_INVALID", `operations.${index}.changes`);
       } else if (op === "remove_section") {
         if (!hasOnly(operation, ["op", "pageId", "pageRef", "sectionId"]) || typeof operation.sectionId !== "string" || !context.sectionIds.has(operation.sectionId)) editFailure("AI_EDIT_INVALID_SECTION", `operations.${index}`);
       } else if (op === "move_section" || op === "duplicate_section") {
@@ -862,10 +864,10 @@ async function loadEditContext(admin: any, organizationId: string, siteId: strin
     pages: Object.fromEntries(pageRows.map((page: any) => [page.id, page.draft_version])),
     page_updated_at: Object.fromEntries(pageRows.map((page: any) => [page.id, page.updated_at])),
   };
-  return { context, baseVersions, pageIds: new Set(pageRows.map((page: any) => page.id)), sectionIds: new Set(pageRows.flatMap((page: any) => Array.isArray(page.draft_document?.sections) ? page.draft_document.sections.map((section: any) => section.id) : [])), navigationIds: new Set(navigation.map((item: any) => item?.id).filter(Boolean)) };
+  return { context, baseVersions, pageIds: new Set(pageRows.map((page: any) => page.id)), sectionIds: new Set(pageRows.flatMap((page: any) => Array.isArray(page.draft_document?.sections) ? page.draft_document.sections.map((section: any) => section.id) : [])), sectionTypes: new Map(pageRows.flatMap((page: any) => Array.isArray(page.draft_document?.sections) ? page.draft_document.sections.map((section: any) => [section.id, section.type] as [string, string]) : [])), navigationIds: new Set(navigation.map((item: any) => item?.id).filter(Boolean)) };
 }
 
-function publicError(error: unknown) {
+function publicError(error: unknown, operation = "") {
   const message = error instanceof Error ? error.message : "";
   const safeMessages = new Set([
     "Missing Authorization header",
@@ -888,7 +890,9 @@ function publicError(error: unknown) {
     "That change isn't supported by the Website Builder yet.",
   ]);
   if (safeMessages.has(message)) return message;
-  return "We couldn't generate a valid site structure. Please try again.";
+  return operation === "generateEditPlan"
+    ? "We couldn't generate a valid edit plan. Please try again."
+    : "We couldn't generate a valid site structure. Please try again.";
 }
 
 Deno.serve(async (req) => {
@@ -1023,6 +1027,7 @@ Deno.serve(async (req) => {
       } catch (firstError) {
         if (firstError instanceof GeminiProviderError) throw firstError;
         const validationError = firstError instanceof PlanValidationError ? firstError : classifyPlanError(firstError);
+        console.error("website_agent_edit_validation_failed", { attempt: 1, code: validationError.code, operation_index: /^operations\.(\d+)/.exec(validationError.path)?.[1] ? Number(/^operations\.(\d+)/.exec(validationError.path)![1]) : null, operation_type: null, path: validationError.path, model: Deno.env.get("GEMINI_MODEL") || "gemini-3.5-flash-lite" });
         try {
           plan = validateEditPlan(await websiteAgentModel.generateStructuredPlan({
             prompt: instruction,
@@ -1031,8 +1036,12 @@ Deno.serve(async (req) => {
             repair: `Previous output failed ${validationError.code} at ${validationError.path}. Return the complete corrected JSON using only the exact operation contract.`,
           }), loaded);
         } catch (repairError) {
-          console.error("website_agent_edit_plan_validation_failed", { code: repairError instanceof PlanValidationError ? repairError.code : "AI_EDIT_INVALID_PLAN" });
-          return json({ success: false, error: "That change isn't supported by the Website Builder yet." }, 400);
+          const failure = repairError instanceof PlanValidationError ? repairError : classifyPlanError(repairError);
+          const path = failure.path || "plan";
+          const index = /^operations\.(\d+)/.exec(path)?.[1];
+          const operationType = index === undefined ? undefined : (Array.isArray((repairError as any)?.operations) ? (repairError as any).operations[Number(index)]?.op : undefined);
+          console.error("website_agent_edit_validation_failed", { attempt: 2, code: failure.code, operation_index: index === undefined ? null : Number(index), operation_type: operationType || null, path, model: Deno.env.get("GEMINI_MODEL") || "gemini-3.5-flash-lite" });
+          throw failure;
         }
       }
       const { data, error } = await admin.from("website_agent_edit_plans").insert({
@@ -1083,7 +1092,7 @@ Deno.serve(async (req) => {
     return json(
       {
         success: false,
-        error: publicError(error),
+        error: publicError(error, operation),
         ...(error instanceof PlanValidationError
           ? { debugCode: error.code }
           : {}),

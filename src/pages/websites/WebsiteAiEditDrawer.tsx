@@ -72,7 +72,7 @@ export function WebsiteAiEditDrawer({
   if (!open) return null;
   const generate = async () => {
     if (!instruction.trim() || stage) return;
-    setStage("generating"); setError(""); setNotice("");
+    setStage("generating"); setError(""); setNotice(""); setProposal(null);
     try {
       const result = await websiteBuilderService.generateEditPlan({
         organizationId, siteId, currentPageId, instruction: instruction.trim(),
@@ -80,6 +80,7 @@ export function WebsiteAiEditDrawer({
       setProposal(result.proposal);
       await refreshHistory();
     } catch (reason: any) {
+      setProposal(null);
       setError(reason.message || "We couldn't generate a valid edit suggestion.");
     } finally { setStage(""); }
   };
