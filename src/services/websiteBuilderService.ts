@@ -47,6 +47,14 @@ const agentCall = async (body: Record<string, unknown>) => {
   return data;
 };
 export const websiteBuilderService = {
+  exportCode: async (organizationId: string, siteId: string, source: "draft" | "published") => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error("Please sign in again before exporting.");
+    const url = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/website-export`;
+    const response = await fetch(url, { method: "POST", headers: { Authorization: `Bearer ${session.access_token}`, apikey: import.meta.env.VITE_SUPABASE_ANON_KEY, "Content-Type": "application/json" }, body: JSON.stringify({ organizationId, siteId, source }) });
+    if (!response.ok) { const body = await response.json().catch(() => null); throw new Error(body?.error || "Unable to export this website."); }
+    return response.blob();
+  },
   listSites: (organizationId: string) =>
     call({ operation: "listSites", organizationId }),
   getSite: (organizationId: string, siteId: string) =>

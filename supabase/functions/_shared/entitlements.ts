@@ -15,6 +15,7 @@ export interface PlanCapabilities {
   customization_access: boolean;
   support_tier: 'community' | 'standard' | 'priority';
   ai_access: boolean;
+  website_code_export: boolean;
 }
 
 export async function resolveBillingRootOrganizationId(admin: any, organizationId: string): Promise<string> {

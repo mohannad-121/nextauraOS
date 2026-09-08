@@ -19,6 +19,7 @@ import {
   Trash2,
   Undo2,
   Upload,
+  Download,
   Wand2,
 } from "lucide-react";
 import { useApp } from "../../context/AppContext";
@@ -104,6 +105,9 @@ export function WebsiteEditor({
   const [publishing, setPublishing] = useState(false);
   const [publishReviewOpen, setPublishReviewOpen] = useState(false);
   const [aiEditOpen, setAiEditOpen] = useState(false);
+  const [exportOpen, setExportOpen] = useState(false);
+  const [exportSource, setExportSource] = useState<"draft" | "published">("draft");
+  const [exporting, setExporting] = useState(false);
   const [releases, setReleases] = useState<any[]>([]);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
@@ -334,6 +338,12 @@ export function WebsiteEditor({
       setPublishing(false);
     }
   };
+  const exportCode = async () => {
+    setExporting(true); setError("");
+    try { const blob = await websiteBuilderService.exportCode(currentOrg.id, siteId, exportSource); const link = document.createElement("a"); link.href = URL.createObjectURL(blob); link.download = `${site?.public_slug || "website"}-nextaura-export.zip`; link.click(); URL.revokeObjectURL(link.href); setExportOpen(false); setNotice("Export ZIP is ready for download."); }
+    catch (reason: any) { setError(reason.message || "Unable to export this website."); }
+    finally { setExporting(false); }
+  };
   const chooseAsset = (asset: any) => {
     if (mediaFor === "favicon") {
       setSite({ ...site, favicon_asset_id: asset.id });
@@ -527,6 +537,7 @@ export function WebsiteEditor({
             <span className="sm:hidden">AI</span>
             <span className="hidden sm:inline">Edit with AI</span>
           </button>
+          <button onClick={() => setExportOpen(true)} disabled={!site || exporting} className="hidden items-center gap-1 rounded-lg border border-white/15 px-3 py-2 text-xs font-bold hover:bg-white/10 disabled:opacity-50 md:inline-flex"><Download className="h-3.5 w-3.5" />Export Code</button>
           <button
             onClick={() => void save()}
             disabled={saving || (saved && !globalsDirty)}
@@ -657,6 +668,7 @@ export function WebsiteEditor({
           </div>
         </div>
       )}
+      {exportOpen && <div className="absolute inset-0 z-[1100] grid place-items-center bg-slate-950/70 p-4"><div role="dialog" aria-modal="true" aria-labelledby="export-title" className="w-full max-w-md rounded-2xl border border-white/10 bg-[#10192e] p-6 shadow-2xl"><p className="text-xs font-semibold uppercase tracking-wide text-violet-300">Standalone project</p><h2 id="export-title" className="mt-2 text-xl font-semibold">Export your website</h2><p className="mt-2 text-sm text-slate-400">React + Vite + TypeScript. Exporting never publishes your website.</p><label className="mt-5 block rounded-xl border border-white/10 p-3 text-sm"><input type="radio" checked={exportSource === "draft"} onChange={() => setExportSource("draft")} /> <span className="ml-2 font-semibold">Current Draft</span><span className="ml-6 block text-xs text-slate-400">Includes your latest saved draft changes.</span></label><label className={`mt-2 block rounded-xl border border-white/10 p-3 text-sm ${!site?.published_release_id ? "opacity-50" : ""}`}><input type="radio" disabled={!site?.published_release_id} checked={exportSource === "published"} onChange={() => setExportSource("published")} /> <span className="ml-2 font-semibold">Published Version</span></label>{exporting && <p role="status" className="mt-4 text-sm text-violet-200">Preparing website · Collecting assets · Generating code · Creating ZIP</p>}<div className="mt-6 flex justify-end gap-3"><button disabled={exporting} onClick={() => setExportOpen(false)} className="rounded-lg px-4 py-2 text-sm font-semibold hover:bg-white/10">Cancel</button><button disabled={exporting} onClick={() => void exportCode()} className="inline-flex items-center gap-2 rounded-lg bg-violet-400 px-4 py-2 text-sm font-bold text-slate-950 disabled:opacity-60"><Download className="h-4 w-4" />{exporting ? "Generating ZIP…" : "Generate ZIP"}</button></div></div></div>}
       {pagesOpen && (
         <PagePanel
           pages={pages}
