@@ -317,6 +317,13 @@ type WebsiteAgentRequest = {
   repair?: string;
 };
 
+class GeminiProviderError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "GeminiProviderError";
+  }
+}
+
 async function generateWithGemini({
   prompt,
   businessName,
@@ -326,13 +333,13 @@ async function generateWithGemini({
 }: WebsiteAgentRequest) {
   const apiKey = Deno.env.get("GEMINI_API_KEY");
   if (!apiKey) throw new Error("Website AI is not configured.");
-  const model = Deno.env.get("GEMINI_MODEL") || "gemini-2.5-flash-lite";
+  const overrideModel = Deno.env.get("GEMINI_MODEL");
+  let model = overrideModel || "gemini-2.5-flash-lite";
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 25_000);
-  let response: Response;
-  try {
-    response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`,
+  const request = (requestedModel: string) =>
+    fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(requestedModel)}:generateContent`,
       {
         method: "POST",
         signal: controller.signal,
@@ -366,26 +373,54 @@ async function generateWithGemini({
         }),
       },
     );
+  let response: Response;
+  try {
+    response = await request(model);
+    if (response.status === 404 && !overrideModel) {
+      model = "gemini-2.5-flash";
+      response = await request(model);
+    }
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
-      throw new Error("Website AI took too long to respond. Please try again.");
+      throw new GeminiProviderError(
+        "Website AI took too long to respond. Please try again.",
+      );
     }
-    throw new Error(
+    throw new GeminiProviderError(
       "Website AI is temporarily unavailable. Please try again later.",
     );
   } finally {
     clearTimeout(timeout);
   }
-  if (response.status === 429) {
-    throw new Error(
-      "Website AI is temporarily unavailable due to usage limits. Please try again later.",
-    );
-  }
-  if ([400, 401, 403].includes(response.status)) {
-    throw new Error("Website AI is not configured correctly.");
-  }
   if (!response.ok) {
-    throw new Error(
+    let providerCode = "unknown";
+    try {
+      const providerPayload = await response.clone().json();
+      if (typeof providerPayload?.error?.status === "string")
+        providerCode = providerPayload.error.status;
+    } catch {
+      /* Do not log provider response bodies. */
+    }
+    console.error("website_agent_gemini_request_failed", {
+      model,
+      status: response.status,
+      provider_code: providerCode,
+    });
+  }
+  if (response.status === 429)
+    throw new GeminiProviderError(
+      "Gemini free-tier usage limit reached. Please try again later.",
+    );
+  if (response.status === 404)
+    throw new GeminiProviderError("The configured AI model is unavailable.");
+  if (response.status === 400)
+    throw new GeminiProviderError(
+      "Website AI configuration is incompatible with the selected model.",
+    );
+  if ([401, 403].includes(response.status))
+    throw new GeminiProviderError("Website AI is not configured correctly.");
+  if (!response.ok) {
+    throw new GeminiProviderError(
       "Website AI is temporarily unavailable. Please try again later.",
     );
   }
@@ -428,12 +463,24 @@ async function authorize(admin: any, userId: string, organizationId: string) {
 
 function publicError(error: unknown) {
   const message = error instanceof Error ? error.message : "";
-  if (
-    /^(Missing Authorization header|Invalid authentication token|Only workspace owners and administrators can manage billing|Website Builder is not available for this organization\.|Activate Website Builder in Services before using Website AI\.|Website AI is not configured\.|Website AI is not configured correctly\.|Website AI is temporarily unavailable\. Please try again later\.|Website AI is temporarily unavailable due to usage limits\. Please try again later\.|Website AI took too long to respond\. Please try again\.|This website plan has already been applied\.|This website plan has expired\. Generate a new plan\.|Website plan not found\.)$/.test(
-      message,
-    )
-  )
-    return message;
+  const safeMessages = new Set([
+    "Missing Authorization header",
+    "Invalid authentication token",
+    "Only workspace owners and administrators can manage billing",
+    "Website Builder is not available for this organization.",
+    "Activate Website Builder in Services before using Website AI.",
+    "Website AI is not configured.",
+    "Website AI is not configured correctly.",
+    "Website AI is temporarily unavailable. Please try again later.",
+    "Gemini free-tier usage limit reached. Please try again later.",
+    "The configured AI model is unavailable.",
+    "Website AI configuration is incompatible with the selected model.",
+    "Website AI took too long to respond. Please try again.",
+    "This website plan has already been applied.",
+    "This website plan has expired. Generate a new plan.",
+    "Website plan not found.",
+  ]);
+  if (safeMessages.has(message)) return message;
   return "We couldn't generate a valid site structure. Please try again.";
 }
 
@@ -488,6 +535,7 @@ Deno.serve(async (req) => {
           }),
         );
       } catch (firstError) {
+        if (firstError instanceof GeminiProviderError) throw firstError;
         plan = validatePlan(
           await websiteAgentModel.generateStructuredPlan({
             prompt,
