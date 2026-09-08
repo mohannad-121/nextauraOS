@@ -1,34 +1,364 @@
-import React from 'react';
-import { WebsiteSectionRenderer, type GlobalSections, type WebsiteDocument, type NavigationItem } from '../../features/websites/sectionRegistry';
+import React from "react";
+import {
+  WebsiteSectionRenderer,
+  type GlobalSections,
+  type WebsiteDocument,
+  type NavigationItem,
+} from "../../features/websites/sectionRegistry";
 
-type PublicWebsiteForm = { public_id: string; name: string; fields: Array<{ name: string; label: string; type: string; required: boolean; options?: string[] }>; success_message: string };
+type PublicWebsiteForm = {
+  public_id: string;
+  name: string;
+  fields: Array<{
+    name: string;
+    label: string;
+    type: string;
+    required: boolean;
+    options?: string[];
+  }>;
+  success_message: string;
+};
 
-type PublicSite = { site: { name: string; public_slug: string; favicon_url: string | null }; page: { path: string; name: string; seo_title: string | null; seo_description: string | null; document: WebsiteDocument }; pages: Array<{ id: string; path: string; name: string }>; globals: GlobalSections; asset_urls: Record<string, string>; forms: PublicWebsiteForm[] };
-const base = import.meta.env.VITE_SUPABASE_URL || 'https://demo-nextaura.supabase.co';
-const publicBaseDomain = (import.meta.env.VITE_WEBSITE_PUBLIC_BASE_DOMAIN || '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '');
-const reserved = new Set(['www', 'app', 'api', 'admin', 'auth', 'mail', 'support', 'dashboard', 'status', 'cdn', 'assets', 'static', 'sites']);
-export const isPublicWebsiteHostname = (hostname = window.location.hostname) => { const host = hostname.toLowerCase().replace(/\.$/, ''); if (!publicBaseDomain || host === publicBaseDomain || !host.endsWith(`.${publicBaseDomain}`)) return false; const label = host.slice(0, -(publicBaseDomain.length + 1)); return /^[a-z0-9](?:[a-z0-9-]{0,77}[a-z0-9])?$/.test(label) && !reserved.has(label); };
-export const isPublicWebsiteRoot = (hostname = window.location.hostname) => Boolean(publicBaseDomain) && hostname.toLowerCase().replace(/\.$/, '') === publicBaseDomain;
-const route = () => { if (isPublicWebsiteHostname()) return { slug: window.location.hostname.slice(0, -(publicBaseDomain.length + 1)).toLowerCase(), path: window.location.pathname.replace(/\/$/, '') || '/', hostnameMode: true }; const parts = window.location.pathname.split('/').filter(Boolean); return { slug: parts[1] || '', path: '/' + parts.slice(2).join('/') || '/', hostnameMode: false }; };
+type PublicSite = {
+  site: { name: string; public_slug: string; favicon_url: string | null };
+  page: {
+    path: string;
+    name: string;
+    seo_title: string | null;
+    seo_description: string | null;
+    document: WebsiteDocument;
+  };
+  pages: Array<{ id: string; path: string; name: string }>;
+  globals: GlobalSections;
+  asset_urls: Record<string, string>;
+  forms: PublicWebsiteForm[];
+};
+const base =
+  import.meta.env.VITE_SUPABASE_URL || "https://demo-nextaura.supabase.co";
+const publicBaseDomain = (
+  import.meta.env.VITE_WEBSITE_PUBLIC_BASE_DOMAIN || "nextauraos.tech"
+)
+  .trim()
+  .toLowerCase()
+  .replace(/^https?:\/\//, "")
+  .replace(/\/$/, "");
+const reserved = new Set([
+  "www",
+  "app",
+  "api",
+  "admin",
+  "auth",
+  "mail",
+  "support",
+  "dashboard",
+  "status",
+  "cdn",
+  "assets",
+  "static",
+  "sites",
+]);
+export const isPublicWebsiteHostname = (
+  hostname = window.location.hostname,
+) => {
+  const host = hostname.toLowerCase().replace(/\.$/, "");
+  if (
+    !publicBaseDomain ||
+    host === publicBaseDomain ||
+    !host.endsWith(`.${publicBaseDomain}`)
+  )
+    return false;
+  const label = host.slice(0, -(publicBaseDomain.length + 1));
+  return (
+    /^[a-z0-9](?:[a-z0-9-]{0,77}[a-z0-9])?$/.test(label) && !reserved.has(label)
+  );
+};
+export const isPublicWebsiteRoot = (hostname = window.location.hostname) =>
+  Boolean(publicBaseDomain) &&
+  hostname.toLowerCase().replace(/\.$/, "") === publicBaseDomain;
+const route = () => {
+  if (isPublicWebsiteHostname())
+    return {
+      slug: window.location.hostname
+        .slice(0, -(publicBaseDomain.length + 1))
+        .toLowerCase(),
+      path: window.location.pathname.replace(/\/$/, "") || "/",
+      hostnameMode: true,
+    };
+  const parts = window.location.pathname.split("/").filter(Boolean);
+  return {
+    slug: parts[1] || "",
+    path: "/" + parts.slice(2).join("/") || "/",
+    hostnameMode: false,
+  };
+};
 
-function applySeo(data: PublicSite, hostnameMode: boolean) { const title = data.page.seo_title || data.page.name || data.site.name; document.title = title; const set = (name: string, value: string | null, property = false) => { let node = document.head.querySelector(`meta[${property ? 'property' : 'name'}="${name}"]`) as HTMLMetaElement | null; if (!value) { node?.remove(); return; } if (!node) { node = document.createElement('meta'); node.setAttribute(property ? 'property' : 'name', name); document.head.appendChild(node); } node.content = value; }; set('description', data.page.seo_description); set('og:title', title, true); set('og:description', data.page.seo_description, true); let canonical = document.head.querySelector('link[rel="canonical"]') as HTMLLinkElement | null; if (!canonical) { canonical = document.createElement('link'); canonical.rel = 'canonical'; document.head.appendChild(canonical); } canonical.href = hostnameMode && publicBaseDomain ? `https://${data.site.public_slug}.${publicBaseDomain}${data.page.path}` : window.location.href; if (data.site.favicon_url) { let icon = document.head.querySelector('link[rel="icon"]') as HTMLLinkElement | null; if (!icon) { icon = document.createElement('link'); icon.rel = 'icon'; document.head.appendChild(icon); } icon.href = data.site.favicon_url; } }
-
-export function PublicWebsitePage() {
-  const [state, setState] = React.useState<{ data?: PublicSite; error?: string; loading: boolean }>({ loading: true });
-  const load = React.useCallback(async () => { const current = route(); if (!current.slug) { setState({ loading: false, error: 'Site not found.' }); return; } setState({ loading: true }); try { const response = await fetch(`${base}/functions/v1/website-public?site=${encodeURIComponent(current.slug)}&path=${encodeURIComponent(current.path)}${current.hostnameMode ? `&hostname=${encodeURIComponent(window.location.hostname)}` : ''}`); const body = await response.json(); if (!response.ok || !body.success) throw new Error(body.error || 'Unable to load this site.'); setState({ loading: false, data: body }); applySeo(body, current.hostnameMode); } catch (error: any) { setState({ loading: false, error: error.message || 'Unable to load this site.' }); } }, []);
-  React.useEffect(() => { void load(); const pop = () => void load(); window.addEventListener('popstate', pop); return () => window.removeEventListener('popstate', pop); }, [load]);
-  if (state.loading) return <main className="flex min-h-screen items-center justify-center bg-white text-sm text-slate-600">Loading website…</main>;
-  if (!state.data) return <main className="flex min-h-screen flex-col items-center justify-center gap-2 bg-white px-6 text-center text-slate-900"><h1 className="text-2xl font-semibold">{state.error === 'Page not found.' ? 'Page not found' : 'This site is unavailable'}</h1><a className="text-sm text-blue-700 underline" href="/">Return home</a></main>;
-  const data = state.data; const hostnameMode = route().hostnameMode; const paths = Object.fromEntries(data.pages.map((page) => [page.id, hostnameMode ? page.path : `/site/${data.site.public_slug}${page.path === '/' ? '/' : page.path}`])); const navigate = (id: string) => { const href = paths[id]; if (href) { window.history.pushState({}, '', href); void load(); window.scrollTo({ top: 0, behavior: 'smooth' }); } };
-  return <div className="min-h-screen bg-white text-slate-900" style={{ ['--website-primary' as string]: data.page.document.theme?.primaryColor || '#2563eb', borderRadius: data.page.document.theme?.radius === 'lg' ? '1rem' : data.page.document.theme?.radius === 'sm' ? '.25rem' : '.5rem' }}>
-    {data.globals.header && <WebsiteSectionRenderer section={data.globals.header} device="desktop" chrome={false} assetUrls={data.asset_urls} navigation={data.globals.navigation as NavigationItem[]} onNavigate={navigate}/>} 
-    {data.page.document.sections.map((section) => <WebsiteSectionRenderer key={section.id} section={section} device="desktop" chrome={false} assetUrls={data.asset_urls}/>)}
-    {data.forms.length > 0 && <PublicForms forms={data.forms}/>} 
-    {data.globals.footer && <WebsiteSectionRenderer section={data.globals.footer} device="desktop" chrome={false} assetUrls={data.asset_urls} navigation={data.globals.navigation as NavigationItem[]} onNavigate={navigate}/>} 
-  </div>;
+function applySeo(data: PublicSite, hostnameMode: boolean) {
+  const title = data.page.seo_title || data.page.name || data.site.name;
+  document.title = title;
+  const set = (name: string, value: string | null, property = false) => {
+    let node = document.head.querySelector(
+      `meta[${property ? "property" : "name"}="${name}"]`,
+    ) as HTMLMetaElement | null;
+    if (!value) {
+      node?.remove();
+      return;
+    }
+    if (!node) {
+      node = document.createElement("meta");
+      node.setAttribute(property ? "property" : "name", name);
+      document.head.appendChild(node);
+    }
+    node.content = value;
+  };
+  set("description", data.page.seo_description);
+  set("og:title", title, true);
+  set("og:description", data.page.seo_description, true);
+  let canonical = document.head.querySelector(
+    'link[rel="canonical"]',
+  ) as HTMLLinkElement | null;
+  if (!canonical) {
+    canonical = document.createElement("link");
+    canonical.rel = "canonical";
+    document.head.appendChild(canonical);
+  }
+  canonical.href =
+    hostnameMode && publicBaseDomain
+      ? `https://${data.site.public_slug}.${publicBaseDomain}${data.page.path}`
+      : window.location.href;
+  if (data.site.favicon_url) {
+    let icon = document.head.querySelector(
+      'link[rel="icon"]',
+    ) as HTMLLinkElement | null;
+    if (!icon) {
+      icon = document.createElement("link");
+      icon.rel = "icon";
+      document.head.appendChild(icon);
+    }
+    icon.href = data.site.favicon_url;
+  }
 }
 
-export function PublicWebsiteRoot() { return <main className="flex min-h-screen flex-col items-center justify-center gap-2 bg-white px-6 text-center text-slate-900"><h1 className="text-2xl font-semibold">NextAura Sites</h1><p className="text-sm text-slate-600">Enter a published website address to continue.</p></main>; }
+export function PublicWebsitePage() {
+  const [state, setState] = React.useState<{
+    data?: PublicSite;
+    error?: string;
+    loading: boolean;
+  }>({ loading: true });
+  const load = React.useCallback(async () => {
+    const current = route();
+    if (!current.slug) {
+      setState({ loading: false, error: "Site not found." });
+      return;
+    }
+    setState({ loading: true });
+    try {
+      const response = await fetch(
+        `${base}/functions/v1/website-public?site=${encodeURIComponent(current.slug)}&path=${encodeURIComponent(current.path)}${current.hostnameMode ? `&hostname=${encodeURIComponent(window.location.hostname)}` : ""}`,
+      );
+      const body = await response.json();
+      if (!response.ok || !body.success)
+        throw new Error(body.error || "Unable to load this site.");
+      setState({ loading: false, data: body });
+      applySeo(body, current.hostnameMode);
+    } catch (error: any) {
+      setState({
+        loading: false,
+        error: error.message || "Unable to load this site.",
+      });
+    }
+  }, []);
+  React.useEffect(() => {
+    void load();
+    const pop = () => void load();
+    window.addEventListener("popstate", pop);
+    return () => window.removeEventListener("popstate", pop);
+  }, [load]);
+  if (state.loading)
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-white text-sm text-slate-600">
+        Loading website…
+      </main>
+    );
+  if (!state.data)
+    return (
+      <main className="flex min-h-screen flex-col items-center justify-center gap-2 bg-white px-6 text-center text-slate-900">
+        <h1 className="text-2xl font-semibold">
+          {state.error === "Page not found."
+            ? "Page not found"
+            : "This site is unavailable"}
+        </h1>
+        <a className="text-sm text-blue-700 underline" href="/">
+          Return home
+        </a>
+      </main>
+    );
+  const data = state.data;
+  const hostnameMode = route().hostnameMode;
+  const paths = Object.fromEntries(
+    data.pages.map((page) => [
+      page.id,
+      hostnameMode
+        ? page.path
+        : `/site/${data.site.public_slug}${page.path === "/" ? "/" : page.path}`,
+    ]),
+  );
+  const navigate = (id: string) => {
+    const href = paths[id];
+    if (href) {
+      window.history.pushState({}, "", href);
+      void load();
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+  return (
+    <div
+      className="min-h-screen bg-white text-slate-900"
+      style={{
+        ["--website-primary" as string]:
+          data.page.document.theme?.primaryColor || "#2563eb",
+        borderRadius:
+          data.page.document.theme?.radius === "lg"
+            ? "1rem"
+            : data.page.document.theme?.radius === "sm"
+              ? ".25rem"
+              : ".5rem",
+      }}
+    >
+      {data.globals.header && (
+        <WebsiteSectionRenderer
+          section={data.globals.header}
+          device="desktop"
+          chrome={false}
+          assetUrls={data.asset_urls}
+          navigation={data.globals.navigation as NavigationItem[]}
+          onNavigate={navigate}
+        />
+      )}
+      {data.page.document.sections.map((section) => (
+        <WebsiteSectionRenderer
+          key={section.id}
+          section={section}
+          device="desktop"
+          chrome={false}
+          assetUrls={data.asset_urls}
+        />
+      ))}
+      {data.forms.length > 0 && <PublicForms forms={data.forms} />}
+      {data.globals.footer && (
+        <WebsiteSectionRenderer
+          section={data.globals.footer}
+          device="desktop"
+          chrome={false}
+          assetUrls={data.asset_urls}
+          navigation={data.globals.navigation as NavigationItem[]}
+          onNavigate={navigate}
+        />
+      )}
+    </div>
+  );
+}
 
-function PublicForms({ forms }: { forms: PublicWebsiteForm[] }) { const [result, setResult] = React.useState(''); const [busy, setBusy] = React.useState(false); const form = forms[0]; const submit = async (event: React.FormEvent<HTMLFormElement>) => { event.preventDefault(); setBusy(true); setResult(''); const values = Object.fromEntries(new FormData(event.currentTarget).entries()); try { const response = await fetch(`${base}/functions/v1/website-form-submit`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ form_public_id: form.public_id, values, request_id: crypto.randomUUID() }) }); const body = await response.json(); if (!response.ok || !body.success) throw new Error(body.error || 'Unable to submit the form.'); setResult(body.message || form.success_message); event.currentTarget.reset(); } catch (error: any) { setResult(error.message || 'Unable to submit the form. Please try again.'); } finally { setBusy(false); } };
-  return <section className="bg-slate-50 px-6 py-12"><form onSubmit={submit} className="mx-auto max-w-xl rounded-xl border border-slate-200 bg-white p-6 shadow-sm"><h2 className="text-xl font-semibold">{form.name}</h2>{form.fields.map((field: PublicWebsiteForm['fields'][number]) => <label key={field.name} className="mt-4 block text-sm font-medium">{field.label}{field.required && ' *'}{field.type === 'textarea' ? <textarea required={field.required} name={field.name} className="mt-1 block min-h-24 w-full rounded border border-slate-300 p-2"/> : field.type === 'select' ? <select required={field.required} name={field.name} className="mt-1 block w-full rounded border border-slate-300 p-2"><option value="">Select…</option>{field.options?.map((item: string) => <option key={item}>{item}</option>)}</select> : <input required={field.required} name={field.name} type={field.type === 'phone' ? 'tel' : field.type === 'email' ? 'email' : 'text'} className="mt-1 block w-full rounded border border-slate-300 p-2"/>}</label>)}<button disabled={busy} className="mt-5 rounded bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">{busy ? 'Sending…' : 'Send message'}</button>{result && <p role="status" className="mt-3 text-sm">{result}</p>}</form></section>; }
+export function PublicWebsiteRoot() {
+  return (
+    <main className="flex min-h-screen flex-col items-center justify-center gap-2 bg-white px-6 text-center text-slate-900">
+      <h1 className="text-2xl font-semibold">NextAura Sites</h1>
+      <p className="text-sm text-slate-600">
+        Enter a published website address to continue.
+      </p>
+    </main>
+  );
+}
+
+function PublicForms({ forms }: { forms: PublicWebsiteForm[] }) {
+  const [result, setResult] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
+  const form = forms[0];
+  const submit = async (event: React.FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setBusy(true);
+    setResult("");
+    const values = Object.fromEntries(
+      new FormData(event.currentTarget).entries(),
+    );
+    try {
+      const response = await fetch(`${base}/functions/v1/website-form-submit`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          form_public_id: form.public_id,
+          values,
+          request_id: crypto.randomUUID(),
+        }),
+      });
+      const body = await response.json();
+      if (!response.ok || !body.success)
+        throw new Error(body.error || "Unable to submit the form.");
+      setResult(body.message || form.success_message);
+      event.currentTarget.reset();
+    } catch (error: any) {
+      setResult(
+        error.message || "Unable to submit the form. Please try again.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <section className="bg-slate-50 px-6 py-12">
+      <form
+        onSubmit={submit}
+        className="mx-auto max-w-xl rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
+      >
+        <h2 className="text-xl font-semibold">{form.name}</h2>
+        {form.fields.map((field: PublicWebsiteForm["fields"][number]) => (
+          <label key={field.name} className="mt-4 block text-sm font-medium">
+            {field.label}
+            {field.required && " *"}
+            {field.type === "textarea" ? (
+              <textarea
+                required={field.required}
+                name={field.name}
+                className="mt-1 block min-h-24 w-full rounded border border-slate-300 p-2"
+              />
+            ) : field.type === "select" ? (
+              <select
+                required={field.required}
+                name={field.name}
+                className="mt-1 block w-full rounded border border-slate-300 p-2"
+              >
+                <option value="">Select…</option>
+                {field.options?.map((item: string) => (
+                  <option key={item}>{item}</option>
+                ))}
+              </select>
+            ) : (
+              <input
+                required={field.required}
+                name={field.name}
+                type={
+                  field.type === "phone"
+                    ? "tel"
+                    : field.type === "email"
+                      ? "email"
+                      : "text"
+                }
+                className="mt-1 block w-full rounded border border-slate-300 p-2"
+              />
+            )}
+          </label>
+        ))}
+        <button
+          disabled={busy}
+          className="mt-5 rounded bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+        >
+          {busy ? "Sending…" : "Send message"}
+        </button>
+        {result && (
+          <p role="status" className="mt-3 text-sm">
+            {result}
+          </p>
+        )}
+      </form>
+    </section>
+  );
+}
