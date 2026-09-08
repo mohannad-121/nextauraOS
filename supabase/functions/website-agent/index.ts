@@ -68,6 +68,131 @@ const slug = (value: unknown, field: string) => {
 
 type Plan = Record<string, any>;
 
+class PlanValidationError extends Error {
+  constructor(
+    readonly code: string,
+    message: string,
+    readonly path: string,
+  ) {
+    super(message);
+    this.name = "PlanValidationError";
+  }
+}
+
+const failPlan = (code: string, message: string, path: string): never => {
+  throw new PlanValidationError(code, message, path);
+};
+
+const agentSectionSchemas: Record<
+  string,
+  { props: string[]; style: string[] }
+> = {
+  hero: {
+    props: [
+      "eyebrow",
+      "heading",
+      "subheading",
+      "primaryLabel",
+      "primaryUrl",
+      "secondaryLabel",
+      "secondaryUrl",
+      "alignment",
+      "minHeight",
+      "overlayOpacity",
+      "imageFit",
+    ],
+    style: ["backgroundColor", "textColor", "paddingY"],
+  },
+  text: {
+    props: ["heading", "body", "alignment", "maxWidth"],
+    style: ["backgroundColor", "textColor", "paddingY"],
+  },
+  image: {
+    props: ["alt", "width", "alignment", "radius", "fit"],
+    style: ["backgroundColor", "textColor", "paddingY"],
+  },
+  button_group: {
+    props: ["heading", "buttons"],
+    style: ["backgroundColor", "textColor", "paddingY", "alignment"],
+  },
+  spacer: { props: ["desktop", "tablet", "mobile"], style: [] },
+  features: {
+    props: ["eyebrow", "heading", "subheading", "layout", "columns", "items"],
+    style: ["backgroundColor", "textColor", "paddingY"],
+  },
+  services: {
+    props: ["heading", "layout", "columns", "items"],
+    style: ["backgroundColor", "textColor", "paddingY"],
+  },
+  testimonials: {
+    props: ["heading", "layout", "columns", "items"],
+    style: ["backgroundColor", "textColor", "paddingY"],
+  },
+  pricing: {
+    props: ["heading", "layout", "items"],
+    style: ["backgroundColor", "textColor", "paddingY"],
+  },
+  faq: {
+    props: ["heading", "layout", "items"],
+    style: ["backgroundColor", "textColor", "paddingY"],
+  },
+  contact: {
+    props: ["heading", "text", "phone", "email", "address", "showForm"],
+    style: ["backgroundColor", "textColor", "paddingY"],
+  },
+  gallery: {
+    props: ["heading", "layout", "columns", "images"],
+    style: ["backgroundColor", "textColor", "paddingY"],
+  },
+  stats: {
+    props: ["heading", "layout", "items"],
+    style: ["backgroundColor", "textColor", "paddingY"],
+  },
+  team: {
+    props: ["heading", "layout", "columns", "items"],
+    style: ["backgroundColor", "textColor", "paddingY"],
+  },
+};
+
+function normalizePlan(value: unknown): unknown {
+  const clean = (item: unknown, key = ""): unknown => {
+    if (Array.isArray(item)) return item.map((child) => clean(child));
+    if (!record(item)) return typeof item === "string" ? item.trim() : item;
+    const output: Record<string, unknown> = {};
+    for (const [childKey, child] of Object.entries(item)) {
+      if (child === null || child === undefined) continue;
+      // Empty optional URLs are not links. Removing them is safer than accepting a blank URL.
+      if (
+        typeof child === "string" &&
+        !child.trim() &&
+        /(url|target)$/i.test(childKey)
+      )
+        continue;
+      output[childKey] = clean(child, childKey);
+    }
+    if (key === "sections" || "type" in output) {
+      if (output.style === undefined) output.style = {};
+    }
+    if (typeof output.slug === "string" && output.slug === "")
+      output.slug = "/";
+    if (record(output.theme)) {
+      for (const color of ["primaryColor", "backgroundColor", "textColor"]) {
+        if (typeof output.theme[color] === "string")
+          output.theme[color] = output.theme[color].toLowerCase();
+      }
+    }
+    return output;
+  };
+  return clean(value);
+}
+
+const sectionReference = Object.entries(agentSectionSchemas)
+  .map(
+    ([type, schema]) =>
+      `${type}: props=[${schema.props.join(",")}], style=[${schema.style.join(",")}]`,
+  )
+  .join("; ");
+
 function validateSection(section: unknown) {
   if (
     !record(section) ||
@@ -75,7 +200,11 @@ function validateSection(section: unknown) {
       (key) => !["type", "props", "style"].includes(key),
     )
   )
-    throw new Error("Website plan section is invalid.");
+    failPlan(
+      "PLAN_SECTION_INVALID",
+      "Website plan section is invalid.",
+      "section",
+    );
   if (
     !sectionTypes.has(String(section.type)) ||
     !record(section.props) ||
@@ -85,7 +214,22 @@ function validateSection(section: unknown) {
     JSON.stringify(section).length > 16384 ||
     dangerous.test(JSON.stringify(section))
   )
-    throw new Error("Website plan section is invalid.");
+    failPlan(
+      "PLAN_SECTION_INVALID",
+      "Website plan section is invalid.",
+      "section",
+    );
+  const schema = agentSectionSchemas[String(section.type)];
+  if (
+    !schema ||
+    Object.keys(section.props).some((key) => !schema.props.includes(key)) ||
+    Object.keys(section.style).some((key) => !schema.style.includes(key))
+  )
+    failPlan(
+      "PLAN_SECTION_INVALID",
+      "Website plan section uses unsupported props or styles.",
+      `section.${String(section.type)}`,
+    );
   const items = Array.isArray(section.props.items)
     ? section.props.items
     : Array.isArray(section.props.images)
@@ -105,13 +249,21 @@ function validateSection(section: unknown) {
     limits[String(section.type)] !== undefined &&
     items.length > limits[String(section.type)]
   )
-    throw new Error("Website plan section has too many items.");
+    failPlan(
+      "PLAN_SECTION_INVALID",
+      "Website plan section has too many items.",
+      `section.${String(section.type)}.items`,
+    );
   if (
     items.some(
       (item: unknown) => !record(item) || dangerous.test(JSON.stringify(item)),
     )
   )
-    throw new Error("Website plan section contains invalid content.");
+    failPlan(
+      "PLAN_SECTION_INVALID",
+      "Website plan section contains invalid content.",
+      `section.${String(section.type)}.items`,
+    );
   const scan = (value: unknown, key = ""): void => {
     if (typeof value === "string") {
       if (
@@ -119,7 +271,11 @@ function validateSection(section: unknown) {
         dangerous.test(value) ||
         (/(url|target)$/i.test(key) && !safeUrl(value))
       )
-        throw new Error("Website plan contains an invalid URL or string.");
+        failPlan(
+          "PLAN_URL_INVALID",
+          "Website plan contains an invalid URL or string.",
+          `section.${String(section.type)}.${key}`,
+        );
     } else if (Array.isArray(value)) value.forEach((item) => scan(item));
     else if (record(value))
       Object.entries(value).forEach(([childKey, child]) =>
@@ -307,7 +463,48 @@ function validatePlan(value: unknown): Plan {
   };
 }
 
-const systemInstruction = `You create JSON website plans only. Never publish, never include HTML, CSS, JavaScript, image URLs, secrets, database operations, or markdown. Use only sections: hero, text, image, button_group, spacer, features, services, testimonials, pricing, faq, contact, gallery, stats, team. Return exactly one JSON object matching this shape: {version:1,site:{name,slugSuggestion,language,theme:{preset,primaryColor,backgroundColor,textColor,headingFont,bodyFont,radius,direction}},pages:[{clientId,name,slug,isHomepage,seo:{title,description},sections:[{type,props,style}]}],navigation:[{label,targetPageClientId}],header:{type:'header',props,style},footer:{type:'footer',props,style}}. Be business-specific, use no images or external URLs, and honor Arabic with language ar and direction rtl.`;
+const systemInstruction = `Generate exactly one JSON Website Plan and nothing else. Never publish. Never output HTML, CSS, JavaScript, markdown, image URLs, secrets, database operations, or fields not listed below.
+Root keys exactly: version, site, pages, navigation, header, footer. version is 1.
+site exactly: name, slugSuggestion, language, theme. language is only en or ar. theme exactly: preset, primaryColor, backgroundColor, textColor, headingFont, bodyFont, radius, direction. Colors are 6-digit #rrggbb. Fonts only: Inter, Manrope, Playfair Display, DM Sans, Noto Sans Arabic, IBM Plex Sans Arabic. radius only sm, md, lg. direction only ltr, rtl.
+Each page exactly: clientId, name, slug, isHomepage, seo, sections. Exactly one homepage has slug "/" and isHomepage true; all other slugs are lowercase paths such as "/about". seo exactly has non-empty title and description. No null values.
+Every section exactly has type, props, style. props and style always exist; no id, label, metadata, or children outside props. Use only this reference: ${sectionReference}. Do not include image, map, social, booking, or other URLs. Omit optional CTA URLs and targets instead of using empty strings.
+navigation items exactly: label, targetPageClientId; targets must equal a page clientId. header exactly has type "header", props, style. footer exactly has type "footer", props, style. Be specific to the business request; Arabic requests must use Arabic content, ar, rtl, and an allowed Arabic font.`;
+
+function classifyPlanError(error: unknown): PlanValidationError {
+  if (error instanceof PlanValidationError) return error;
+  const message =
+    error instanceof Error ? error.message : "Website plan is invalid.";
+  if (message.includes("theme"))
+    return new PlanValidationError("PLAN_THEME_INVALID", message, "site.theme");
+  if (message.includes("navigation"))
+    return new PlanValidationError("PLAN_NAV_INVALID", message, "navigation");
+  if (message.includes("URL"))
+    return new PlanValidationError("PLAN_URL_INVALID", message, "sections");
+  if (message.includes("page") || message.includes("homepage"))
+    return new PlanValidationError("PLAN_PAGE_INVALID", message, "pages");
+  if (message.includes("section"))
+    return new PlanValidationError(
+      "PLAN_SECTION_INVALID",
+      message,
+      "pages.sections",
+    );
+  return new PlanValidationError("PLAN_INVALID", message, "plan");
+}
+
+function validateGeneratedPlan(value: unknown, attempt: number): Plan {
+  try {
+    return validatePlan(normalizePlan(value));
+  } catch (error) {
+    const validationError = classifyPlanError(error);
+    console.error("website_agent_plan_validation_failed", {
+      attempt,
+      code: validationError.code,
+      reason: validationError.message,
+      path: validationError.path,
+    });
+    throw validationError;
+  }
+}
 
 type WebsiteAgentRequest = {
   prompt: string;
@@ -526,27 +723,27 @@ Deno.serve(async (req) => {
         );
       let plan: Plan;
       try {
-        plan = validatePlan(
+        plan = validateGeneratedPlan(
           await websiteAgentModel.generateStructuredPlan({
             prompt,
             businessName,
             language,
             styleHint,
           }),
+          1,
         );
       } catch (firstError) {
         if (firstError instanceof GeminiProviderError) throw firstError;
-        plan = validatePlan(
+        const validationError = classifyPlanError(firstError);
+        plan = validateGeneratedPlan(
           await websiteAgentModel.generateStructuredPlan({
             prompt,
             businessName,
             language,
             styleHint,
-            repair:
-              firstError instanceof Error
-                ? firstError.message.slice(0, 500)
-                : "Validate the plan.",
+            repair: `Previous output failed ${validationError.code} at ${validationError.path}: ${validationError.message.slice(0, 300)}. Return the entire corrected JSON using every exact schema constraint in the system instruction.`,
           }),
+          2,
         );
       }
       const { data, error } = await admin
@@ -605,6 +802,15 @@ Deno.serve(async (req) => {
       organization_id_present: Boolean(organizationId),
       error_type: error instanceof Error ? error.name : typeof error,
     });
-    return json({ success: false, error: publicError(error) }, 400);
+    return json(
+      {
+        success: false,
+        error: publicError(error),
+        ...(error instanceof PlanValidationError
+          ? { debugCode: error.code }
+          : {}),
+      },
+      400,
+    );
   }
 });
