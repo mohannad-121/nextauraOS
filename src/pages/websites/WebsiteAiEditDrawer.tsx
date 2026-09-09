@@ -56,7 +56,7 @@ function operationSummary(operation: any, pages: any[]) {
 }
 
 export function WebsiteAiEditDrawer({
-  open, onClose, organizationId, siteId, currentPageId, pages, onApplied,
+  open, onClose, organizationId, siteId, currentPageId, pages, onApplied, hasUnsavedChanges, onSaveBeforeGenerate,
 }: {
   open: boolean;
   onClose: () => void;
@@ -64,7 +64,9 @@ export function WebsiteAiEditDrawer({
   siteId: string;
   currentPageId: string;
   pages: any[];
-  onApplied: () => Promise<void>;
+  onApplied: (result: any) => Promise<void>;
+  hasUnsavedChanges: boolean;
+  onSaveBeforeGenerate: () => Promise<void>;
 }) {
   const [instruction, setInstruction] = useState("");
   const [proposal, setProposal] = useState<Proposal | null>(null);
@@ -83,6 +85,10 @@ export function WebsiteAiEditDrawer({
   if (!open) return null;
   const generate = async () => {
     if (!instruction.trim() || stage) return;
+    if (hasUnsavedChanges) {
+      setError("Save your current changes before using AI.");
+      return;
+    }
     setStage("generating"); setError(""); setNotice(""); setProposal(null);
     try {
       const result = await websiteBuilderService.generateEditPlan({
@@ -102,9 +108,12 @@ export function WebsiteAiEditDrawer({
     if (!isReviewableProposal(proposal) || stage) return;
     setStage("applying"); setError("");
     try {
-      await websiteBuilderService.applyEditPlan(organizationId, proposal.id);
-      await onApplied();
-      setNotice("Changes applied to draft. Review your changes before publishing.");
+      const result = await websiteBuilderService.applyEditPlan(organizationId, proposal.id);
+      if (!result?.result?.success || !Number.isInteger(result.result.operationCount)) {
+        throw new Error("AI changes could not be verified. Nothing was published.");
+      }
+      await onApplied(result.result);
+      setNotice(`${result.result.operationCount} change${result.result.operationCount === 1 ? "" : "s"} applied to your draft. Your live site has not changed.`);
       setProposal(null); setInstruction("");
       await refreshHistory();
     } catch (reason: any) {
@@ -127,6 +136,7 @@ export function WebsiteAiEditDrawer({
           {error && <p role="alert" className="rounded-xl border border-red-400/20 bg-red-500/10 p-3 text-sm text-red-100">{error}</p>}
           {notice && <p role="status" className="rounded-xl border border-emerald-400/20 bg-emerald-500/10 p-3 text-sm text-emerald-100">{notice}</p>}
           {!proposal ? <>
+            {hasUnsavedChanges && <div className="mt-4 rounded-xl border border-amber-300/20 bg-amber-400/10 p-3 text-sm text-amber-100"><p>Save your current changes before using AI.</p><button onClick={() => void onSaveBeforeGenerate()} disabled={Boolean(stage)} className="mt-2 rounded-lg bg-amber-200 px-3 py-1.5 text-xs font-bold text-slate-950 disabled:opacity-60">Save &amp; Continue</button></div>}
             <label className="mt-4 block text-sm font-medium">Describe the changes you want<textarea value={instruction} onChange={(event) => setInstruction(event.target.value)} maxLength={6000} placeholder="Describe the changes you want…" className="mt-2 h-36 w-full resize-none rounded-xl border border-white/10 bg-white/5 p-3 text-sm text-white placeholder:text-slate-500 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-400/30" /></label>
             <div className="mt-3 flex flex-wrap gap-2">{examples.map((example) => <button key={example} onClick={() => setInstruction(example)} className="rounded-full border border-violet-300/20 bg-violet-400/10 px-3 py-1.5 text-xs text-violet-100 hover:bg-violet-400/20">{example}</button>)}</div>
             {stage === "generating" && <div className="mt-5 rounded-xl border border-violet-300/15 bg-violet-400/10 p-4 text-sm text-violet-100"><Loader2 className="mr-2 inline h-4 w-4 animate-spin" />Understanding your request · Reviewing website structure · Creating and validating an edit plan</div>}
@@ -139,7 +149,7 @@ export function WebsiteAiEditDrawer({
           </>}
         </div>
         <footer className="flex flex-col-reverse gap-2 border-t border-white/10 p-4 sm:flex-row sm:flex-wrap sm:justify-end">
-          {proposal ? <><button onClick={() => { setProposal(null); setError(""); }} disabled={Boolean(stage)} className="rounded-lg px-4 py-2 text-sm font-semibold hover:bg-white/10">Regenerate</button><button onClick={close} disabled={Boolean(stage)} className="rounded-lg px-4 py-2 text-sm font-semibold hover:bg-white/10">Cancel</button><button onClick={() => void apply()} disabled={!isReviewableProposal(proposal) || Boolean(stage)} className="inline-flex items-center gap-2 rounded-lg bg-violet-400 px-4 py-2 text-sm font-bold text-slate-950 disabled:opacity-60">{stage === "applying" && <Loader2 className="h-4 w-4 animate-spin" />}{stage === "applying" ? "Applying changes…" : "Apply Changes"}</button></> : <button onClick={() => void generate()} disabled={!instruction.trim() || Boolean(stage)} className="inline-flex items-center gap-2 rounded-lg bg-violet-400 px-4 py-2 text-sm font-bold text-slate-950 disabled:opacity-60">{stage === "generating" && <Loader2 className="h-4 w-4 animate-spin" />}Generate changes</button>}
+          {proposal ? <><button onClick={() => { setProposal(null); setError(""); }} disabled={Boolean(stage)} className="rounded-lg px-4 py-2 text-sm font-semibold hover:bg-white/10">Regenerate</button><button onClick={close} disabled={Boolean(stage)} className="rounded-lg px-4 py-2 text-sm font-semibold hover:bg-white/10">Cancel</button><button onClick={() => void apply()} disabled={!isReviewableProposal(proposal) || Boolean(stage)} className="inline-flex items-center gap-2 rounded-lg bg-violet-400 px-4 py-2 text-sm font-bold text-slate-950 disabled:opacity-60">{stage === "applying" && <Loader2 className="h-4 w-4 animate-spin" />}{stage === "applying" ? "Applying changes…" : "Apply Changes"}</button></> : <button onClick={() => void generate()} disabled={!instruction.trim() || hasUnsavedChanges || Boolean(stage)} className="inline-flex items-center gap-2 rounded-lg bg-violet-400 px-4 py-2 text-sm font-bold text-slate-950 disabled:opacity-60">{stage === "generating" && <Loader2 className="h-4 w-4 animate-spin" />}Generate changes</button>}
         </footer>
       </aside>
     </div>

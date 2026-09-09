@@ -820,7 +820,9 @@ async function generateWithGemini({
   const overrideModel = Deno.env.get("GEMINI_MODEL");
   let model = overrideModel || "gemini-3.5-flash-lite";
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 25_000);
+  // A bounded 40 seconds accommodates one valid structured response without
+  // leaving a request open indefinitely. Context is scoped before this call.
+  const timeout = setTimeout(() => controller.abort(), 40_000);
   const request = (requestedModel: string) =>
     fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${
@@ -1602,6 +1604,8 @@ async function loadEditContext(
   admin: any,
   organizationId: string,
   siteId: string,
+  currentPageId?: string,
+  scope: "page" | "site" = "site",
 ) {
   const { data: site, error: siteError } = await admin.from("website_sites")
     .select("id,name,default_locale,global_version,global_sections")
@@ -1611,13 +1615,11 @@ async function loadEditContext(
     ).maybeSingle();
   if (siteError) throw siteError;
   if (!site) throw new Error("Website plan not found.");
-  const { data: pages, error: pagesError } = await admin.from("website_pages")
-    .select(
+  let pageQuery = admin.from("website_pages").select(
       "id,name,slug,seo_title,seo_description,draft_version,updated_at,draft_document",
-    )
-    .eq("organization_id", organizationId).eq("site_id", siteId).order(
-      "sort_order",
-    );
+    ).eq("organization_id", organizationId).eq("site_id", siteId);
+  if (scope === "page" && currentPageId) pageQuery = pageQuery.eq("id", currentPageId);
+  const { data: pages, error: pagesError } = await pageQuery.order("sort_order");
   if (pagesError) throw pagesError;
   const pageRows = pages || [];
   const globals = record(site.global_sections) ? site.global_sections : {};
@@ -1703,6 +1705,13 @@ async function loadEditContext(
       record(page.draft_document?.theme) ? page.draft_document.theme : {}
     ),
   };
+}
+
+function editRequestScope(instruction: string): "page" | "site" {
+  return /\b(arabic|rtl|whole site|all pages|every page|navigation|add (an )?(about|new) page|site theme|site name|language)\b/i
+    .test(instruction)
+    ? "site"
+    : "page";
 }
 
 function editValidationMetadata(
@@ -1804,6 +1813,8 @@ function publicError(error: unknown, operation = "") {
     "This website changed after the AI suggestion was created. Generate the suggestion again.",
     "This AI suggestion expired. Generate it again.",
     "That change isn't supported by the Website Builder yet.",
+    "No effective change was produced.",
+    "AI changes could not be verified. Nothing was published.",
   ]);
   if (safeMessages.has(message)) return message;
   return operation === "generateEditPlan"
@@ -1944,9 +1955,23 @@ export const websiteAgentHandler = async (req: Request) => {
             "Please wait a moment before generating another edit suggestion.",
         }, 429);
       }
-      const loaded = await loadEditContext(admin, organizationId, siteId);
+      const generationStartedAt = performance.now();
+      const requestedPageId = typeof body.currentPageId === "string"
+        ? body.currentPageId
+        : undefined;
+      const scope = editRequestScope(instruction);
+      const contextStartedAt = performance.now();
+      const loaded = await loadEditContext(
+        admin,
+        organizationId,
+        siteId,
+        requestedPageId,
+        scope,
+      );
+      const contextLoadMs = Math.round(performance.now() - contextStartedAt);
       let plan: Plan;
       let firstCandidate: unknown;
+      const modelStartedAt = performance.now();
       try {
         firstCandidate = normalizeEditPlan(
           await websiteAgentModel.generateStructuredPlan({
@@ -2029,6 +2054,8 @@ export const websiteAgentHandler = async (req: Request) => {
           throw failure;
         }
       }
+      const modelGenerationMs = Math.round(performance.now() - modelStartedAt);
+      const persistenceStartedAt = performance.now();
       const { data, error } = await admin.from("website_agent_edit_plans")
         .insert({
           organization_id: organizationId,
@@ -2039,6 +2066,7 @@ export const websiteAgentHandler = async (req: Request) => {
           base_versions: loaded.baseVersions,
         }).select("id,expires_at,plan_json,created_at").single();
       if (error) throw error;
+      const persistenceMs = Math.round(performance.now() - persistenceStartedAt);
       await admin.from("audit_logs").insert({
         organization_id: organizationId,
         user_name: user.id,
@@ -2052,6 +2080,13 @@ export const websiteAgentHandler = async (req: Request) => {
         model: Deno.env.get("GEMINI_MODEL") || "gemini-3.5-flash-lite",
         operation_count: plan.operations.length,
         proposal_id: data.id,
+        scope,
+        context_load_ms: contextLoadMs,
+        model_generation_ms: modelGenerationMs,
+        validation_ms: 0,
+        repair_ms: 0,
+        persistence_ms: persistenceMs,
+        total_ms: Math.round(performance.now() - generationStartedAt),
       });
       return json({
         success: true,
@@ -2079,6 +2114,12 @@ export const websiteAgentHandler = async (req: Request) => {
         }
         if (String(error.message).includes("AI_EDIT_EXPIRED")) {
           throw new Error("This AI suggestion expired. Generate it again.");
+        }
+        if (String(error.message).includes("AI_EDIT_NO_EFFECT")) {
+          throw new Error("No effective change was produced.");
+        }
+        if (String(error.message).includes("AI_EDIT_VERIFICATION_FAILED")) {
+          throw new Error("AI changes could not be verified. Nothing was published.");
         }
         throw error;
       }

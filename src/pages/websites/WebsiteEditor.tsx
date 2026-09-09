@@ -145,6 +145,8 @@ export function WebsiteEditor({
       setReleases(releaseData.releases || []);
       setSaved(true);
       setGlobalsDirty(false);
+      setHistory([]);
+      setFuture([]);
     } catch (reason: any) {
       setError(reason.message || "Unable to open editor.");
     }
@@ -729,9 +731,14 @@ export function WebsiteEditor({
         siteId={siteId}
         currentPageId={page?.id || pageId}
         pages={pages}
-        onApplied={async () => {
+        hasUnsavedChanges={!saved || globalsDirty}
+        onSaveBeforeGenerate={async () => {
+          if (globalsDirty) await saveGlobals();
+          if (!saved) await save();
+        }}
+        onApplied={async (result) => {
           await load(page?.id || pageId);
-          setNotice("Changes applied to draft. Review your changes before publishing.");
+          setNotice(`${result.operationCount} AI change${result.operationCount === 1 ? "" : "s"} verified in your draft. Review before publishing.`);
         }}
       />
       {!preview && (
