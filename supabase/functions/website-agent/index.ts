@@ -1596,8 +1596,11 @@ Operations: add_section {op,pageId|pageRef,index,section}; update_section {op,pa
     [...fontAllowlist].join(",")
   }; radius is sm,md,or lg; direction is ltr or rtl; colors are six-digit hex. Do not mutate media IDs. Translate navigation labels only with update_navigation_item.`;
 
-function editSystemInstruction() {
-  return `You create safe draft-only Website Builder edit proposals. ${editOperationReference} Existing content context and target-specific allowed keys are authoritative. Preserve fields that were not requested by emitting only changed keys. If the request cannot be represented safely, do not invent an operation. Do not claim publication. Arabic requests use Arabic content, update_site_metadata changes.language="ar", update_site_theme theme.direction="rtl", and allowed Arabic fonts. Return the entire plan, never a partial fragment.`;
+function editSystemInstruction(intent = "SECTION_CONTENT") {
+  const languageContract = intent === "SITE_LANGUAGE"
+    ? " This is a site-language request. Keep the operation envelope minimal and deterministic: update_site_metadata with language only; update_site_theme with direction plus allowed fonts only; update header/footer/navigation labels only when source text exists; then update each existing section with only its listed text-bearing props. Preserve IDs, URLs, asset IDs, slugs, colors, layout, item counts, and non-text values. For Arabic use language=ar, direction=rtl, IBM Plex Sans Arabic/Noto Sans Arabic. For English use language=en, direction=ltr, Inter/Manrope. Never invent section keys."
+    : "";
+  return `You create safe draft-only Website Builder edit proposals. ${editOperationReference} Existing content context and target-specific allowed keys are authoritative. Preserve fields that were not requested by emitting only changed keys. If the request cannot be represented safely, do not invent an operation. Do not claim publication. Arabic requests use Arabic content, update_site_metadata changes.language="ar", update_site_theme theme.direction="rtl", and allowed Arabic fonts.${languageContract} Return the entire plan, never a partial fragment.`;
 }
 
 async function loadEditContext(
@@ -1707,9 +1710,18 @@ async function loadEditContext(
   };
 }
 
+function editRequestIntent(instruction: string) {
+  if (/\b(arabic|english|rtl|ltr|language)\b|العربي|العربية|الانجليزية|الإنجليزية|كله|بالإنجليزي|بالانجليزي/i.test(instruction)) return "SITE_LANGUAGE";
+  if (/\b(theme|colors?|font|black and gold|minimal)\b/i.test(instruction)) return "SITE_THEME";
+  if (/\b(navigation|header|footer)\b/i.test(instruction)) return "GLOBAL_NAV";
+  if (/\b(add|rename|slug|seo).{0,30}\bpage\b/i.test(instruction)) return "PAGE_STRUCTURE";
+  if (/\b(add|remove|move|duplicate)\b/i.test(instruction)) return "SECTION_STRUCTURE";
+  return "SECTION_CONTENT";
+}
+
 function editRequestScope(instruction: string): "page" | "site" {
-  return /\b(arabic|rtl|whole site|all pages|every page|navigation|add (an )?(about|new) page|site theme|site name|language)\b/i
-    .test(instruction)
+  const intent = editRequestIntent(instruction);
+  return intent === "SITE_LANGUAGE" || intent === "SITE_THEME" || intent === "GLOBAL_NAV" || intent === "PAGE_STRUCTURE"
     ? "site"
     : "page";
 }
@@ -1960,6 +1972,7 @@ export const websiteAgentHandler = async (req: Request) => {
         ? body.currentPageId
         : undefined;
       const scope = editRequestScope(instruction);
+      const intent = editRequestIntent(instruction);
       const contextStartedAt = performance.now();
       const loaded = await loadEditContext(
         admin,
@@ -1976,7 +1989,7 @@ export const websiteAgentHandler = async (req: Request) => {
         firstCandidate = normalizeEditPlan(
           await websiteAgentModel.generateStructuredPlan({
             prompt: instruction,
-            system: editSystemInstruction(),
+            system: editSystemInstruction(intent),
             context: {
               currentPageId: typeof body.currentPageId === "string" &&
                   loaded.pageIds.has(body.currentPageId)
@@ -2013,7 +2026,7 @@ export const websiteAgentHandler = async (req: Request) => {
           repairCandidate = normalizeEditPlan(
             await websiteAgentModel.generateStructuredPlan({
               prompt: instruction,
-              system: editSystemInstruction(),
+              system: editSystemInstruction(intent),
               context: {
                 currentPageId: typeof body.currentPageId === "string" &&
                     loaded.pageIds.has(body.currentPageId)
@@ -2081,6 +2094,7 @@ export const websiteAgentHandler = async (req: Request) => {
         operation_count: plan.operations.length,
         proposal_id: data.id,
         scope,
+        intent,
         context_load_ms: contextLoadMs,
         model_generation_ms: modelGenerationMs,
         validation_ms: 0,
@@ -2167,6 +2181,8 @@ export const websiteAgentEditPlanTest = {
   normalizeEditPlan,
   validateEditPlan,
   editRepairInstruction,
+  editRequestIntent,
+  editRequestScope,
 };
 
 if (import.meta.main) Deno.serve(websiteAgentHandler);

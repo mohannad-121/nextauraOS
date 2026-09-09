@@ -186,6 +186,17 @@ Deno.test("Arabic RTL site-wide edit validates against target-specific contracts
   );
 });
 
+Deno.test("Arabic language requests always receive site-wide context", () => {
+  assert(
+    websiteAgentEditPlanTest.editRequestIntent("حوّل الموقع كله للعربي وخليه RTL") === "SITE_LANGUAGE",
+    "Arabic site-language intent was not classified",
+  );
+  assert(
+    websiteAgentEditPlanTest.editRequestScope("حوّل الموقع كله للعربي وخليه RTL") === "site",
+    "Arabic site-language request was incorrectly scoped to one page",
+  );
+});
+
 Deno.test("normalization removes only unambiguous blank optional URLs", () => {
   const normalized = normalizeEditPlan({
     version: 1,
