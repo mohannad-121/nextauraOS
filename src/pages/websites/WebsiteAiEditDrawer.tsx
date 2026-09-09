@@ -4,7 +4,7 @@ import { websiteBuilderService } from "../../services/websiteBuilderService";
 
 type Proposal = { id: string; expiresAt?: string; createdAt?: string; plan: { summary?: string; operations?: any[] } };
 type TaskStep = { id: string; label: string; status: "pending" | "running" | "completed" | "failed" | "cancelled"; attemptCount: number; maxAttempts: number; operationCount: number; errorSummary?: string | null; proposal?: Proposal | null };
-type AgentTask = { id: string; instruction: string; targetLanguage: "en" | "ar"; status: "planning" | "generating" | "ready_for_review" | "applying" | "applied" | "failed" | "cancelled" | "expired"; totalSteps: number; completedSteps: number; errorSummary?: string | null; steps: TaskStep[] };
+type AgentTask = { id: string; instruction: string; targetLanguage: "en" | "ar"; status: "planning" | "generating" | "ready_for_review" | "applying" | "applied" | "failed" | "conflict" | "cancelled" | "expired"; totalSteps: number; completedSteps: number; errorSummary?: string | null; conflictResources?: Array<{ type: "global" | "page"; id: string }>; steps: TaskStep[] };
 
 const isReviewableProposal = (value: any): value is Proposal => Boolean(value?.id && typeof value.plan?.summary === "string" && Array.isArray(value.plan.operations) && value.plan.operations.length);
 const examples = ["Make this page more premium", "Add an FAQ", "Change colors to black and gold", "Add an About page", "Make the site Arabic"];
@@ -68,9 +68,9 @@ export function WebsiteAiEditDrawer({ open, onClose, organizationId, siteId, cur
         const next = result.task as AgentTask;
         setTask(next);
         if (next.status === "ready_for_review") { setStage(""); await refreshHistory(); break; }
-        if (["failed", "cancelled", "expired", "applied"].includes(next.status)) {
+        if (["failed", "conflict", "cancelled", "expired", "applied"].includes(next.status)) {
           setStage("");
-          if (next.status === "failed") setError(next.errorSummary || "Website AI could not complete this task.");
+          if (["failed", "conflict"].includes(next.status)) setError(next.errorSummary || "Website AI could not complete this task.");
           break;
         }
         await wait(400);
@@ -123,7 +123,17 @@ export function WebsiteAiEditDrawer({ open, onClose, organizationId, siteId, cur
       setNotice(`${response.result.operationCount} change${response.result.operationCount === 1 ? "" : "s"} applied to your draft. Your live site has not changed.`);
       setProposal(null); setTask(null); setInstruction("");
       await refreshHistory();
-    } catch (reason: any) { setError(reason.message || "We couldn't apply this AI suggestion."); }
+    } catch (reason: any) {
+      setError(reason.message || "We couldn't apply this AI suggestion.");
+      if (task) {
+        try {
+          const refreshed = await websiteBuilderService.getEditTask(organizationId, task.id);
+          setTask(refreshed.task);
+        } catch {
+          // Keep the reviewed task visible when a follow-up status refresh fails.
+        }
+      }
+    }
     finally { setStage(""); }
   };
 
@@ -159,6 +169,7 @@ export function WebsiteAiEditDrawer({ open, onClose, organizationId, siteId, cur
           <div className="flex items-center justify-between gap-3"><div><p className="text-sm font-semibold">{task.targetLanguage === "ar" ? "Arabic site conversion" : "English site conversion"}</p><p className="mt-1 text-xs text-slate-400">{completed} of {task.totalSteps} steps complete</p></div><span className="text-sm font-bold text-violet-200">{progress}%</span></div>
           <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-violet-400 transition-[width]" style={{ width: `${progress}%` }} /></div>
           <ol className="mt-4 space-y-2">{task.steps.map((step) => <li key={step.id} className="flex items-start gap-2 text-sm"><span className="mt-0.5 text-violet-300">{step.status === "completed" ? <Check className="h-4 w-4" /> : step.status === "running" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Circle className="h-4 w-4" />}</span><span className={step.status === "pending" ? "text-slate-400" : "text-slate-100"}>{step.label}{step.status === "failed" && <span className="block text-xs text-red-200">{step.errorSummary}</span>}</span></li>)}</ol>
+          {task.status === "conflict" && <div className="mt-4 rounded-lg border border-amber-300/20 bg-amber-400/10 p-3 text-xs text-amber-100"><p>This website changed while AI was preparing your edits.</p><ul className="mt-2 list-disc space-y-1 pl-4">{(task.conflictResources || []).map((resource) => <li key={`${resource.type}-${resource.id}`}>{resource.type === "global" ? "Global site content" : pages.find((page) => page.id === resource.id)?.name || "A website page"}</li>)}</ul></div>}
         </section>}
         {!reviewReady && !task ? <>
           {hasUnsavedChanges && <div className="mt-4 rounded-xl border border-amber-300/20 bg-amber-400/10 p-3 text-sm text-amber-100"><p>Save your current changes before using AI.</p><button onClick={() => void onSaveBeforeGenerate()} disabled={Boolean(stage)} className="mt-2 rounded-lg bg-amber-200 px-3 py-1.5 text-xs font-bold text-slate-950 disabled:opacity-60">Save &amp; Continue</button></div>}
@@ -174,7 +185,7 @@ export function WebsiteAiEditDrawer({ open, onClose, organizationId, siteId, cur
         </> : null}
       </div>
       <footer className="flex flex-col-reverse gap-2 border-t border-white/10 p-4 sm:flex-row sm:flex-wrap sm:justify-end">
-        {reviewReady ? <><button onClick={resetReview} disabled={Boolean(stage)} className="rounded-lg px-4 py-2 text-sm font-semibold hover:bg-white/10">Regenerate</button><button onClick={close} disabled={stage === "applying"} className="rounded-lg px-4 py-2 text-sm font-semibold hover:bg-white/10">Cancel</button><button onClick={() => void apply()} disabled={Boolean(stage)} className="inline-flex items-center justify-center gap-2 rounded-lg bg-violet-400 px-4 py-2 text-sm font-bold text-slate-950 disabled:opacity-60">{stage === "applying" && <Loader2 className="h-4 w-4 animate-spin" />}{stage === "applying" ? "Applying changes…" : `Apply ${operationCards.length} Changes`}</button></> : task?.status === "failed" ? <><button onClick={() => void cancelTask()} className="rounded-lg px-4 py-2 text-sm font-semibold hover:bg-white/10">Cancel task</button><button onClick={() => void resumeTask()} className="inline-flex items-center justify-center gap-2 rounded-lg bg-violet-400 px-4 py-2 text-sm font-bold text-slate-950"><RotateCcw className="h-4 w-4" />Retry task</button></> : task && ["planning", "generating"].includes(task.status) ? <button onClick={() => void cancelTask()} className="rounded-lg border border-white/10 px-4 py-2 text-sm font-semibold hover:bg-white/10">Cancel task</button> : <button onClick={() => void generate()} disabled={!instruction.trim() || hasUnsavedChanges || Boolean(stage)} className="inline-flex items-center justify-center gap-2 rounded-lg bg-violet-400 px-4 py-2 text-sm font-bold text-slate-950 disabled:opacity-60">{stage === "generating" && <Loader2 className="h-4 w-4 animate-spin" />}Generate changes</button>}
+        {reviewReady ? <><button onClick={resetReview} disabled={Boolean(stage)} className="rounded-lg px-4 py-2 text-sm font-semibold hover:bg-white/10">Regenerate</button><button onClick={close} disabled={stage === "applying"} className="rounded-lg px-4 py-2 text-sm font-semibold hover:bg-white/10">Cancel</button><button onClick={() => void apply()} disabled={Boolean(stage)} className="inline-flex items-center justify-center gap-2 rounded-lg bg-violet-400 px-4 py-2 text-sm font-bold text-slate-950 disabled:opacity-60">{stage === "applying" && <Loader2 className="h-4 w-4 animate-spin" />}{stage === "applying" ? "Applying changes…" : `Apply ${operationCards.length} Changes`}</button></> : task && ["failed", "conflict"].includes(task.status) ? <><button onClick={() => void cancelTask()} className="rounded-lg px-4 py-2 text-sm font-semibold hover:bg-white/10">Cancel task</button><button onClick={() => void resumeTask()} className="inline-flex items-center justify-center gap-2 rounded-lg bg-violet-400 px-4 py-2 text-sm font-bold text-slate-950"><RotateCcw className="h-4 w-4" />{task.status === "conflict" ? "Recheck changes" : "Retry task"}</button></> : task && ["planning", "generating"].includes(task.status) ? <button onClick={() => void cancelTask()} className="rounded-lg border border-white/10 px-4 py-2 text-sm font-semibold hover:bg-white/10">Cancel task</button> : <button onClick={() => void generate()} disabled={!instruction.trim() || hasUnsavedChanges || Boolean(stage)} className="inline-flex items-center justify-center gap-2 rounded-lg bg-violet-400 px-4 py-2 text-sm font-bold text-slate-950 disabled:opacity-60">{stage === "generating" && <Loader2 className="h-4 w-4 animate-spin" />}Generate changes</button>}
       </footer>
     </aside>
   </div>;

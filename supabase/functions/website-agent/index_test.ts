@@ -324,3 +324,46 @@ Deno.test("translation contract preserves non-text values and rejects shape drif
   }
   assert(rejected);
 });
+
+Deno.test("task stale detection rebases version-only drift with identical content", () => {
+  const conflicts = websiteAgentEditPlanTest.taskBaselineConflicts(
+    {
+      global_version: 2,
+      global_hash: "same-global",
+      pages: { [pageId]: 4 },
+      page_hashes: { [pageId]: "same-page" },
+    },
+    {
+      global_version: 3,
+      global_hash: "same-global",
+      pages: { [pageId]: 5 },
+      page_hashes: { [pageId]: "same-page" },
+    },
+  );
+  assert(conflicts.length === 0, "No-op version drift must be safely rebasable");
+});
+
+Deno.test("task stale detection preserves genuine page and global conflicts", () => {
+  const conflicts = websiteAgentEditPlanTest.taskBaselineConflicts(
+    {
+      global_version: 2,
+      global_hash: "old-global",
+      pages: { [pageId]: 4 },
+      page_hashes: { [pageId]: "old-page" },
+    },
+    {
+      global_version: 3,
+      global_hash: "new-global",
+      pages: { [pageId]: 5 },
+      page_hashes: { [pageId]: "new-page" },
+    },
+  );
+  assert(
+    conflicts.some((item) => item.type === "global"),
+    "Global content mutation must conflict",
+  );
+  assert(
+    conflicts.some((item) => item.type === "page" && item.id === pageId),
+    "Page content mutation must conflict",
+  );
+});

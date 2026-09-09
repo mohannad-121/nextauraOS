@@ -28,7 +28,16 @@ const imageMimes = new Set(["image/png", "image/jpeg", "image/webp"]);
 const maxImageBytes = 10 * 1024 * 1024;
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value) && typeof value === "object" && !Array.isArray(value);
-const uuid = (value: unknown) =>
+const canonicalJson = (value: unknown): string => {
+  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
+  if (isRecord(value)) {
+    return `{${Object.keys(value).sort().map((key) =>
+      `${JSON.stringify(key)}:${canonicalJson(value[key])}`
+    ).join(",")}}`;
+  }
+  return JSON.stringify(value);
+};
+const uuid = (value: unknown): value is string =>
   typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(value);
 const safeUrl = (value: unknown) =>
   typeof value === "string" && /^(https?:\/\/|mailto:|tel:|#|\/)/i.test(value);
@@ -411,7 +420,7 @@ function validateDocument(value: unknown) {
       !sectionTypes.has(String(section.type)) ||
       !isRecord(section.props ?? {}) ||
       !isRecord(section.style ?? {}) ||
-      !validVisualStyle(section.style) ||
+      !validVisualStyle(section.style as Record<string, unknown>) ||
       Object.keys(section.props ?? {}).length > 40 ||
       Object.keys(section.style ?? {}).length > 40 ||
       /<\/?script|on[a-z]+\s*=|javascript:|<iframe/i.test(
@@ -420,10 +429,11 @@ function validateDocument(value: unknown) {
       JSON.stringify(section).length > 16384
     )
       throw new Error("Website document contains unsupported content.");
-    const items = Array.isArray(section.props.items)
-      ? section.props.items
-      : Array.isArray(section.props.images)
-        ? section.props.images
+    const candidate = section as Record<string, any>;
+    const items = Array.isArray(candidate.props.items)
+      ? candidate.props.items
+      : Array.isArray(candidate.props.images)
+        ? candidate.props.images
         : [];
     if (
       limits[String(section.type)] !== undefined &&
@@ -554,7 +564,7 @@ async function siteFor(admin: any, organizationId: string, siteId: string) {
   return data;
 }
 
-Deno.serve(async (req) => {
+export const websiteBuilderHandler = async (req: Request) => {
   if (req.method === "OPTIONS")
     return new Response("ok", { headers: corsHeaders });
   let operation = "unknown";
@@ -876,13 +886,24 @@ Deno.serve(async (req) => {
       );
       const { data: current, error } = await admin
         .from("website_pages")
-        .select("draft_version")
+        .select("id,draft_document,draft_version,updated_at")
         .eq("id", body.pageId)
         .eq("site_id", siteId)
         .eq("organization_id", organizationId)
         .maybeSingle();
       if (error || !current)
         return json({ success: false, error: "Page not found." }, 404);
+      if (canonicalJson(current.draft_document) === canonicalJson(document)) {
+        return json({
+          success: true,
+          noChange: true,
+          page: {
+            id: current.id,
+            draft_version: current.draft_version,
+            updated_at: current.updated_at,
+          },
+        });
+      }
       if (
         body.expectedVersion !== undefined &&
         Number(body.expectedVersion) !== current.draft_version
@@ -940,6 +961,7 @@ Deno.serve(async (req) => {
       const locale = String(body.defaultLocale || site.default_locale);
       const rawPublicSlug = String(body.publicSlug || site.public_slug);
       const publicSlug = slugify(rawPublicSlug);
+      const faviconAssetId = body.faviconAssetId || null;
       if (
         !name ||
         name.length > 120 ||
@@ -949,13 +971,22 @@ Deno.serve(async (req) => {
         !/^[a-z]{2,3}(-[A-Z]{2})?$/.test(locale)
       )
         throw new Error("Site settings are invalid.");
+      if (
+        name === site.name &&
+        publicSlug === site.public_slug &&
+        locale === site.default_locale &&
+        faviconAssetId === site.favicon_asset_id &&
+        canonicalJson(globals) === canonicalJson(site.global_sections)
+      ) {
+        return json({ success: true, noChange: true, site });
+      }
       const { data, error } = await admin
         .from("website_sites")
         .update({
           name,
           public_slug: publicSlug,
           default_locale: locale,
-          favicon_asset_id: body.faviconAssetId || null,
+          favicon_asset_id: faviconAssetId,
           global_sections: globals,
           global_version: site.global_version + 1,
         })
@@ -985,11 +1016,12 @@ Deno.serve(async (req) => {
       if (error) throw error;
       const assets = await Promise.all(
         (data || []).map(async (asset: any) => {
-          const { data: path } = await admin
+          const { data: path, error: pathError } = await admin
             .from("website_assets")
             .select("storage_path")
             .eq("id", asset.id)
             .single();
+          if (pathError || !path) throw pathError || new Error("Website asset not found.");
           const { data: signed } = await admin.storage
             .from("website-assets")
             .createSignedUrl(path.storage_path, 3600);
@@ -1200,4 +1232,8 @@ Deno.serve(async (req) => {
     });
     return json({ success: false, error: safeFailure(operation, error) }, 400);
   }
-});
+};
+
+export const websiteBuilderTest = { canonicalJson };
+
+if (import.meta.main) Deno.serve(websiteBuilderHandler);

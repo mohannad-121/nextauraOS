@@ -1932,6 +1932,7 @@ async function taskView(admin: any, task: any) {
     totalSteps: task.total_steps,
     completedSteps: task.completed_steps,
     errorSummary: task.error_summary,
+    conflictResources: Array.isArray(task.conflict_resources) ? task.conflict_resources : [],
     expiresAt: task.expires_at,
     createdAt: task.created_at,
     steps: (steps || []).map((step: any) => ({
@@ -1970,6 +1971,56 @@ async function loadOwnedTask(
     .eq("created_by", userId).maybeSingle();
   if (error) throw error;
   if (!data) throw new Error("Website AI task not found.");
+  return data;
+}
+
+function taskBaselineConflicts(base: any, current: any) {
+  const conflicts: Array<{ type: "global" | "page"; id: string }> = [];
+  const basePages = record(base?.pages) ? base.pages : {};
+  const currentPages = record(current?.pages) ? current.pages : {};
+  const baseHashes = record(base?.page_hashes) ? base.page_hashes : null;
+  const currentHashes = record(current?.page_hashes) ? current.page_hashes : null;
+  if (
+    typeof base?.global_hash === "string" && typeof current?.global_hash === "string"
+      ? base.global_hash !== current.global_hash
+      : Number(base?.global_version) !== Number(current?.global_version)
+  ) conflicts.push({ type: "global", id: "global" });
+  const pageIds = new Set([...Object.keys(basePages), ...Object.keys(currentPages)]);
+  for (const pageId of pageIds) {
+    const changed = !(pageId in basePages) || !(pageId in currentPages) ||
+      (baseHashes && currentHashes
+        ? baseHashes[pageId] !== currentHashes[pageId]
+        : Number(basePages[pageId]) !== Number(currentPages[pageId]));
+    if (changed) conflicts.push({ type: "page", id: pageId });
+  }
+  return conflicts;
+}
+
+async function currentTaskBaseline(admin: any, task: any) {
+  const { data, error } = await admin.rpc("website_agent_content_baseline", {
+    p_organization_id: task.organization_id,
+    p_site_id: task.site_id,
+    p_actor_id: task.created_by,
+  });
+  if (error) throw error;
+  return data;
+}
+
+async function finalizeTaskForReview(admin: any, task: any) {
+  const current = await currentTaskBaseline(admin, task);
+  const conflicts = taskBaselineConflicts(task.base_versions, current);
+  const { data, error } = await admin.from("website_agent_tasks").update({
+    status: conflicts.length ? "conflict" : "ready_for_review",
+    base_versions: conflicts.length ? task.base_versions : current,
+    conflict_resources: conflicts,
+    completed_steps: task.total_steps,
+    error_summary: conflicts.length
+      ? "This website changed while AI was preparing your edits."
+      : null,
+    updated_at: new Date().toISOString(),
+  }).eq("id", task.id).in("status", ["planning", "generating", "ready_for_review"])
+    .select("*").single();
+  if (error) throw error;
   return data;
 }
 
@@ -2021,6 +2072,11 @@ async function startSiteLanguageTask(
       });
     }
   }
+  const { data: baseline, error: baselineError } = await admin.rpc(
+    "website_agent_content_baseline",
+    { p_organization_id: organizationId, p_site_id: siteId, p_actor_id: userId },
+  );
+  if (baselineError) throw baselineError;
   const { data: task, error: taskError } = await admin.from("website_agent_tasks")
     .insert({
       organization_id: organizationId,
@@ -2029,10 +2085,7 @@ async function startSiteLanguageTask(
       instruction,
       intent: "SITE_LANGUAGE",
       target_language: targetLanguageForInstruction(instruction),
-      base_versions: {
-        global_version: site.global_version,
-        pages: Object.fromEntries((pages || []).map((page: any) => [page.id, page.draft_version])),
-      },
+      base_versions: baseline,
       status: "generating",
       total_steps: stepInputs.length,
     }).select("*").single();
@@ -2061,7 +2114,6 @@ async function persistTaskProposal(
   task: any,
   step: any,
   plan: Plan,
-  baseVersions: any,
 ) {
   const { data, error } = await admin.from("website_agent_edit_plans").insert({
     organization_id: task.organization_id,
@@ -2069,7 +2121,7 @@ async function persistTaskProposal(
     created_by: task.created_by,
     instruction: `${task.instruction} · ${step.label}`,
     plan_json: plan,
-    base_versions: baseVersions,
+    base_versions: task.base_versions,
     expires_at: task.expires_at,
   }).select("id").single();
   if (error) throw error;
@@ -2223,11 +2275,7 @@ async function runTaskStep(admin: any, task: any) {
     const { count } = await admin.from("website_agent_task_steps").select("id", { count: "exact", head: true })
       .eq("task_id", task.id).neq("status", "completed");
     if (!count) {
-      const { data: ready, error } = await admin.from("website_agent_tasks")
-        .update({ status: "ready_for_review", completed_steps: task.total_steps, updated_at: new Date().toISOString(), error_summary: null })
-        .eq("id", task.id).select("*").single();
-      if (error) throw error;
-      return ready;
+      return await finalizeTaskForReview(admin, task);
     }
     return task;
   }
@@ -2238,10 +2286,10 @@ async function runTaskStep(admin: any, task: any) {
   if (claimError) throw claimError;
   if (!claimed) return task;
   try {
-    const { loaded, plan } = await buildTaskStepPlan(admin, task, claimed);
+    const { plan } = await buildTaskStepPlan(admin, task, claimed);
     const currentTask = await loadOwnedTask(admin, task.id, task.organization_id, task.created_by);
     if (currentTask.status === "cancelled") return currentTask;
-    const proposalId = plan ? await persistTaskProposal(admin, task, claimed, plan, loaded.baseVersions) : null;
+    const proposalId = plan ? await persistTaskProposal(admin, task, claimed, plan) : null;
     const { error: completeError } = await admin.from("website_agent_task_steps").update({
       status: "completed",
       proposal_id: proposalId,
@@ -2253,9 +2301,12 @@ async function runTaskStep(admin: any, task: any) {
     const { count: completed } = await admin.from("website_agent_task_steps").select("id", { count: "exact", head: true })
       .eq("task_id", task.id).eq("status", "completed");
     const finished = completed === task.total_steps;
+    if (finished) {
+      return await finalizeTaskForReview(admin, { ...task, completed_steps: completed || 0 });
+    }
     const { data: updated, error: updateError } = await admin.from("website_agent_tasks").update({
       completed_steps: completed || 0,
-      status: finished ? "ready_for_review" : "generating",
+      status: "generating",
       updated_at: new Date().toISOString(),
       error_summary: null,
     }).eq("id", task.id).in("status", ["planning", "generating"]).select("*").single();
@@ -2306,6 +2357,7 @@ function publicError(error: unknown, operation = "") {
     "Website AI task cannot be resumed.",
     "This Website AI task is not ready to apply.",
     "This Website AI task expired. Start it again.",
+    "This website changed while AI was preparing your edits.",
   ]);
   if (safeMessages.has(message)) return message;
   return operation === "generateEditPlan"
@@ -2351,7 +2403,7 @@ export const websiteAgentHandler = async (req: Request) => {
       const { data, error } = await admin.from("website_agent_tasks").select("*")
         .eq("organization_id", organizationId).eq("site_id", siteId)
         .eq("created_by", user.id)
-        .in("status", ["planning", "generating", "ready_for_review", "failed"])
+        .in("status", ["planning", "generating", "ready_for_review", "failed", "conflict"])
         .gt("expires_at", new Date().toISOString())
         .order("created_at", { ascending: false }).limit(1).maybeSingle();
       if (error) throw error;
@@ -2393,14 +2445,16 @@ export const websiteAgentHandler = async (req: Request) => {
       const taskId = String(body.taskId || "");
       if (!uuid(taskId)) throw new Error("Website AI task not found.");
       const task = await loadOwnedTask(admin, taskId, organizationId, user.id);
-      if (task.status !== "failed" || task.expires_at <= new Date().toISOString()) {
+      if (!["failed", "conflict"].includes(task.status) || task.expires_at <= new Date().toISOString()) {
         throw new Error("Website AI task cannot be resumed.");
       }
-      await admin.from("website_agent_task_steps").update({
-        status: "pending", attempt_count: 0, error_summary: null, updated_at: new Date().toISOString(),
-      }).eq("task_id", task.id).eq("status", "failed");
+      if (task.status === "failed") {
+        await admin.from("website_agent_task_steps").update({
+          status: "pending", attempt_count: 0, error_summary: null, updated_at: new Date().toISOString(),
+        }).eq("task_id", task.id).eq("status", "failed");
+      }
       const { data, error } = await admin.from("website_agent_tasks").update({
-        status: "generating", error_summary: null, updated_at: new Date().toISOString(),
+        status: "generating", error_summary: null, conflict_resources: [], updated_at: new Date().toISOString(),
       }).eq("id", task.id).select("*").single();
       if (error) throw error;
       return json({ success: true, task: await taskView(admin, data) });
@@ -2416,6 +2470,18 @@ export const websiteAgentHandler = async (req: Request) => {
       if (error) {
         if (String(error.message).includes("AI_TASK_NOT_READY")) throw new Error("This Website AI task is not ready to apply.");
         if (String(error.message).includes("AI_TASK_EXPIRED")) throw new Error("This Website AI task expired. Start it again.");
+        if (String(error.message).includes("AI_EDIT_STALE_TASK")) {
+          const task = await loadOwnedTask(admin, taskId, organizationId, user.id);
+          const current = await currentTaskBaseline(admin, task);
+          const conflicts = taskBaselineConflicts(task.base_versions, current);
+          await admin.from("website_agent_tasks").update({
+            status: "conflict",
+            conflict_resources: conflicts,
+            error_summary: "This website changed while AI was preparing your edits.",
+            updated_at: new Date().toISOString(),
+          }).eq("id", task.id);
+          throw new Error("This website changed while AI was preparing your edits.");
+        }
         if (String(error.message).includes("AI_EDIT_STALE_PROPOSAL")) throw new Error("This website changed after the AI suggestion was created. Generate the suggestion again.");
         throw error;
       }
@@ -2640,6 +2706,11 @@ export const websiteAgentHandler = async (req: Request) => {
       }
       const modelGenerationMs = Math.round(performance.now() - modelStartedAt);
       const persistenceStartedAt = performance.now();
+      const { data: authoritativeBase, error: baselineError } = await admin.rpc(
+        "website_agent_content_baseline",
+        { p_organization_id: organizationId, p_site_id: siteId, p_actor_id: user.id },
+      );
+      if (baselineError) throw baselineError;
       const { data, error } = await admin.from("website_agent_edit_plans")
         .insert({
           organization_id: organizationId,
@@ -2647,7 +2718,7 @@ export const websiteAgentHandler = async (req: Request) => {
           created_by: user.id,
           instruction,
           plan_json: plan,
-          base_versions: loaded.baseVersions,
+          base_versions: authoritativeBase,
         }).select("id,expires_at,plan_json,created_at").single();
       if (error) throw error;
       const persistenceMs = Math.round(performance.now() - persistenceStartedAt);
@@ -2758,6 +2829,7 @@ export const websiteAgentEditPlanTest = {
   targetLanguageForInstruction,
   translationShape,
   mergeTranslatedShape,
+  taskBaselineConflicts,
 };
 
 if (import.meta.main) Deno.serve(websiteAgentHandler);
