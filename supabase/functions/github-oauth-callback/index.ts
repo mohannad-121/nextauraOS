@@ -1,11 +1,12 @@
 import { adminClient } from '../_shared/billing.ts';
 import { encryptIntegrationCredential, exchangeGithubCode, githubAccount } from '../_shared/github-oauth.ts';
 import { sha256 } from '../_shared/google-oauth.ts';
+import { canonicalAppUrl } from '../_shared/canonical-app-origin.ts';
 
 const redirect = (result: 'connected' | 'error') => {
-  const origin = (Deno.env.get('NEXTAURA_APP_URL') || Deno.env.get('APP_URL') || '').replace(/\/$/, '');
-  if (!/^https?:\/\/(localhost(?::\d+)?|[a-z0-9.-]+)$/i.test(origin)) throw new Error('APP_URL is not configured.');
-  return `${origin}/?github=${result}`;
+  const url = new URL(canonicalAppUrl('/'));
+  url.searchParams.set('github', result);
+  return url.toString();
 };
 Deno.serve(async (request) => {
   if (request.method !== 'GET') return new Response('Method not allowed', { status: 405 });

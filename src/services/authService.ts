@@ -1,5 +1,6 @@
 import { supabase, isSupabaseConfigured } from './supabaseClient';
 import type { User } from '../types';
+import { canonicalAppOrigin } from '../utils/canonicalAppOrigin';
 
 export const authService = {
   async getSession() {
@@ -13,7 +14,7 @@ export const authService = {
     if (!isSupabaseConfigured()) {
       return { user: null, session: null };
     }
-    const redirectUrl = `${window.location.origin}/auth/callback`;
+    const redirectUrl = `${canonicalAppOrigin()}/auth/callback`;
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {

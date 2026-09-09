@@ -1,4 +1,5 @@
 import { CheckoutEventNames, initializePaddle, type Paddle } from '@paddle/paddle-js';
+import { canonicalAppOrigin } from '../utils/canonicalAppOrigin';
 
 let paddlePromise: Promise<Paddle | undefined> | null = null;
 let paddleInstance: Paddle | undefined;
@@ -35,6 +36,6 @@ export async function openPaddleCheckout(request: PaddleCheckoutRequest) {
     items: [{ priceId: request.priceId, quantity: request.quantity }],
     ...(request.customerEmail ? { customer: { email: request.customerEmail } } : {}),
     customData: request.customData,
-    settings: { variant: 'one-page', successUrl: `${window.location.origin}/billing/success` },
+    settings: { variant: 'one-page', successUrl: `${canonicalAppOrigin()}/billing/success` },
   });
 }

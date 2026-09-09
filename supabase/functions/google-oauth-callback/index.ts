@@ -1,10 +1,11 @@
 import { adminClient } from '../_shared/billing.ts';
 import { encryptIntegrationCredential, exchangeGoogleCode, googleAccount, sha256 } from '../_shared/google-oauth.ts';
+import { canonicalAppUrl } from '../_shared/canonical-app-origin.ts';
 
 const safeRedirect = (result: 'connected' | 'error') => {
-  const origin = (Deno.env.get('NEXTAURA_APP_URL') || Deno.env.get('APP_URL') || '').replace(/\/$/, '');
-  if (!/^https?:\/\/(localhost(?::\d+)?|[a-z0-9.-]+)$/i.test(origin)) throw new Error('APP_URL is not configured.');
-  return `${origin}/?google=${result}`;
+  const url = new URL(canonicalAppUrl('/'));
+  url.searchParams.set('google', result);
+  return url.toString();
 };
 const audit = async (admin: any, organizationId: string, userId: string, action: string, connectionId: string) => { await admin.from('audit_logs').insert({ organization_id: organizationId, user_name: userId, action, details: JSON.stringify({ connection_id: connectionId, provider: 'google' }) }); };
 
