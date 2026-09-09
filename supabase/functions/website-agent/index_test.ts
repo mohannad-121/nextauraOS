@@ -111,6 +111,45 @@ Deno.test("simple Hero edit preserves builder-managed media and validates", () =
   );
 });
 
+Deno.test("translation edits preserve bounded legacy section spacing tokens", () => {
+  const legacyContext = context();
+  legacyContext.sections.get(heroId).style.paddingY = "large";
+  const plan = validateEditPlan({
+    version: 1,
+    summary: "Translate legacy Hero copy",
+    operations: [{
+      op: "update_section",
+      pageId,
+      sectionId: heroId,
+      changes: { props: { heading: "Updated heading" } },
+    }],
+  }, legacyContext);
+  assert(plan.operations.length === 1);
+});
+
+Deno.test("translation edits preserve bounded legacy global visual tokens", () => {
+  const legacyContext = context();
+  legacyContext.globalSections.header.style = {
+    backgroundColor: "#0a0a0a",
+    textColor: "#f5f5f5",
+    paddingY: "medium",
+    preset: "minimal",
+    background: "solid",
+    cardStyle: "flat",
+    animation: "none",
+    animationDelayPreset: "none",
+  } as any;
+  const plan = validateEditPlan({
+    version: 1,
+    summary: "Translate legacy header copy",
+    operations: [{
+      op: "update_global_header",
+      changes: { props: { ctaLabel: "Updated label" } },
+    }],
+  }, legacyContext);
+  assert(plan.operations.length === 1);
+});
+
 Deno.test("Arabic RTL site-wide edit validates against target-specific contracts", () => {
   const raw = {
     version: 1,
@@ -289,40 +328,189 @@ Deno.test("complexity router keeps simple edits fast and routes site language ta
   );
 });
 
-Deno.test("translation contract preserves non-text values and rejects shape drift", () => {
+Deno.test("service translation includes every nested title and description", () => {
   const props = {
-    heading: "Welcome",
-    primaryUrl: "/contact",
-    items: [{ title: "Fast", description: "Built for teams", url: "/teams" }],
+    heading: "Culinary Offerings",
+    items: [
+      { title: "Artisanal Cocktails", description: "Handcrafted with rare botanicals.", target: "/cocktails" },
+      { title: "Private Dining", description: "Intimate gatherings and celebrations.", target: "/private" },
+      { title: "Chef's Tasting Menu", description: "A multi-course sensory exploration.", target: "/menu" },
+    ],
     columns: 3,
   };
-  const shape = websiteAgentEditPlanTest.translationShape(props) as any;
-  assert(shape.heading === "Welcome");
-  assert(shape.primaryUrl === undefined);
-  assert(shape.items[0].url === undefined);
-  const merged = websiteAgentEditPlanTest.mergeTranslatedShape(
-    props,
-    shape,
-    {
-      heading: "مرحباً",
-      items: [{ title: "سريع", description: "مصمم للفرق" }],
-    },
-  ) as any;
-  assert(merged.heading === "مرحباً");
-  assert(merged.primaryUrl === "/contact");
-  assert(merged.items[0].url === "/teams");
+  const shape = websiteAgentEditPlanTest.translationShapeForSection("services", props) as any;
+  assert(shape.heading === "Culinary Offerings");
+  assert(shape.items.length === 3);
+  assert(shape.items[0].title === "Artisanal Cocktails");
+  assert(shape.items[2].description === "A multi-course sensory exploration.");
+  assert(shape.items[0].target === undefined);
+  const merged = websiteAgentEditPlanTest.mergeTranslatedShape(props, shape, {
+    heading: "عروض الطهي",
+    items: [
+      { title: "كوكتيلات حرفية", description: "مصنوعة بمكونات نباتية نادرة." },
+      { title: "تناول طعام خاص", description: "للتجمعات والاحتفالات الحميمة." },
+      { title: "قائمة تذوق الشيف", description: "رحلة حسية متعددة الأطباق." },
+    ],
+  }) as any;
+  assert(merged.items[0].title === "كوكتيلات حرفية");
+  assert(merged.items[0].target === "/cocktails");
   assert(merged.columns === 3);
   let rejected = false;
   try {
     websiteAgentEditPlanTest.mergeTranslatedShape(
       props,
       shape,
-      { heading: "مرحباً", items: [] },
+      { heading: "عروض", items: [] },
     );
   } catch {
     rejected = true;
   }
   assert(rejected);
+});
+
+Deno.test("testimonial translation covers headings and quotes but preserves people", () => {
+  const props = {
+    heading: "Guest Reflections",
+    items: [{
+      author: "Eleanor Vance",
+      quote: "Every dish was an absolute masterpiece.",
+      role: "Restaurant guest",
+    }],
+  };
+  const shape = websiteAgentEditPlanTest.translationShapeForSection("testimonials", props) as any;
+  assert(shape.heading === "Guest Reflections");
+  assert(shape.items[0].quote === "Every dish was an absolute masterpiece.");
+  assert(shape.items[0].role === "Restaurant guest");
+  assert(shape.items[0].author === undefined, "Personal names must stay protected");
+});
+
+Deno.test("pricing, team, and gallery nested translation fields are complete", () => {
+  const pricing = websiteAgentEditPlanTest.translationShapeForSection("pricing", {
+    heading: "Plans",
+    items: [{
+      name: "Starter",
+      description: "For growing teams",
+      price: "$49",
+      period: "/month",
+      features: ["Email support", "Priority access"],
+      ctaLabel: "Choose plan",
+      target: "/buy",
+    }],
+  }) as any;
+  assert(pricing.items[0].name === "Starter");
+  assert(pricing.items[0].features.length === 2);
+  assert(pricing.items[0].period === "/month");
+  assert(pricing.items[0].price === undefined);
+  assert(pricing.items[0].target === undefined);
+
+  const team = websiteAgentEditPlanTest.translationShapeForSection("team", {
+    heading: "Our team",
+    items: [{ name: "Maya Stone", role: "Head Chef", bio: "Creates memorable menus." }],
+  }) as any;
+  assert(team.items[0].name === undefined);
+  assert(team.items[0].role === "Head Chef");
+  assert(team.items[0].bio === "Creates memorable menus.");
+
+  const gallery = websiteAgentEditPlanTest.translationShapeForSection("gallery", {
+    heading: "Gallery",
+    images: [{ assetId, alt: "Dining room", caption: "An intimate evening" }],
+  }) as any;
+  assert(gallery.images[0].alt === "Dining room");
+  assert(gallery.images[0].caption === "An intimate evening");
+  assert(gallery.images[0].assetId === undefined);
+});
+
+Deno.test("all supported text-bearing sections pass Arabic and English coverage", () => {
+  const fixtures: Record<string, any> = {
+    hero: { eyebrow: "Welcome", heading: "Fine dining", subheading: "A memorable evening", primaryLabel: "Reserve", primaryUrl: "/contact" },
+    text: { heading: "Our story", body: "Hospitality with purpose" },
+    image: { alt: "Elegant dining room", assetId },
+    button_group: { heading: "Ready to visit", buttons: [{ label: "Book now", url: "/contact" }] },
+    features: { heading: "Why visit", subheading: "Crafted with care", items: [{ title: "Rare ingredients", description: "Selected every morning" }] },
+    services: { heading: "Our services", items: [{ title: "Private dining", description: "An intimate celebration" }] },
+    testimonials: { heading: "Guest reflections", items: [{ author: "Eleanor Vance", quote: "A wonderful dining experience", role: "Guest" }] },
+    pricing: { heading: "Menus", items: [{ name: "Tasting menu", description: "Seven courses", price: "$90", period: "per guest", features: ["Seasonal ingredients"], ctaLabel: "Reserve" }] },
+    faq: { heading: "Questions", items: [{ question: "How do I reserve", answer: "Contact our team" }] },
+    contact: { heading: "Contact us", text: "Plan your evening", address: "Golden Boulevard 7", email: "hello@example.com" },
+    gallery: { heading: "Our gallery", images: [{ assetId, alt: "Signature plate", caption: "Chef selection" }] },
+    stats: { heading: "Our story", items: [{ value: "10+", label: "Years of experience" }] },
+    team: { heading: "Our team", items: [{ name: "Maya Stone", role: "Head Chef", bio: "Leads our kitchen" }] },
+  };
+  const translateStrings = (value: any, replacement: string): any =>
+    typeof value === "string"
+      ? replacement
+      : Array.isArray(value)
+        ? value.map((item) => translateStrings(item, replacement))
+        : value && typeof value === "object"
+          ? Object.fromEntries(Object.entries(value).map(([key, child]) => [key, translateStrings(child, replacement)]))
+          : value;
+  for (const [type, props] of Object.entries(fixtures)) {
+    const shape = websiteAgentEditPlanTest.translationShapeForSection(type, props);
+    assert(shape, `${type} produced no translation shape`);
+    const arabic = websiteAgentEditPlanTest.mergeTranslatedShape(props, shape, translateStrings(shape, "نص عربي طبيعي"));
+    assert(
+      websiteAgentEditPlanTest.translationCoverageIssues("ar", websiteAgentEditPlanTest.translationShapeForSection(type, arabic)).length === 0,
+      `${type} retained English after Arabic translation`,
+    );
+    const arabicShape = websiteAgentEditPlanTest.translationShapeForSection(type, arabic);
+    const english = websiteAgentEditPlanTest.mergeTranslatedShape(arabic, arabicShape, translateStrings(arabicShape, "Natural English website copy"));
+    assert(
+      websiteAgentEditPlanTest.translationCoverageIssues("en", websiteAgentEditPlanTest.translationShapeForSection(type, english)).length === 0,
+      `${type} retained Arabic after English translation`,
+    );
+  }
+});
+
+Deno.test("coverage detector performs one bounded repair for untranslated fields", async () => {
+  const bundle = {
+    section: {
+      heading: "Guest Reflections",
+      items: [{ quote: "Every dish was an absolute masterpiece." }],
+    },
+  };
+  let calls = 0;
+  const translated = await websiteAgentEditPlanTest.translatedBundle(
+    "ar",
+    bundle,
+    [],
+    async (_target: "en" | "ar", supplied: Record<string, unknown>, repair = "") => {
+      calls += 1;
+      if (calls === 1) {
+        return { section: { heading: "انطباعات ضيوفنا", items: [{ quote: "Every dish was an absolute masterpiece." }] } };
+      }
+      assert(repair.includes("section.items[0].quote"));
+      assert(Object.keys(supplied).length === 1, "Repair must include only untranslated fields");
+      return { field_0: "كان كل طبق تحفة فنية مطلقة." };
+    },
+  ) as any;
+  assert(calls === 2, "Exactly one coverage repair pass was expected");
+  assert(translated.section.items[0].quote.includes("تحفة"));
+  assert(websiteAgentEditPlanTest.translationCoverageIssues("ar", translated).length === 0);
+});
+
+Deno.test("coverage detector allows explicit brand terms but catches English copy", () => {
+  assert(
+    websiteAgentEditPlanTest.translationCoverageIssues(
+      "ar",
+      { heading: "تجربة راقية في Bella Roma" },
+      ["Bella Roma"],
+    ).length === 0,
+  );
+  const issues = websiteAgentEditPlanTest.translationCoverageIssues(
+    "ar",
+    { heading: "Guest Reflections" },
+  );
+  assert(issues.length === 1 && issues[0].pathLabel === "heading");
+});
+
+Deno.test("new Website Agent plans receive stable server-owned section IDs", () => {
+  const plan = websiteAgentEditPlanTest.assignWebsitePlanSectionIds({
+    pages: [{ sections: [{ type: "services", props: {}, style: {} }] }],
+  }) as any;
+  assert(
+    /^[0-9a-f]{8}-[0-9a-f-]{27,}$/i.test(plan.pages[0].sections[0].id),
+    "Generated section did not receive a UUID",
+  );
 });
 
 Deno.test("task stale detection rebases version-only drift with identical content", () => {

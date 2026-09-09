@@ -236,7 +236,14 @@ const globalSectionSchemas = {
       "variant",
       "mobileOpen",
     ],
-    style: ["backgroundColor", "textColor", "transparent", "variant"],
+    style: [
+      "backgroundColor",
+      "textColor",
+      "transparent",
+      "variant",
+      "paddingY",
+      ...visualStyleKeys,
+    ],
   },
   footer: {
     props: [
@@ -247,7 +254,14 @@ const globalSectionSchemas = {
       "variant",
       "socialLinks",
     ],
-    style: ["backgroundColor", "textColor", "transparent", "variant"],
+    style: [
+      "backgroundColor",
+      "textColor",
+      "transparent",
+      "variant",
+      "paddingY",
+      ...visualStyleKeys,
+    ],
   },
 } as const;
 const themeKeys = [
@@ -279,6 +293,11 @@ const colorKeys = new Set([
   "backgroundColor",
   "textColor",
 ]);
+const legacySectionPaddingY = new Map([
+  ["small", 48],
+  ["medium", 72],
+  ["large", 96],
+]);
 
 function normalizePlan(value: unknown): unknown {
   const clean = (item: unknown, key = ""): unknown => {
@@ -299,6 +318,14 @@ function normalizePlan(value: unknown): unknown {
     }
     if (key === "sections" || "type" in output) {
       if (output.style === undefined) output.style = {};
+    }
+    if (
+      key === "style" && typeof output.paddingY === "string" &&
+      legacySectionPaddingY.has(output.paddingY.toLowerCase())
+    ) {
+      output.paddingY = legacySectionPaddingY.get(
+        output.paddingY.toLowerCase(),
+      );
     }
     if (typeof output.slug === "string" && output.slug === "") {
       output.slug = "/";
@@ -789,6 +816,18 @@ function validateGeneratedPlan(value: unknown, attempt: number): Plan {
   }
 }
 
+function assignWebsitePlanSectionIds(plan: Plan): Plan {
+  const persisted = structuredClone(plan);
+  persisted.pages = persisted.pages.map((page: any) => ({
+    ...page,
+    sections: page.sections.map((section: any) => ({
+      ...section,
+      id: uuid(section.id) ? section.id : crypto.randomUUID(),
+    })),
+  }));
+  return persisted;
+}
+
 type WebsiteAgentRequest = {
   prompt: string;
   businessName?: string;
@@ -1001,7 +1040,9 @@ function validateEditStyle(
     if (
       (["backgroundColor", "textColor"].includes(key) &&
         (typeof value !== "string" || !/^#[0-9a-f]{6}$/i.test(value))) ||
-      (key === "paddingY" && !integer(value, 0, 240)) ||
+      (key === "paddingY" && !integer(value, 0, 240) &&
+        !(typeof value === "string" &&
+          legacySectionPaddingY.has(value.toLowerCase()))) ||
       (key === "alignment" &&
         !["left", "center", "right"].includes(String(value))) ||
       (key === "preset" && !visualPresets.has(String(value))) ||
@@ -1154,6 +1195,7 @@ function validateGlobalSectionState(
   }
   const props = candidate.props;
   const style = candidate.style;
+  validateEditStyle(style, `${path}.style`, "AI_EDIT_INVALID_GLOBAL_SECTION");
   if (
     props.siteName !== undefined &&
     (typeof props.siteName !== "string" || !props.siteName.trim() ||
@@ -1809,28 +1851,85 @@ function editRepairInstruction(
   } Return the ENTIRE corrected edit plan. Keep valid operations, correct or remove only the invalid requested change, use only supplied IDs, and never add publish/release operations.`;
 }
 
-const translationTextKeys = new Set([
-  "eyebrow",
-  "heading",
-  "subheading",
-  "primaryLabel",
-  "secondaryLabel",
-  "body",
-  "alt",
-  "label",
-  "title",
-  "description",
-  "quote",
-  "role",
-  "question",
-  "answer",
-  "text",
-  "address",
-  "caption",
-  "ctaLabel",
-  "copyright",
-  "features",
-]);
+type TranslationPathSegment = string | "*";
+type TranslationPath = readonly TranslationPathSegment[];
+type TranslationCoverageIssue = {
+  path: Array<string | number>;
+  pathLabel: string;
+  value: string;
+};
+
+// This is the single source of truth for Website Builder copy localization.
+// Names/brands, IDs, URLs, assets, layout and numeric values are deliberately
+// absent. Wildcards preserve array length and ordering while selecting only
+// user-visible text inside each item.
+const sectionTranslationFieldMap: Record<string, readonly TranslationPath[]> = {
+  hero: [
+    ["eyebrow"],
+    ["heading"],
+    ["subheading"],
+    ["primaryLabel"],
+    ["secondaryLabel"],
+    ["imageIntent"],
+  ],
+  text: [["heading"], ["body"]],
+  image: [["alt"]],
+  button_group: [["heading"], ["buttons", "*", "label"]],
+  spacer: [],
+  features: [
+    ["eyebrow"],
+    ["heading"],
+    ["subheading"],
+    ["items", "*", "title"],
+    ["items", "*", "description"],
+  ],
+  services: [
+    ["heading"],
+    ["items", "*", "title"],
+    ["items", "*", "description"],
+    ["items", "*", "ctaLabel"],
+  ],
+  testimonials: [
+    ["heading"],
+    ["items", "*", "quote"],
+    ["items", "*", "role"],
+    ["items", "*", "label"],
+  ],
+  pricing: [
+    ["heading"],
+    ["items", "*", "name"],
+    ["items", "*", "description"],
+    ["items", "*", "period"],
+    ["items", "*", "features", "*"],
+    ["items", "*", "ctaLabel"],
+  ],
+  faq: [
+    ["heading"],
+    ["items", "*", "question"],
+    ["items", "*", "answer"],
+  ],
+  contact: [["heading"], ["text"], ["address"]],
+  gallery: [
+    ["heading"],
+    ["images", "*", "alt"],
+    ["images", "*", "caption"],
+    ["items", "*", "alt"],
+    ["items", "*", "title"],
+    ["items", "*", "description"],
+    ["items", "*", "caption"],
+  ],
+  stats: [["heading"], ["items", "*", "label"]],
+  team: [
+    ["heading"],
+    ["items", "*", "role"],
+    ["items", "*", "bio"],
+  ],
+};
+
+const globalTranslationFieldMap = {
+  header: [["ctaLabel"]],
+  footer: [["description"], ["copyright"]],
+} satisfies Record<string, readonly TranslationPath[]>;
 
 function targetLanguageForInstruction(instruction: string): "en" | "ar" {
   if (/\b(english|ltr)\b|الانجليزية|الإنجليزية|بالإنجليزي|بالانجليزي/i.test(instruction)) {
@@ -1839,24 +1938,119 @@ function targetLanguageForInstruction(instruction: string): "en" | "ar" {
   return "ar";
 }
 
-function translationShape(value: unknown, key = ""): unknown {
-  if (typeof value === "string") {
-    return translationTextKeys.has(key) && value.trim() ? value : undefined;
+function hasTranslationContent(value: unknown): boolean {
+  if (typeof value === "string") return Boolean(value.trim());
+  if (Array.isArray(value)) return value.some(hasTranslationContent);
+  return record(value) && Object.values(value).some(hasTranslationContent);
+}
+
+function translationShapeFromPaths(
+  value: unknown,
+  paths: readonly TranslationPath[],
+): unknown {
+  if (paths.some((path) => path.length === 0)) {
+    return typeof value === "string" && value.trim() ? value : undefined;
   }
   if (Array.isArray(value)) {
-    if (!value.length) return undefined;
-    const translated = value.map((item) => translationShape(item, key) ?? {});
-    return translated.some((item) => record(item) && Object.keys(item).length)
-      ? translated
-      : undefined;
+    const childPaths = paths.filter((path) => path[0] === "*").map((path) =>
+      path.slice(1)
+    );
+    if (!childPaths.length || !value.length) return undefined;
+    const result = value.map((item) =>
+      translationShapeFromPaths(item, childPaths) ?? {}
+    );
+    return result.some(hasTranslationContent) ? result : undefined;
   }
   if (!record(value)) return undefined;
   const result: Record<string, unknown> = {};
-  for (const [childKey, child] of Object.entries(value)) {
-    const translated = translationShape(child, childKey);
-    if (translated !== undefined) result[childKey] = translated;
+  for (const key of new Set(paths.map((path) => path[0]).filter((key) => key && key !== "*"))) {
+    if (typeof key !== "string" || !(key in value)) continue;
+    const child = translationShapeFromPaths(
+      value[key],
+      paths.filter((path) => path[0] === key).map((path) => path.slice(1)),
+    );
+    if (child !== undefined) result[key] = child;
   }
   return Object.keys(result).length ? result : undefined;
+}
+
+function translationShapeForSection(type: string, props: unknown): unknown {
+  return translationShapeFromPaths(
+    props,
+    sectionTranslationFieldMap[type] || [],
+  );
+}
+
+function translationShapeForGlobal(
+  type: "header" | "footer",
+  props: unknown,
+): unknown {
+  return translationShapeFromPaths(props, globalTranslationFieldMap[type]);
+}
+
+function translationPathLabel(path: Array<string | number>) {
+  return path.map((segment) => typeof segment === "number" ? `[${segment}]` : segment)
+    .join(".").replaceAll(".[", "[");
+}
+
+function collectTranslationStrings(
+  value: unknown,
+  path: Array<string | number> = [],
+): TranslationCoverageIssue[] {
+  if (typeof value === "string") {
+    return [{ path, pathLabel: translationPathLabel(path), value }];
+  }
+  if (Array.isArray(value)) {
+    return value.flatMap((item, index) =>
+      collectTranslationStrings(item, [...path, index])
+    );
+  }
+  if (!record(value)) return [];
+  return Object.entries(value).flatMap(([key, child]) =>
+    collectTranslationStrings(child, [...path, key])
+  );
+}
+
+function withoutProtectedTranslationText(value: string, protectedTerms: string[]) {
+  let result = value
+    .replace(/https?:\/\/\S+|mailto:\S+|tel:\S+|[\w.+-]+@[\w.-]+\.\w+/giu, " ");
+  for (const term of protectedTerms) {
+    const trimmed = term.trim();
+    if (!trimmed) continue;
+    const escaped = trimmed.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    result = result.replace(new RegExp(escaped, "giu"), " ");
+  }
+  return result;
+}
+
+function translationCoverageIssues(
+  targetLanguage: "en" | "ar",
+  translated: unknown,
+  protectedTerms: string[] = [],
+) {
+  return collectTranslationStrings(translated).filter(({ value }) => {
+    const candidate = withoutProtectedTranslationText(value, protectedTerms);
+    if (targetLanguage === "en") {
+      return (candidate.match(/[\u0600-\u06ff]/g) || []).length >= 2;
+    }
+    const latinWords = candidate.match(/\p{Script=Latin}[\p{Script=Latin}'\u2019-]*/gu) || [];
+    const latinLetters = latinWords.join("").replace(/[^\p{Script=Latin}]/gu, "");
+    return latinWords.length >= 2 || latinLetters.length >= 4;
+  });
+}
+
+function setTranslationPath(
+  root: unknown,
+  path: Array<string | number>,
+  value: string,
+) {
+  const result = structuredClone(root) as any;
+  let cursor = result;
+  for (let index = 0; index < path.length - 1; index += 1) {
+    cursor = cursor[path[index]];
+  }
+  cursor[path[path.length - 1]] = value;
+  return result;
 }
 
 function mergeTranslatedShape(
@@ -2056,7 +2250,10 @@ async function startSiteLanguageTask(
   for (const page of pages || []) {
     const sections = Array.isArray(page.draft_document?.sections) ? page.draft_document.sections : [];
     const ids = sections.filter((section: any) =>
-      uuid(section?.id) && record(translationShape(section?.props))
+      uuid(section?.id) &&
+      record(
+        translationShapeForSection(String(section?.type), section?.props),
+      )
     ).map((section: any) => section.id);
     const chunkCount = Math.max(1, Math.ceil(ids.length / 20));
     for (let chunkIndex = 0; chunkIndex < chunkCount; chunkIndex += 1) {
@@ -2134,8 +2331,8 @@ async function requestTranslation(
   repair = "",
 ) {
   return await websiteAgentModel.generateStructuredPlan({
-    prompt: `Translate every supplied text value to ${targetLanguage === "ar" ? "Arabic" : "English"}.`,
-    system: "You are a bounded website copy translator. Return JSON with exactly the same keys, IDs, object structure, and array lengths as the supplied bundle. Translate string values only. Preserve brand names when appropriate. Never emit HTML, code, URLs, new keys, explanations, or markdown.",
+    prompt: `Translate every supplied text value to ${targetLanguage === "ar" ? "Arabic" : "English"}. Use natural, polished website copy that preserves the original tone and factual meaning.`,
+    system: "You are a bounded website copy translator. Return JSON with exactly the same keys, object structure, and array lengths as the supplied bundle. Translate string values only. Preserve supplied brand and personal names exactly. Never emit HTML, code, URLs, new keys, explanations, or markdown.",
     context: { targetLanguage, bundle },
     repair,
     timeoutMs: 25_000,
@@ -2145,20 +2342,64 @@ async function requestTranslation(
 async function translatedBundle(
   targetLanguage: "en" | "ar",
   bundle: Record<string, unknown>,
+  protectedTerms: string[] = [],
+  requester = requestTranslation,
 ) {
   let candidate: unknown;
   try {
-    candidate = await requestTranslation(targetLanguage, bundle);
-    return mergeTranslatedShape(bundle, bundle, candidate);
+    candidate = await requester(targetLanguage, bundle);
   } catch (firstError) {
     if (firstError instanceof GeminiProviderError) throw firstError;
-    candidate = await requestTranslation(
+    candidate = await requester(
       targetLanguage,
       bundle,
       "The prior response changed the JSON shape. Return the complete corrected JSON with the exact same keys, IDs, object structure, and array lengths as the supplied bundle.",
     );
-    return mergeTranslatedShape(bundle, bundle, candidate);
   }
+  let translated = mergeTranslatedShape(bundle, bundle, candidate);
+  const issues = translationCoverageIssues(
+    targetLanguage,
+    translated,
+    protectedTerms,
+  );
+  if (!issues.length) return translated;
+
+  const repairBundle = Object.fromEntries(
+    issues.map((issue, index) => [`field_${index}`, issue.value]),
+  );
+  const repairPaths = issues.map((issue, index) =>
+    `field_${index}=${issue.pathLabel}`
+  ).join(", ");
+  const repairCandidate = await requester(
+    targetLanguage,
+    repairBundle,
+    `Coverage validation found untranslated text. Repair only these fields: ${repairPaths}. Return every field key exactly once and translate each value naturally.`,
+  );
+  const repaired = mergeTranslatedShape(
+    repairBundle,
+    repairBundle,
+    repairCandidate,
+    "coverageRepair",
+  ) as Record<string, string>;
+  issues.forEach((issue, index) => {
+    translated = setTranslationPath(
+      translated,
+      issue.path,
+      repaired[`field_${index}`],
+    );
+  });
+  const remaining = translationCoverageIssues(
+    targetLanguage,
+    translated,
+    protectedTerms,
+  );
+  if (remaining.length) {
+    editFailure(
+      "AI_TASK_TRANSLATION_INCOMPLETE",
+      remaining[0].pathLabel,
+    );
+  }
+  return translated;
 }
 
 async function buildTaskStepPlan(admin: any, task: any, step: any) {
@@ -2193,17 +2434,24 @@ async function buildTaskStepPlan(admin: any, task: any, step: any) {
   }
   if (step.step_type === "globals") {
     const site = loaded.context.site;
-    const header = translationShape(site.header?.props);
-    const footer = translationShape(site.footer?.props);
+    const header = translationShapeForGlobal("header", site.header?.props);
+    const footer = translationShapeForGlobal("footer", site.footer?.props);
     const navigation = (site.navigation || []).filter((item: any) =>
       typeof item?.id === "string" && typeof item?.label === "string" && item.label.trim()
-    ).map((item: any) => ({ id: item.id, label: item.label }));
+    ).map((item: any) => ({ label: item.label }));
     const bundle: Record<string, unknown> = {};
     if (record(header)) bundle.header = header;
     if (record(footer)) bundle.footer = footer;
     if (navigation.length) bundle.navigation = navigation;
     if (!Object.keys(bundle).length) return { loaded, plan: null };
-    const translated: any = await translatedBundle(target, bundle);
+    const translated: any = await translatedBundle(
+      target,
+      bundle,
+      [site.name, site.header?.props?.siteName, site.footer?.props?.siteName]
+        .filter((value): value is string =>
+          typeof value === "string" && Boolean(value.trim())
+        ),
+    );
     const operations: any[] = [];
     if (translated.header && safeJson(translated.header) !== safeJson(bundle.header)) {
       operations.push({ op: "update_global_header", changes: { props: translated.header } });
@@ -2225,7 +2473,7 @@ async function buildTaskStepPlan(admin: any, task: any, step: any) {
   if (!page) throw new Error("Website plan not found.");
   const sourceItems = page.sections.filter((section: any) => sectionIds.has(section.id)).map((section: any) => ({
     sectionId: section.id,
-    props: translationShape(section.props),
+    props: translationShapeForSection(section.type, section.props),
   })).filter((item: any) => record(item.props));
   const includeMetadata = step.input_scope?.includeMetadata === true;
   const pageMetadata: Record<string, string> = {};
@@ -2233,8 +2481,28 @@ async function buildTaskStepPlan(admin: any, task: any, step: any) {
   if (includeMetadata && typeof page.seo?.title === "string" && page.seo.title.trim()) pageMetadata.seoTitle = page.seo.title;
   if (includeMetadata && typeof page.seo?.description === "string" && page.seo.description.trim()) pageMetadata.seoDescription = page.seo.description;
   if (!sourceItems.length && !Object.keys(pageMetadata).length) return { loaded, plan: null };
-  const bundle = { page: pageMetadata, items: sourceItems };
-  const translated: any = await translatedBundle(target, bundle);
+  const bundle = {
+    page: pageMetadata,
+    items: sourceItems.map((item: any) => ({ props: item.props })),
+  };
+  const protectedTerms = [loaded.context.site.name]
+    .concat(page.sections.flatMap((section: any) =>
+      Array.isArray(section.props?.items)
+        ? section.props.items.flatMap((item: any) =>
+          [item?.author, item?.name].filter((value): value is string =>
+            typeof value === "string" && Boolean(value.trim())
+          )
+        )
+        : []
+    ))
+    .filter((value): value is string =>
+      typeof value === "string" && Boolean(value.trim())
+    );
+  const translated: any = await translatedBundle(
+    target,
+    bundle,
+    protectedTerms,
+  );
   const operations: any[] = [];
   if (pageMetadata.name && translated.page.name !== pageMetadata.name) {
     operations.push({ op: "rename_page", pageId: step.page_id, name: translated.page.name });
@@ -2245,9 +2513,6 @@ async function buildTaskStepPlan(admin: any, task: any, step: any) {
   if (Object.keys(seo).length) operations.push({ op: "update_page_seo", pageId: step.page_id, seo });
   operations.push(...sourceItems.flatMap((item: any, index: number) => {
     const translatedItem = translated.items[index];
-    if (translatedItem.sectionId !== item.sectionId) {
-      editFailure("AI_TASK_INVALID_TRANSLATION", `items.${index}.sectionId`);
-    }
     const current: any = loaded.sections.get(item.sectionId);
     if (!current) editFailure("AI_EDIT_INVALID_TARGET", `items.${index}.sectionId`);
     const merged = mergeTranslatedShape(current.props, item.props, translatedItem.props, `items.${index}.props`);
@@ -2542,6 +2807,7 @@ export const websiteAgentHandler = async (req: Request) => {
           2,
         );
       }
+      plan = assignWebsitePlanSectionIds(plan);
       const { data, error } = await admin
         .from("website_agent_plans")
         .insert({
@@ -2827,8 +3093,13 @@ export const websiteAgentEditPlanTest = {
   editRequestScope,
   siteLanguageComplexityRoute,
   targetLanguageForInstruction,
-  translationShape,
+  sectionTranslationFieldMap,
+  translationShapeForSection,
+  translationShapeForGlobal,
   mergeTranslatedShape,
+  translationCoverageIssues,
+  translatedBundle,
+  assignWebsitePlanSectionIds,
   taskBaselineConflicts,
 };
 
