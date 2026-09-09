@@ -797,6 +797,7 @@ type WebsiteAgentRequest = {
   repair?: string;
   system?: string;
   context?: Record<string, unknown>;
+  timeoutMs?: number;
 };
 
 class GeminiProviderError extends Error {
@@ -814,6 +815,7 @@ async function generateWithGemini({
   repair,
   system = systemInstruction,
   context,
+  timeoutMs = 40_000,
 }: WebsiteAgentRequest) {
   const apiKey = Deno.env.get("GEMINI_API_KEY");
   if (!apiKey) throw new Error("Website AI is not configured.");
@@ -822,7 +824,10 @@ async function generateWithGemini({
   const controller = new AbortController();
   // A bounded 40 seconds accommodates one valid structured response without
   // leaving a request open indefinitely. Context is scoped before this call.
-  const timeout = setTimeout(() => controller.abort(), 40_000);
+  const timeout = setTimeout(
+    () => controller.abort(),
+    Math.min(40_000, Math.max(5_000, timeoutMs)),
+  );
   const request = (requestedModel: string) =>
     fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/${
@@ -1804,6 +1809,475 @@ function editRepairInstruction(
   } Return the ENTIRE corrected edit plan. Keep valid operations, correct or remove only the invalid requested change, use only supplied IDs, and never add publish/release operations.`;
 }
 
+const translationTextKeys = new Set([
+  "eyebrow",
+  "heading",
+  "subheading",
+  "primaryLabel",
+  "secondaryLabel",
+  "body",
+  "alt",
+  "label",
+  "title",
+  "description",
+  "quote",
+  "role",
+  "question",
+  "answer",
+  "text",
+  "address",
+  "caption",
+  "ctaLabel",
+  "copyright",
+  "features",
+]);
+
+function targetLanguageForInstruction(instruction: string): "en" | "ar" {
+  if (/\b(english|ltr)\b|الانجليزية|الإنجليزية|بالإنجليزي|بالانجليزي/i.test(instruction)) {
+    return "en";
+  }
+  return "ar";
+}
+
+function translationShape(value: unknown, key = ""): unknown {
+  if (typeof value === "string") {
+    return translationTextKeys.has(key) && value.trim() ? value : undefined;
+  }
+  if (Array.isArray(value)) {
+    if (!value.length) return undefined;
+    const translated = value.map((item) => translationShape(item, key) ?? {});
+    return translated.some((item) => record(item) && Object.keys(item).length)
+      ? translated
+      : undefined;
+  }
+  if (!record(value)) return undefined;
+  const result: Record<string, unknown> = {};
+  for (const [childKey, child] of Object.entries(value)) {
+    const translated = translationShape(child, childKey);
+    if (translated !== undefined) result[childKey] = translated;
+  }
+  return Object.keys(result).length ? result : undefined;
+}
+
+function mergeTranslatedShape(
+  original: unknown,
+  sourceShape: unknown,
+  translated: unknown,
+  path = "translation",
+): unknown {
+  if (typeof sourceShape === "string") {
+    if (
+      typeof translated !== "string" || !translated.trim() ||
+      translated.length > 4000 || dangerous.test(translated)
+    ) editFailure("AI_TASK_INVALID_TRANSLATION", path);
+    return (translated as string).trim();
+  }
+  if (Array.isArray(sourceShape)) {
+    if (!Array.isArray(translated) || translated.length !== sourceShape.length || !Array.isArray(original)) {
+      editFailure("AI_TASK_INVALID_TRANSLATION", path);
+    }
+    const originalItems = original as unknown[];
+    const translatedItems = translated as unknown[];
+    return sourceShape.map((shape, index) =>
+      mergeTranslatedShape(originalItems[index], shape, translatedItems[index], `${path}.${index}`)
+    );
+  }
+  if (!record(sourceShape) || !record(translated) || !record(original)) {
+    editFailure("AI_TASK_INVALID_TRANSLATION", path);
+  }
+  const sourceRecord = sourceShape as Record<string, unknown>;
+  const translatedRecord = translated as Record<string, unknown>;
+  const originalRecord = original as Record<string, unknown>;
+  if (!exactKeys(translatedRecord, Object.keys(sourceRecord))) {
+    editFailure("AI_TASK_INVALID_TRANSLATION", path);
+  }
+  const result = structuredClone(originalRecord);
+  for (const [childKey, childShape] of Object.entries(sourceRecord)) {
+    result[childKey] = mergeTranslatedShape(
+      originalRecord[childKey],
+      childShape,
+      translatedRecord[childKey],
+      `${path}.${childKey}`,
+    );
+  }
+  return result;
+}
+
+function siteLanguageComplexityRoute(instruction: string) {
+  return editRequestIntent(instruction) === "SITE_LANGUAGE"
+    ? "persistent_task"
+    : "single_request";
+}
+
+async function taskView(admin: any, task: any) {
+  const { data: steps, error } = await admin.from("website_agent_task_steps")
+    .select("id,step_index,step_type,page_id,label,status,attempt_count,max_attempts,proposal_id,operation_count,error_summary,started_at,completed_at")
+    .eq("task_id", task.id).order("step_index");
+  if (error) throw error;
+  const proposalIds = (steps || []).map((step: any) => step.proposal_id).filter(Boolean);
+  let proposals: any[] = [];
+  if (proposalIds.length) {
+    const { data, error: proposalError } = await admin.from("website_agent_edit_plans")
+      .select("id,plan_json,expires_at,created_at,status").in("id", proposalIds);
+    if (proposalError) throw proposalError;
+    proposals = data || [];
+  }
+  const proposalMap = new Map(proposals.map((item: any) => [item.id, item]));
+  return {
+    id: task.id,
+    instruction: task.instruction,
+    intent: task.intent,
+    targetLanguage: task.target_language,
+    status: task.status,
+    totalSteps: task.total_steps,
+    completedSteps: task.completed_steps,
+    errorSummary: task.error_summary,
+    expiresAt: task.expires_at,
+    createdAt: task.created_at,
+    steps: (steps || []).map((step: any) => ({
+      id: step.id,
+      stepIndex: step.step_index,
+      stepType: step.step_type,
+      pageId: step.page_id,
+      label: step.label,
+      status: step.status,
+      attemptCount: step.attempt_count,
+      maxAttempts: step.max_attempts,
+      operationCount: step.operation_count,
+      errorSummary: step.error_summary,
+      startedAt: step.started_at,
+      completedAt: step.completed_at,
+      proposal: step.proposal_id
+        ? (() => {
+          const item: any = proposalMap.get(step.proposal_id);
+          return item
+            ? { id: item.id, plan: item.plan_json, status: item.status, expiresAt: item.expires_at, createdAt: item.created_at }
+            : null;
+        })()
+        : null,
+    })),
+  };
+}
+
+async function loadOwnedTask(
+  admin: any,
+  taskId: string,
+  organizationId: string,
+  userId: string,
+) {
+  const { data, error } = await admin.from("website_agent_tasks").select("*")
+    .eq("id", taskId).eq("organization_id", organizationId)
+    .eq("created_by", userId).maybeSingle();
+  if (error) throw error;
+  if (!data) throw new Error("Website AI task not found.");
+  return data;
+}
+
+async function startSiteLanguageTask(
+  admin: any,
+  organizationId: string,
+  siteId: string,
+  userId: string,
+  instruction: string,
+) {
+  const { data: existing } = await admin.from("website_agent_tasks").select("*")
+    .eq("organization_id", organizationId).eq("site_id", siteId)
+    .eq("created_by", userId)
+    .in("status", ["planning", "generating", "ready_for_review"])
+    .gt("expires_at", new Date().toISOString()).order("created_at", { ascending: false })
+    .limit(1).maybeSingle();
+  if (existing) return existing;
+
+  const { data: site, error: siteError } = await admin.from("website_sites")
+    .select("id,global_version").eq("id", siteId).eq("organization_id", organizationId)
+    .is("archived_at", null).maybeSingle();
+  if (siteError) throw siteError;
+  if (!site) throw new Error("Website plan not found.");
+  const { data: pages, error: pagesError } = await admin.from("website_pages")
+    .select("id,name,draft_document,draft_version,sort_order").eq("organization_id", organizationId)
+    .eq("site_id", siteId).order("sort_order");
+  if (pagesError) throw pagesError;
+
+  const stepInputs: any[] = [
+    { step_type: "layout", page_id: null, label: "Language and reading direction", input_scope: {} },
+    { step_type: "globals", page_id: null, label: "Navigation, header, and footer", input_scope: {} },
+  ];
+  for (const page of pages || []) {
+    const sections = Array.isArray(page.draft_document?.sections) ? page.draft_document.sections : [];
+    const ids = sections.filter((section: any) =>
+      uuid(section?.id) && record(translationShape(section?.props))
+    ).map((section: any) => section.id);
+    const chunkCount = Math.max(1, Math.ceil(ids.length / 20));
+    for (let chunkIndex = 0; chunkIndex < chunkCount; chunkIndex += 1) {
+      const offset = chunkIndex * 20;
+      const chunk = ids.slice(offset, offset + 20);
+      stepInputs.push({
+        step_type: "page",
+        page_id: page.id,
+        label: ids.length > 20
+          ? `${page.name} content (${Math.floor(offset / 20) + 1}/${Math.ceil(ids.length / 20)})`
+          : `${page.name} content`,
+        input_scope: { sectionIds: chunk, includeMetadata: chunkIndex === 0 },
+      });
+    }
+  }
+  const { data: task, error: taskError } = await admin.from("website_agent_tasks")
+    .insert({
+      organization_id: organizationId,
+      site_id: siteId,
+      created_by: userId,
+      instruction,
+      intent: "SITE_LANGUAGE",
+      target_language: targetLanguageForInstruction(instruction),
+      base_versions: {
+        global_version: site.global_version,
+        pages: Object.fromEntries((pages || []).map((page: any) => [page.id, page.draft_version])),
+      },
+      status: "generating",
+      total_steps: stepInputs.length,
+    }).select("*").single();
+  if (taskError) throw taskError;
+  const { error: stepsError } = await admin.from("website_agent_task_steps").insert(
+    stepInputs.map((step, index) => ({
+      ...step,
+      task_id: task.id,
+      organization_id: organizationId,
+      site_id: siteId,
+      step_index: index,
+    })),
+  );
+  if (stepsError) throw stepsError;
+  await admin.from("audit_logs").insert({
+    organization_id: organizationId,
+    user_name: userId,
+    action: "website_agent.task_started",
+    details: JSON.stringify({ task_id: task.id, site_id: siteId, step_count: stepInputs.length, intent: "SITE_LANGUAGE" }),
+  });
+  return task;
+}
+
+async function persistTaskProposal(
+  admin: any,
+  task: any,
+  step: any,
+  plan: Plan,
+  baseVersions: any,
+) {
+  const { data, error } = await admin.from("website_agent_edit_plans").insert({
+    organization_id: task.organization_id,
+    site_id: task.site_id,
+    created_by: task.created_by,
+    instruction: `${task.instruction} · ${step.label}`,
+    plan_json: plan,
+    base_versions: baseVersions,
+    expires_at: task.expires_at,
+  }).select("id").single();
+  if (error) throw error;
+  return data.id;
+}
+
+async function requestTranslation(
+  targetLanguage: "en" | "ar",
+  bundle: Record<string, unknown>,
+  repair = "",
+) {
+  return await websiteAgentModel.generateStructuredPlan({
+    prompt: `Translate every supplied text value to ${targetLanguage === "ar" ? "Arabic" : "English"}.`,
+    system: "You are a bounded website copy translator. Return JSON with exactly the same keys, IDs, object structure, and array lengths as the supplied bundle. Translate string values only. Preserve brand names when appropriate. Never emit HTML, code, URLs, new keys, explanations, or markdown.",
+    context: { targetLanguage, bundle },
+    repair,
+    timeoutMs: 25_000,
+  });
+}
+
+async function translatedBundle(
+  targetLanguage: "en" | "ar",
+  bundle: Record<string, unknown>,
+) {
+  let candidate: unknown;
+  try {
+    candidate = await requestTranslation(targetLanguage, bundle);
+    return mergeTranslatedShape(bundle, bundle, candidate);
+  } catch (firstError) {
+    if (firstError instanceof GeminiProviderError) throw firstError;
+    candidate = await requestTranslation(
+      targetLanguage,
+      bundle,
+      "The prior response changed the JSON shape. Return the complete corrected JSON with the exact same keys, IDs, object structure, and array lengths as the supplied bundle.",
+    );
+    return mergeTranslatedShape(bundle, bundle, candidate);
+  }
+}
+
+async function buildTaskStepPlan(admin: any, task: any, step: any) {
+  const loaded = await loadEditContext(
+    admin,
+    task.organization_id,
+    task.site_id,
+    step.page_id || undefined,
+    step.step_type === "page" ? "page" : "site",
+  );
+  const target = task.target_language as "en" | "ar";
+  if (step.step_type === "layout") {
+    const desiredTheme = target === "ar"
+      ? { direction: "rtl", headingFont: "IBM Plex Sans Arabic", bodyFont: "Noto Sans Arabic" }
+      : { direction: "ltr", headingFont: "Inter", bodyFont: "Manrope" };
+    const operations: any[] = [];
+    if (loaded.context.site.language !== target) {
+      operations.push({ op: "update_site_metadata", changes: { language: target } });
+    }
+    if (loaded.themes.some((theme: any) =>
+      Object.entries(desiredTheme).some(([key, value]) => theme[key] !== value)
+    )) operations.push({ op: "update_site_theme", theme: desiredTheme });
+    if (!operations.length) return { loaded, plan: null };
+    return {
+      loaded,
+      plan: validateEditPlan({
+        version: 1,
+        summary: target === "ar" ? "Use Arabic with a right-to-left layout" : "Use English with a left-to-right layout",
+        operations,
+      }, loaded),
+    };
+  }
+  if (step.step_type === "globals") {
+    const site = loaded.context.site;
+    const header = translationShape(site.header?.props);
+    const footer = translationShape(site.footer?.props);
+    const navigation = (site.navigation || []).filter((item: any) =>
+      typeof item?.id === "string" && typeof item?.label === "string" && item.label.trim()
+    ).map((item: any) => ({ id: item.id, label: item.label }));
+    const bundle: Record<string, unknown> = {};
+    if (record(header)) bundle.header = header;
+    if (record(footer)) bundle.footer = footer;
+    if (navigation.length) bundle.navigation = navigation;
+    if (!Object.keys(bundle).length) return { loaded, plan: null };
+    const translated: any = await translatedBundle(target, bundle);
+    const operations: any[] = [];
+    if (translated.header && safeJson(translated.header) !== safeJson(bundle.header)) {
+      operations.push({ op: "update_global_header", changes: { props: translated.header } });
+    }
+    if (translated.footer && safeJson(translated.footer) !== safeJson(bundle.footer)) {
+      operations.push({ op: "update_global_footer", changes: { props: translated.footer } });
+    }
+    for (let index = 0; index < navigation.length; index++) {
+      if (translated.navigation[index].label !== navigation[index].label) {
+        operations.push({ op: "update_navigation_item", navigationId: navigation[index].id, changes: { label: translated.navigation[index].label } });
+      }
+    }
+    if (!operations.length) return { loaded, plan: null };
+    return { loaded, plan: validateEditPlan({ version: 1, summary: "Translate global website content", operations }, loaded) };
+  }
+
+  const sectionIds = Array.isArray(step.input_scope?.sectionIds) ? new Set(step.input_scope.sectionIds) : new Set();
+  const page = loaded.context.pages.find((item: any) => item.id === step.page_id);
+  if (!page) throw new Error("Website plan not found.");
+  const sourceItems = page.sections.filter((section: any) => sectionIds.has(section.id)).map((section: any) => ({
+    sectionId: section.id,
+    props: translationShape(section.props),
+  })).filter((item: any) => record(item.props));
+  const includeMetadata = step.input_scope?.includeMetadata === true;
+  const pageMetadata: Record<string, string> = {};
+  if (includeMetadata && typeof page.name === "string" && page.name.trim()) pageMetadata.name = page.name;
+  if (includeMetadata && typeof page.seo?.title === "string" && page.seo.title.trim()) pageMetadata.seoTitle = page.seo.title;
+  if (includeMetadata && typeof page.seo?.description === "string" && page.seo.description.trim()) pageMetadata.seoDescription = page.seo.description;
+  if (!sourceItems.length && !Object.keys(pageMetadata).length) return { loaded, plan: null };
+  const bundle = { page: pageMetadata, items: sourceItems };
+  const translated: any = await translatedBundle(target, bundle);
+  const operations: any[] = [];
+  if (pageMetadata.name && translated.page.name !== pageMetadata.name) {
+    operations.push({ op: "rename_page", pageId: step.page_id, name: translated.page.name });
+  }
+  const seo: Record<string, string> = {};
+  if (pageMetadata.seoTitle && translated.page.seoTitle !== pageMetadata.seoTitle) seo.title = translated.page.seoTitle;
+  if (pageMetadata.seoDescription && translated.page.seoDescription !== pageMetadata.seoDescription) seo.description = translated.page.seoDescription;
+  if (Object.keys(seo).length) operations.push({ op: "update_page_seo", pageId: step.page_id, seo });
+  operations.push(...sourceItems.flatMap((item: any, index: number) => {
+    const translatedItem = translated.items[index];
+    if (translatedItem.sectionId !== item.sectionId) {
+      editFailure("AI_TASK_INVALID_TRANSLATION", `items.${index}.sectionId`);
+    }
+    const current: any = loaded.sections.get(item.sectionId);
+    if (!current) editFailure("AI_EDIT_INVALID_TARGET", `items.${index}.sectionId`);
+    const merged = mergeTranslatedShape(current.props, item.props, translatedItem.props, `items.${index}.props`);
+    const changes: Record<string, unknown> = {};
+    for (const key of Object.keys(item.props)) {
+      if (safeJson(current.props[key]) !== safeJson((merged as any)[key])) changes[key] = (merged as any)[key];
+    }
+    return Object.keys(changes).length
+      ? [{ op: "update_section", pageId: step.page_id, sectionId: item.sectionId, changes: { props: changes } }]
+      : [];
+  }));
+  if (!operations.length) return { loaded, plan: null };
+  return { loaded, plan: validateEditPlan({ version: 1, summary: `Translate ${page.name} content`, operations }, loaded) };
+}
+
+async function runTaskStep(admin: any, task: any) {
+  const staleBefore = new Date(Date.now() - 120_000).toISOString();
+  await admin.from("website_agent_task_steps").update({ status: "pending", updated_at: new Date().toISOString() })
+    .eq("task_id", task.id).eq("status", "running").lt("updated_at", staleBefore).lt("attempt_count", 2);
+  const { data: next, error: nextError } = await admin.from("website_agent_task_steps")
+    .select("*").eq("task_id", task.id).eq("status", "pending")
+    .order("step_index").limit(1).maybeSingle();
+  if (nextError) throw nextError;
+  if (!next) {
+    const { count } = await admin.from("website_agent_task_steps").select("id", { count: "exact", head: true })
+      .eq("task_id", task.id).neq("status", "completed");
+    if (!count) {
+      const { data: ready, error } = await admin.from("website_agent_tasks")
+        .update({ status: "ready_for_review", completed_steps: task.total_steps, updated_at: new Date().toISOString(), error_summary: null })
+        .eq("id", task.id).select("*").single();
+      if (error) throw error;
+      return ready;
+    }
+    return task;
+  }
+  const claimedAt = new Date().toISOString();
+  const { data: claimed, error: claimError } = await admin.from("website_agent_task_steps")
+    .update({ status: "running", attempt_count: next.attempt_count + 1, started_at: next.started_at || claimedAt, updated_at: claimedAt, error_summary: null })
+    .eq("id", next.id).eq("status", "pending").select("*").maybeSingle();
+  if (claimError) throw claimError;
+  if (!claimed) return task;
+  try {
+    const { loaded, plan } = await buildTaskStepPlan(admin, task, claimed);
+    const currentTask = await loadOwnedTask(admin, task.id, task.organization_id, task.created_by);
+    if (currentTask.status === "cancelled") return currentTask;
+    const proposalId = plan ? await persistTaskProposal(admin, task, claimed, plan, loaded.baseVersions) : null;
+    const { error: completeError } = await admin.from("website_agent_task_steps").update({
+      status: "completed",
+      proposal_id: proposalId,
+      operation_count: plan?.operations.length || 0,
+      completed_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    }).eq("id", claimed.id).eq("status", "running");
+    if (completeError) throw completeError;
+    const { count: completed } = await admin.from("website_agent_task_steps").select("id", { count: "exact", head: true })
+      .eq("task_id", task.id).eq("status", "completed");
+    const finished = completed === task.total_steps;
+    const { data: updated, error: updateError } = await admin.from("website_agent_tasks").update({
+      completed_steps: completed || 0,
+      status: finished ? "ready_for_review" : "generating",
+      updated_at: new Date().toISOString(),
+      error_summary: null,
+    }).eq("id", task.id).in("status", ["planning", "generating"]).select("*").single();
+    if (updateError) throw updateError;
+    return updated;
+  } catch (error) {
+    const terminal = claimed.attempt_count >= claimed.max_attempts;
+    const safe = publicError(error, "generateEditPlan");
+    await admin.from("website_agent_task_steps").update({
+      status: terminal ? "failed" : "pending",
+      error_summary: safe,
+      updated_at: new Date().toISOString(),
+    }).eq("id", claimed.id).eq("status", "running");
+    const { data: updated } = await admin.from("website_agent_tasks").update({
+      status: terminal ? "failed" : "generating",
+      error_summary: terminal ? safe : null,
+      updated_at: new Date().toISOString(),
+    }).eq("id", task.id).in("status", ["planning", "generating"]).select("*").maybeSingle();
+    return updated || task;
+  }
+}
+
 function publicError(error: unknown, operation = "") {
   const message = error instanceof Error ? error.message : "";
   const safeMessages = new Set([
@@ -1827,6 +2301,11 @@ function publicError(error: unknown, operation = "") {
     "That change isn't supported by the Website Builder yet.",
     "No effective change was produced.",
     "AI changes could not be verified. Nothing was published.",
+    "Website AI task not found.",
+    "Website AI task cannot be cancelled.",
+    "Website AI task cannot be resumed.",
+    "This Website AI task is not ready to apply.",
+    "This Website AI task expired. Start it again.",
   ]);
   if (safeMessages.has(message)) return message;
   return operation === "generateEditPlan"
@@ -1850,6 +2329,98 @@ export const websiteAgentHandler = async (req: Request) => {
     organizationId = String(body.organizationId || "");
     if (!uuid(organizationId)) throw new Error("Website plan not found.");
     await authorize(admin, user.id, organizationId);
+    if (operation === "startEditTask") {
+      const siteId = String(body.siteId || "");
+      if (!uuid(siteId)) throw new Error("Website plan not found.");
+      const instruction = text(body.instruction, 6000, "instruction");
+      if (siteLanguageComplexityRoute(instruction) === "single_request") {
+        return json({ success: true, mode: "single_request" });
+      }
+      const task = await startSiteLanguageTask(
+        admin,
+        organizationId,
+        siteId,
+        user.id,
+        instruction,
+      );
+      return json({ success: true, mode: "persistent_task", task: await taskView(admin, task) });
+    }
+    if (operation === "getActiveEditTask") {
+      const siteId = String(body.siteId || "");
+      if (!uuid(siteId)) throw new Error("Website plan not found.");
+      const { data, error } = await admin.from("website_agent_tasks").select("*")
+        .eq("organization_id", organizationId).eq("site_id", siteId)
+        .eq("created_by", user.id)
+        .in("status", ["planning", "generating", "ready_for_review", "failed"])
+        .gt("expires_at", new Date().toISOString())
+        .order("created_at", { ascending: false }).limit(1).maybeSingle();
+      if (error) throw error;
+      return json({ success: true, task: data ? await taskView(admin, data) : null });
+    }
+    if (operation === "getEditTask") {
+      const taskId = String(body.taskId || "");
+      if (!uuid(taskId)) throw new Error("Website AI task not found.");
+      const task = await loadOwnedTask(admin, taskId, organizationId, user.id);
+      return json({ success: true, task: await taskView(admin, task) });
+    }
+    if (operation === "runNextEditTaskStep") {
+      const taskId = String(body.taskId || "");
+      if (!uuid(taskId)) throw new Error("Website AI task not found.");
+      let task = await loadOwnedTask(admin, taskId, organizationId, user.id);
+      if (task.expires_at <= new Date().toISOString()) {
+        const { data } = await admin.from("website_agent_tasks").update({ status: "expired", updated_at: new Date().toISOString() })
+          .eq("id", task.id).select("*").single();
+        task = data || task;
+      } else if (["planning", "generating"].includes(task.status)) {
+        task = await runTaskStep(admin, task);
+      }
+      return json({ success: true, task: await taskView(admin, task) });
+    }
+    if (operation === "cancelEditTask") {
+      const taskId = String(body.taskId || "");
+      if (!uuid(taskId)) throw new Error("Website AI task not found.");
+      const task = await loadOwnedTask(admin, taskId, organizationId, user.id);
+      if (["applied", "applying"].includes(task.status)) throw new Error("Website AI task cannot be cancelled.");
+      await admin.from("website_agent_task_steps").update({ status: "cancelled", updated_at: new Date().toISOString() })
+        .eq("task_id", task.id).in("status", ["pending", "running", "failed"]);
+      const { data, error } = await admin.from("website_agent_tasks").update({
+        status: "cancelled", cancelled_at: new Date().toISOString(), updated_at: new Date().toISOString(), error_summary: null,
+      }).eq("id", task.id).select("*").single();
+      if (error) throw error;
+      return json({ success: true, task: await taskView(admin, data) });
+    }
+    if (operation === "resumeEditTask") {
+      const taskId = String(body.taskId || "");
+      if (!uuid(taskId)) throw new Error("Website AI task not found.");
+      const task = await loadOwnedTask(admin, taskId, organizationId, user.id);
+      if (task.status !== "failed" || task.expires_at <= new Date().toISOString()) {
+        throw new Error("Website AI task cannot be resumed.");
+      }
+      await admin.from("website_agent_task_steps").update({
+        status: "pending", attempt_count: 0, error_summary: null, updated_at: new Date().toISOString(),
+      }).eq("task_id", task.id).eq("status", "failed");
+      const { data, error } = await admin.from("website_agent_tasks").update({
+        status: "generating", error_summary: null, updated_at: new Date().toISOString(),
+      }).eq("id", task.id).select("*").single();
+      if (error) throw error;
+      return json({ success: true, task: await taskView(admin, data) });
+    }
+    if (operation === "applyEditTask") {
+      const taskId = String(body.taskId || "");
+      if (!uuid(taskId)) throw new Error("Website AI task not found.");
+      const { data, error } = await admin.rpc("apply_website_agent_task", {
+        p_task_id: taskId,
+        p_organization_id: organizationId,
+        p_actor_id: user.id,
+      });
+      if (error) {
+        if (String(error.message).includes("AI_TASK_NOT_READY")) throw new Error("This Website AI task is not ready to apply.");
+        if (String(error.message).includes("AI_TASK_EXPIRED")) throw new Error("This Website AI task expired. Start it again.");
+        if (String(error.message).includes("AI_EDIT_STALE_PROPOSAL")) throw new Error("This website changed after the AI suggestion was created. Generate the suggestion again.");
+        throw error;
+      }
+      return json({ success: true, result: data });
+    }
     if (operation === "generatePlan") {
       const prompt = text(body.prompt, 6000, "prompt");
       const businessName = body.businessName
@@ -2183,6 +2754,10 @@ export const websiteAgentEditPlanTest = {
   editRepairInstruction,
   editRequestIntent,
   editRequestScope,
+  siteLanguageComplexityRoute,
+  targetLanguageForInstruction,
+  translationShape,
+  mergeTranslatedShape,
 };
 
 if (import.meta.main) Deno.serve(websiteAgentHandler);

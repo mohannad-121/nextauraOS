@@ -90,7 +90,7 @@ const context = () => ({
   }],
 });
 
-const assert = (condition: unknown, message: string) => {
+const assert = (condition: unknown, message = "Assertion failed") => {
   if (!condition) throw new Error(message);
 };
 
@@ -265,4 +265,62 @@ Deno.test("publish-like operations remain unsupported", () => {
       "Publish rejection code changed",
     );
   }
+});
+
+Deno.test("complexity router keeps simple edits fast and routes site language tasks", () => {
+  assert(
+    websiteAgentEditPlanTest.siteLanguageComplexityRoute("Add an FAQ") ===
+      "single_request",
+  );
+  assert(
+    websiteAgentEditPlanTest.siteLanguageComplexityRoute(
+      "Make the entire site Arabic and RTL",
+    ) === "persistent_task",
+  );
+  assert(
+    websiteAgentEditPlanTest.targetLanguageForInstruction(
+      "Translate the whole site to English",
+    ) === "en",
+  );
+  assert(
+    websiteAgentEditPlanTest.targetLanguageForInstruction(
+      "حوّل الموقع كله للعربي",
+    ) === "ar",
+  );
+});
+
+Deno.test("translation contract preserves non-text values and rejects shape drift", () => {
+  const props = {
+    heading: "Welcome",
+    primaryUrl: "/contact",
+    items: [{ title: "Fast", description: "Built for teams", url: "/teams" }],
+    columns: 3,
+  };
+  const shape = websiteAgentEditPlanTest.translationShape(props) as any;
+  assert(shape.heading === "Welcome");
+  assert(shape.primaryUrl === undefined);
+  assert(shape.items[0].url === undefined);
+  const merged = websiteAgentEditPlanTest.mergeTranslatedShape(
+    props,
+    shape,
+    {
+      heading: "مرحباً",
+      items: [{ title: "سريع", description: "مصمم للفرق" }],
+    },
+  ) as any;
+  assert(merged.heading === "مرحباً");
+  assert(merged.primaryUrl === "/contact");
+  assert(merged.items[0].url === "/teams");
+  assert(merged.columns === 3);
+  let rejected = false;
+  try {
+    websiteAgentEditPlanTest.mergeTranslatedShape(
+      props,
+      shape,
+      { heading: "مرحباً", items: [] },
+    );
+  } catch {
+    rejected = true;
+  }
+  assert(rejected);
 });

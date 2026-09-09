@@ -29,8 +29,23 @@ const call = async (body: Record<string, unknown>) => {
   return data;
 };
 const agentCall = async (body: Record<string, unknown>) => {
+  let { data: sessionData, error: sessionError } = await supabase.auth.getSession();
+  if (sessionError || !sessionData.session) {
+    throw new Error("Your session expired. Please sign in again.");
+  }
+  const expiresAt = (sessionData.session.expires_at || 0) * 1000;
+  if (expiresAt - Date.now() < 90_000) {
+    const refreshed = await supabase.auth.refreshSession();
+    if (refreshed.error || !refreshed.data.session) {
+      throw new Error("Your session expired. Please sign in again.");
+    }
+    sessionData = refreshed.data;
+  }
+  const accessToken = sessionData.session?.access_token;
+  if (!accessToken) throw new Error("Your session expired. Please sign in again.");
   const { data, error } = await supabase.functions.invoke("website-agent", {
     body,
+    headers: { Authorization: `Bearer ${accessToken}` },
   });
   const functionError = error as {
     context?: Response;
@@ -116,4 +131,18 @@ export const websiteBuilderService = {
     agentCall({ operation: "applyEditPlan", organizationId, planId }),
   listEditPlans: (organizationId: string, siteId: string) =>
     agentCall({ operation: "listEditPlans", organizationId, siteId }),
+  startEditTask: (body: Record<string, unknown>) =>
+    agentCall({ operation: "startEditTask", ...body }),
+  getActiveEditTask: (organizationId: string, siteId: string) =>
+    agentCall({ operation: "getActiveEditTask", organizationId, siteId }),
+  getEditTask: (organizationId: string, taskId: string) =>
+    agentCall({ operation: "getEditTask", organizationId, taskId }),
+  runNextEditTaskStep: (organizationId: string, taskId: string) =>
+    agentCall({ operation: "runNextEditTaskStep", organizationId, taskId }),
+  cancelEditTask: (organizationId: string, taskId: string) =>
+    agentCall({ operation: "cancelEditTask", organizationId, taskId }),
+  resumeEditTask: (organizationId: string, taskId: string) =>
+    agentCall({ operation: "resumeEditTask", organizationId, taskId }),
+  applyEditTask: (organizationId: string, taskId: string) =>
+    agentCall({ operation: "applyEditTask", organizationId, taskId }),
 };
