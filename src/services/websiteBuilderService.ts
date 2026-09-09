@@ -1,5 +1,10 @@
 import { supabase } from "./supabaseClient";
 
+const publicWebsiteError = (message: string) =>
+  /invalid authentication token|jwt.*expired|missing authorization/i.test(message)
+    ? "Your session expired. Please sign in again."
+    : message;
+
 const call = async (body: Record<string, unknown>) => {
   const { data, error } = await supabase.functions.invoke("website-builder", {
     body,
@@ -18,9 +23,9 @@ const call = async (body: Record<string, unknown>) => {
     }
   }
   if (error || !data?.success)
-    throw new Error(
+    throw new Error(publicWebsiteError(
       data?.error || responseError || "Unable to manage websites.",
-    );
+    ));
   return data;
 };
 const agentCall = async (body: Record<string, unknown>) => {
@@ -41,9 +46,9 @@ const agentCall = async (body: Record<string, unknown>) => {
     }
   }
   if (error || !data?.success)
-    throw new Error(
+    throw new Error(publicWebsiteError(
       data?.error || responseError || "Website AI is unavailable.",
-    );
+    ));
   return data;
 };
 export const websiteBuilderService = {

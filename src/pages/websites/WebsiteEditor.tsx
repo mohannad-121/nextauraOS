@@ -149,10 +149,11 @@ export function WebsiteEditor({
       setFuture([]);
     } catch (reason: any) {
       setError(reason.message || "Unable to open editor.");
+      throw reason;
     }
   };
   useEffect(() => {
-    void load();
+    void load().catch(() => undefined);
   }, [currentOrg.id, siteId, pageId]);
   useEffect(() => {
     if (window.sessionStorage.getItem("nextaura-ai-draft-site") === siteId) {
