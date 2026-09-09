@@ -10,10 +10,12 @@ import {
   EyeOff,
   ImagePlus,
   Monitor,
+  PanelLeft,
   Plus,
   Redo2,
   Save,
   Settings2,
+  SlidersHorizontal,
   Smartphone,
   Tablet,
   Trash2,
@@ -21,6 +23,7 @@ import {
   Upload,
   Download,
   Wand2,
+  X,
 } from "lucide-react";
 import { useApp } from "../../context/AppContext";
 import { websiteBuilderService } from "../../services/websiteBuilderService";
@@ -97,6 +100,9 @@ export function WebsiteEditor({
   >(null);
   const [pagesOpen, setPagesOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [compactPanel, setCompactPanel] = useState<
+    "sections" | "settings" | null
+  >(null);
   const [history, setHistory] = useState<WebsiteDocument[]>([]);
   const [future, setFuture] = useState<WebsiteDocument[]>([]);
   const [saved, setSaved] = useState(true);
@@ -179,6 +185,7 @@ export function WebsiteEditor({
     const item = newSection(type);
     change({ ...doc, sections: [...doc.sections, item] });
     setSelected(item.id);
+    setCompactPanel(null);
   };
   const remove = () => {
     if (!selected) return;
@@ -393,8 +400,8 @@ export function WebsiteEditor({
     device === "desktop"
       ? "w-full"
       : device === "tablet"
-        ? "w-[768px]"
-        : "w-[390px]";
+        ? "w-[768px] max-w-full"
+        : "w-[390px] max-w-full";
   useEffect(() => {
     const handler = (event: KeyboardEvent) => {
       if (typing()) return;
@@ -415,6 +422,9 @@ export function WebsiteEditor({
         duplicate();
       } else if (event.key === "Delete") remove();
       else if (event.key === "Escape") {
+        setCompactPanel(null);
+        setPagesOpen(false);
+        setSettingsOpen(false);
         setSelected(null);
         setGlobalSelected(null);
         setPreview(false);
@@ -465,7 +475,7 @@ export function WebsiteEditor({
     : "";
   return createPortal(
     <div className="fixed inset-0 z-[1000] flex h-[100dvh] flex-col overflow-hidden bg-[#0a1020] text-slate-100">
-      <header className="flex h-14 shrink-0 items-center gap-2 border-b border-white/10 bg-[#0b1224] px-3">
+      <header className="flex min-h-14 shrink-0 flex-wrap items-center gap-2 border-b border-white/10 bg-[#0b1224] px-2 py-2 sm:h-14 sm:flex-nowrap sm:px-3 sm:py-0">
         <button
           onClick={() => navigate("websites")}
           className="rounded-lg p-2 hover:bg-white/10"
@@ -473,7 +483,7 @@ export function WebsiteEditor({
         >
           <ChevronLeft className="h-5 w-5" />
         </button>
-        <div className="min-w-0 border-l border-white/10 pl-3">
+        <div className="min-w-0 flex-1 border-l border-white/10 pl-3 sm:max-w-48 sm:flex-none">
           <p className="truncate text-xs text-slate-400">
             {site?.name || "Website"}
           </p>
@@ -486,16 +496,22 @@ export function WebsiteEditor({
         >
           {publicationStatus}
         </span>
-        <div className="ml-auto flex items-center gap-1">
+        <div className="order-3 flex w-full items-center gap-1 overflow-x-auto pb-0.5 sm:order-none sm:ml-auto sm:w-auto sm:overflow-visible sm:pb-0">
           <button
-            onClick={() => setPagesOpen(!pagesOpen)}
+            onClick={() => {
+              setPagesOpen(!pagesOpen);
+              setSettingsOpen(false);
+            }}
             className="rounded-lg p-2 hover:bg-white/10"
             aria-label="Pages"
           >
             <ChevronDown className="h-4 w-4" />
           </button>
           <button
-            onClick={() => setSettingsOpen(!settingsOpen)}
+            onClick={() => {
+              setSettingsOpen(!settingsOpen);
+              setPagesOpen(false);
+            }}
             className="rounded-lg p-2 hover:bg-white/10"
             aria-label="Site settings"
           >
@@ -511,14 +527,16 @@ export function WebsiteEditor({
             <button
               key={id}
               onClick={() => setDevice(id)}
-              className={`hidden rounded p-2 sm:block ${device === id ? "bg-blue-500" : "hover:bg-white/10"}`}
+              className={`shrink-0 rounded p-2 ${device === id ? "bg-blue-500" : "hover:bg-white/10"}`}
+              aria-label={`${id[0].toUpperCase()}${id.slice(1)} preview`}
+              title={`${id[0].toUpperCase()}${id.slice(1)} preview`}
             >
               <Icon className="h-4 w-4" />
             </button>
           ))}
           <button
             onClick={() => setPreview(!preview)}
-            className="rounded-lg p-2 hover:bg-white/10"
+            className="shrink-0 rounded-lg p-2 hover:bg-white/10"
             aria-label="Preview"
           >
             {preview ? (
@@ -531,7 +549,7 @@ export function WebsiteEditor({
             onClick={() => setAiEditOpen(true)}
             disabled={!site || !page || saving || publishing}
             aria-label="Edit with AI"
-            className="inline-flex items-center gap-1 rounded-lg border border-violet-300/30 bg-violet-400/10 px-2 py-2 text-xs font-bold text-violet-100 hover:bg-violet-400/20 disabled:opacity-50 sm:px-3"
+            className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-violet-300/30 bg-violet-400/10 px-2 py-2 text-xs font-bold text-violet-100 hover:bg-violet-400/20 disabled:opacity-50 sm:px-3"
           >
             <Wand2 className="h-3.5 w-3.5" />
             <span className="sm:hidden">AI</span>
@@ -541,7 +559,7 @@ export function WebsiteEditor({
           <button
             onClick={() => void save()}
             disabled={saving || (saved && !globalsDirty)}
-            className="inline-flex items-center gap-1 rounded-lg bg-blue-500 px-3 py-2 text-xs font-bold disabled:opacity-50"
+            className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-blue-500 px-3 py-2 text-xs font-bold disabled:opacity-50"
           >
             <Save className="h-3.5 w-3.5" />
             {saving ? "Saving" : "Save"}
@@ -716,9 +734,169 @@ export function WebsiteEditor({
           setNotice("Changes applied to draft. Review your changes before publishing.");
         }}
       />
+      {!preview && (
+        <div className="flex shrink-0 items-center gap-2 border-b border-white/10 bg-[#0b1224] px-3 py-2 xl:hidden">
+          <button
+            type="button"
+            onClick={() => setCompactPanel("sections")}
+            className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold hover:bg-white/10 lg:hidden"
+          >
+            <PanelLeft className="h-4 w-4 text-blue-300" />
+            Add section
+          </button>
+          <button
+            type="button"
+            onClick={() => setCompactPanel("settings")}
+            className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold hover:bg-white/10"
+          >
+            <SlidersHorizontal className="h-4 w-4 text-blue-300" />
+            {globalSelected || current ? "Edit selection" : "Page settings"}
+          </button>
+          <span className="ml-auto text-xs text-slate-400">
+            {device[0].toUpperCase() + device.slice(1)} preview
+          </span>
+        </div>
+      )}
+      {compactPanel && !preview && (
+        <div
+          className="absolute inset-0 z-[1050] flex bg-slate-950/70"
+          role="presentation"
+          onMouseDown={() => setCompactPanel(null)}
+        >
+          <aside
+            className={`flex h-full w-full max-w-sm flex-col border-white/10 bg-[#0b1224] shadow-2xl ${compactPanel === "settings" ? "ml-auto border-l" : "mr-auto border-r"}`}
+            role="dialog"
+            aria-modal="true"
+            aria-label={compactPanel === "sections" ? "Section library" : "Editor settings"}
+            onMouseDown={(event) => event.stopPropagation()}
+          >
+            <div className="flex h-14 shrink-0 items-center justify-between border-b border-white/10 px-4">
+              <h2 className="text-sm font-semibold">
+                {compactPanel === "sections"
+                  ? "Add section"
+                  : globalSelected
+                    ? `Global ${globalSelected}`
+                    : current
+                      ? "Section settings"
+                      : "Page settings"}
+              </h2>
+              <div className="flex items-center gap-1">
+                {compactPanel === "settings" && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={undo}
+                      disabled={!history.length}
+                      className="rounded-lg p-2 hover:bg-white/10 disabled:opacity-30"
+                      aria-label="Undo"
+                    >
+                      <Undo2 className="h-4 w-4" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={redo}
+                      disabled={!future.length}
+                      className="rounded-lg p-2 hover:bg-white/10 disabled:opacity-30"
+                      aria-label="Redo"
+                    >
+                      <Redo2 className="h-4 w-4" />
+                    </button>
+                  </>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setCompactPanel(null)}
+                  className="rounded-lg p-2 hover:bg-white/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                  aria-label="Close editor panel"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto p-4">
+              {compactPanel === "sections" ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setCompactPanel(null);
+                      setMediaFor("image");
+                    }}
+                    className="mb-3 inline-flex w-full items-center justify-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold text-blue-200 hover:bg-white/10"
+                  >
+                    <ImagePlus className="h-4 w-4" /> Media library
+                  </button>
+                  <div className="space-y-2">
+                    {websiteSectionRegistry
+                      .filter((definition) => !definition.global)
+                      .map((definition) => {
+                        const Icon = definition.icon;
+                        return (
+                          <button
+                            key={definition.type}
+                            type="button"
+                            onClick={() => add(definition.type)}
+                            className="flex w-full items-start gap-3 rounded-xl border border-white/10 p-3 text-left hover:border-blue-400/50 hover:bg-blue-400/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                          >
+                            <Icon className="mt-0.5 h-4 w-4 shrink-0 text-blue-300" />
+                            <span className="min-w-0">
+                              <span className="block text-xs font-semibold">
+                                {definition.title}
+                              </span>
+                              <span className="mt-1 block text-[11px] leading-4 text-slate-400">
+                                {definition.description}
+                              </span>
+                            </span>
+                          </button>
+                        );
+                      })}
+                  </div>
+                </>
+              ) : globalSelected ? (
+                <GlobalSettings
+                  kind={globalSelected}
+                  section={globals[globalSelected]}
+                  navigation={globals.navigation}
+                  pages={pages}
+                  onChange={(patch) => setGlobal(globalSelected, patch)}
+                  onNavigation={(navigation) => {
+                    setGlobals({ ...globals, navigation });
+                    setGlobalsDirty(true);
+                  }}
+                  onAddNavigation={addNav}
+                  onMedia={() => {
+                    setCompactPanel(null);
+                    setMediaFor("logo");
+                  }}
+                />
+              ) : current ? (
+                <SectionSettings
+                  section={current}
+                  onProp={(key, value) => setProp(current.id, key, value)}
+                  onStyle={(key, value) =>
+                    update(current.id, (item) => ({
+                      ...item,
+                      style: { ...item.style, [key]: value },
+                    }))
+                  }
+                  onMedia={(kind) => {
+                    setCompactPanel(null);
+                    setMediaFor(kind);
+                  }}
+                />
+              ) : (
+                <p className="text-sm leading-6 text-slate-400">
+                  Select a section to edit it. Global header and footer settings
+                  are available after selecting them in the preview.
+                </p>
+              )}
+            </div>
+          </aside>
+        </div>
+      )}
       <div className="flex min-h-0 flex-1">
         {!preview && (
-          <aside className="hidden w-60 shrink-0 border-r border-white/10 bg-[#0b1224] p-3 lg:block">
+          <aside className="hidden w-60 shrink-0 overflow-y-auto border-r border-white/10 bg-[#0b1224] p-3 lg:block">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold">Add Section</h2>
               <button
@@ -755,7 +933,7 @@ export function WebsiteEditor({
             </div>
           </aside>
         )}
-        <main className="min-w-0 flex-1 overflow-auto bg-[#111a2c] p-5">
+        <main className="min-w-0 flex-1 overflow-auto bg-[#111a2c] p-2 sm:p-4 lg:p-5">
           <div
             className={`mx-auto overflow-hidden bg-white shadow-2xl ${width}`}
             dir={doc.theme?.direction || "auto"}
@@ -1189,15 +1367,15 @@ function PagePanel({
 }) {
   const [name, setName] = useState("");
   return (
-    <div className="absolute right-4 top-16 z-[1002] w-72 rounded-xl border border-white/10 bg-[#10192e] p-3 shadow-2xl">
+    <div className="absolute inset-x-2 top-40 z-[1002] max-h-[calc(100dvh-11rem)] overflow-y-auto rounded-xl border border-white/10 bg-[#10192e] p-3 shadow-2xl sm:left-auto sm:right-4 sm:top-28 sm:w-72 xl:top-16">
       <p className="text-sm font-semibold">Pages</p>
       <div className="mt-2 space-y-1">
         {pages.map((page: any) => (
           <div
             key={page.id}
-            className={`flex items-center justify-between rounded p-2 text-xs ${page.id === active ? "bg-blue-500/20" : ""}`}
+            className={`flex min-w-0 items-center justify-between gap-2 rounded p-2 text-xs ${page.id === active ? "bg-blue-500/20" : ""}`}
           >
-            <button onClick={() => onOpen(page.id)}>{page.name}</button>
+            <button className="min-w-0 truncate text-left" onClick={() => onOpen(page.id)}>{page.name}</button>
             {page.is_homepage ? (
               <span className="text-emerald-300">Home</span>
             ) : (
@@ -1253,7 +1431,7 @@ function SitePanel({
 }) {
   void pages;
   return (
-    <div className="absolute right-4 top-16 z-[1002] w-80 rounded-xl border border-white/10 bg-[#10192e] p-4 shadow-2xl">
+    <div className="absolute inset-x-2 top-40 z-[1002] max-h-[calc(100dvh-11rem)] overflow-y-auto rounded-xl border border-white/10 bg-[#10192e] p-4 shadow-2xl sm:left-auto sm:right-4 sm:top-28 sm:w-80 xl:top-16">
       <p className="text-sm font-semibold">Site settings</p>
       <label className="mt-3 block text-xs">
         Site name
@@ -1278,7 +1456,7 @@ function SitePanel({
           pattern="[a-z0-9-]+"
           className="mt-1 w-full rounded bg-white/5 p-2"
         />
-        <span className="mt-1 block text-[10px] text-slate-400">
+        <span className="mt-1 block break-all text-[10px] text-slate-400">
           https://{site?.public_slug || "your-site"}.{publicBaseDomain}
         </span>
       </label>

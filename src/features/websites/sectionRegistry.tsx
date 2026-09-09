@@ -34,6 +34,11 @@ export type SectionType =
   | "gallery"
   | "stats"
   | "team";
+export type WebsiteRenderDevice =
+  | "responsive"
+  | "desktop"
+  | "tablet"
+  | "mobile";
 export type WebsiteSection = {
   id: string;
   type: SectionType;
@@ -453,6 +458,23 @@ const motionClass = (style: Record<string, any>) =>
   style.animation && style.animation !== "none"
     ? `website-motion website-motion--${style.animation} website-motion-delay--${style.animationDelayPreset || "none"}`
     : "";
+const sectionPaddingStyle = (
+  value: unknown,
+  device: WebsiteRenderDevice,
+): React.CSSProperties => {
+  const padding = typeof value === "number" && Number.isFinite(value) ? value : 0;
+  const responsivePadding =
+    device === "responsive"
+      ? `min(${padding}px, 14vw)`
+      : `${
+          device === "mobile"
+            ? Math.min(padding, 56)
+            : device === "tablet"
+              ? Math.min(padding, 72)
+              : padding
+        }px`;
+  return { paddingTop: responsivePadding, paddingBottom: responsivePadding };
+};
 
 export function WebsiteSectionRenderer({
   section,
@@ -465,7 +487,7 @@ export function WebsiteSectionRenderer({
   onNavigate,
 }: {
   section: WebsiteSection;
-  device: "desktop" | "tablet" | "mobile";
+  device: WebsiteRenderDevice;
   selected?: boolean;
   onSelect?: () => void;
   chrome?: boolean;
@@ -479,6 +501,12 @@ export function WebsiteSectionRenderer({
   const click = () => onSelect?.();
   const frame = `${chrome ? "cursor-pointer transition outline outline-1 outline-transparent hover:outline-blue-300" : ""} ${selected ? "!outline-2 !outline-blue-500" : ""}`;
   const visual = motionClass(s);
+  const horizontalPadding =
+    device === "responsive"
+      ? "px-5 sm:px-8"
+      : device === "mobile"
+        ? "px-5"
+        : "px-8";
   const navigate = (item: NavigationItem) => (event: React.MouseEvent) => {
     event.preventDefault();
     if (item.pageId) onNavigate?.(item.pageId);
@@ -487,14 +515,14 @@ export function WebsiteSectionRenderer({
     return (
       <header
         onClick={click}
-        className={`${frame} ${p.sticky ? "sticky top-0 z-20" : ""} relative px-6 py-4`}
+        className={`${frame} ${p.sticky ? "sticky top-0 z-20" : ""} ${device === "responsive" ? "px-4 py-4 sm:px-6" : device === "mobile" ? "px-4 py-3" : "px-6 py-4"} relative`}
         style={{
           background: s.transparent ? "transparent" : s.backgroundColor,
           color: s.textColor,
         }}
       >
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4">
-          <div className="flex items-center gap-2 font-semibold">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3">
+          <div className="min-w-0 flex items-center gap-2 font-semibold">
             {asset(p.logoAssetId, assetUrls) && (
               <img
                 src={asset(p.logoAssetId, assetUrls)}
@@ -502,9 +530,11 @@ export function WebsiteSectionRenderer({
                 className="h-8 w-8 rounded object-contain"
               />
             )}
-            {p.siteName}
+            <span className="truncate">{p.siteName}</span>
           </div>
-          <nav className="hidden items-center gap-5 text-sm md:flex">
+          <nav
+            className={`items-center gap-5 text-sm ${device === "responsive" ? "hidden md:flex" : device === "mobile" ? "hidden" : "flex"}`}
+          >
             {(navigation || [])
               .filter((item) => item.visible)
               .map((item) => (
@@ -521,17 +551,47 @@ export function WebsiteSectionRenderer({
             <a
               href={p.ctaUrl}
               onClick={(event) => event.preventDefault()}
-              className="rounded-lg bg-blue-700 px-3 py-2 text-sm font-semibold text-white"
+              className={`shrink-0 rounded-lg bg-blue-700 px-3 py-2 text-sm font-semibold text-white ${device === "responsive" ? "hidden sm:inline-flex" : device === "mobile" ? "hidden" : "inline-flex"}`}
             >
               {p.ctaLabel}
             </a>
           )}
-          <button
-            className="rounded p-2 md:hidden"
-            aria-label="Open navigation"
+          <details
+            className={`relative shrink-0 ${device === "responsive" ? "md:hidden" : device === "mobile" ? "block" : "hidden"}`}
+            onClick={(event) => event.stopPropagation()}
           >
-            ☰
-          </button>
+            <summary
+              className="cursor-pointer list-none rounded-lg border border-current/20 px-3 py-2 text-sm font-semibold focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-current"
+              aria-label="Toggle navigation"
+            >
+              Menu
+            </summary>
+            <div className="absolute end-0 top-[calc(100%+.5rem)] z-30 w-64 max-w-[calc(100vw-2rem)] rounded-xl border border-slate-200 bg-white p-3 text-slate-900 shadow-xl">
+              <nav className="flex flex-col gap-1 text-sm">
+                {(navigation || [])
+                  .filter((item) => item.visible)
+                  .map((item) => (
+                    <a
+                      key={item.id}
+                      href={item.externalUrl || "#"}
+                      onClick={navigate(item)}
+                      className="rounded-lg px-3 py-2 hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+                    >
+                      {item.label}
+                    </a>
+                  ))}
+                {p.ctaLabel && (
+                  <a
+                    href={p.ctaUrl}
+                    onClick={(event) => event.preventDefault()}
+                    className="mt-2 rounded-lg bg-blue-700 px-3 py-2 text-center font-semibold text-white"
+                  >
+                    {p.ctaLabel}
+                  </a>
+                )}
+              </nav>
+            </div>
+          </details>
         </div>
       </header>
     );
@@ -539,10 +599,12 @@ export function WebsiteSectionRenderer({
     return (
       <footer
         onClick={click}
-        className={`${frame} px-6 py-12`}
+        className={`${frame} ${device === "responsive" ? "px-5 py-10 sm:px-6 sm:py-12" : device === "mobile" ? "px-5 py-10" : "px-6 py-12"}`}
         style={{ background: s.backgroundColor, color: s.textColor }}
       >
-        <div className="mx-auto grid max-w-6xl gap-8 md:grid-cols-[1fr_auto]">
+        <div
+          className={`mx-auto grid max-w-6xl gap-8 ${device === "responsive" ? "md:grid-cols-[1fr_auto]" : device === "mobile" ? "grid-cols-1" : "grid-cols-[1fr_auto]"}`}
+        >
           <div>
             <div className="flex items-center gap-2 font-semibold">
               {asset(p.logoAssetId, assetUrls) && (
@@ -581,7 +643,7 @@ export function WebsiteSectionRenderer({
     return (
       <section
         onClick={click}
-        className={`${frame} ${visual} relative flex overflow-hidden px-8 py-12`}
+        className={`${frame} ${visual} ${device === "responsive" ? "px-5 py-10 sm:px-8 sm:py-12" : device === "mobile" ? "px-5 py-10" : "px-8 py-12"} relative flex overflow-hidden`}
         style={{
           minHeight: p.minHeight,
           background: background
@@ -597,19 +659,23 @@ export function WebsiteSectionRenderer({
           textAlign: align as any,
         }}
       >
-        <div className="my-auto max-w-3xl">
+        <div className="my-auto min-w-0 max-w-3xl break-words">
           <p className="text-xs font-bold uppercase tracking-[.2em] opacity-70">
             {p.eyebrow}
           </p>
-          <h1 className="mt-5 text-4xl font-semibold tracking-tight sm:text-5xl lg:text-6xl">
+          <h1
+            className={`mt-5 font-semibold tracking-tight ${device === "responsive" ? "text-4xl sm:text-5xl lg:text-6xl" : device === "mobile" ? "text-4xl" : device === "tablet" ? "text-5xl" : "text-6xl"}`}
+          >
             {p.heading}
           </h1>
           <p className="mt-5 text-base leading-7 opacity-80">{p.subheading}</p>
-          <div className="mt-8 flex flex-wrap gap-3">
+          <div
+            className={`mt-8 flex gap-3 ${device === "responsive" ? "flex-col sm:flex-row sm:flex-wrap" : device === "mobile" ? "flex-col" : "flex-row flex-wrap"}`}
+          >
             <a
               href={p.primaryUrl}
               onClick={(e) => e.preventDefault()}
-              className="rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-slate-900"
+              className="rounded-lg bg-white px-4 py-2.5 text-center text-sm font-semibold text-slate-900"
             >
               {p.primaryLabel}
             </a>
@@ -617,7 +683,7 @@ export function WebsiteSectionRenderer({
               <a
                 href={p.secondaryUrl}
                 onClick={(e) => e.preventDefault()}
-                className="rounded-lg border border-white/40 px-4 py-2.5 text-sm font-semibold"
+                className="rounded-lg border border-white/40 px-4 py-2.5 text-center text-sm font-semibold"
               >
                 {p.secondaryLabel}
               </a>
@@ -633,7 +699,7 @@ export function WebsiteSectionRenderer({
           <img
             src={side}
             alt=""
-            className="ml-8 hidden w-[38%] self-center rounded-2xl object-cover lg:block"
+            className={`${device === "responsive" ? "ml-8 hidden lg:block" : device === "desktop" ? "ml-8 block" : "hidden"} w-[38%] self-center rounded-2xl object-cover rtl:ml-0 rtl:mr-8`}
           />
         )}
       </section>
@@ -643,12 +709,11 @@ export function WebsiteSectionRenderer({
     return (
       <section
         onClick={click}
-        className={`${frame} ${visual} px-8`}
+        className={`${frame} ${visual} ${horizontalPadding}`}
         style={{
           background: visualBackground(s),
           color: s.textColor,
-          paddingTop: s.paddingY,
-          paddingBottom: s.paddingY,
+          ...sectionPaddingStyle(s.paddingY, device),
           textAlign: align as any,
         }}
       >
@@ -663,7 +728,7 @@ export function WebsiteSectionRenderer({
                   : undefined,
           }}
         >
-          <h2 className="text-3xl font-semibold tracking-tight">{p.heading}</h2>
+          <h2 className="break-words text-3xl font-semibold tracking-tight">{p.heading}</h2>
           <p className="mt-4 whitespace-pre-wrap text-base leading-7 opacity-80">
             {p.body}
           </p>
@@ -675,7 +740,7 @@ export function WebsiteSectionRenderer({
     return (
       <section
         onClick={click}
-        className={`${frame} px-8 py-10`}
+        className={`${frame} ${horizontalPadding} py-10`}
         style={{ background: s.backgroundColor, textAlign: p.alignment as any }}
       >
         {source ? (
@@ -701,16 +766,16 @@ export function WebsiteSectionRenderer({
     return (
       <section
         onClick={click}
-        className={`${frame} px-8 py-14`}
+        className={`${frame} ${horizontalPadding} py-14`}
         style={{
           background: s.backgroundColor,
           color: s.textColor,
           textAlign: s.alignment as any,
         }}
       >
-        <h2 className="text-3xl font-semibold">{p.heading}</h2>
+        <h2 className="break-words text-3xl font-semibold">{p.heading}</h2>
         <div
-          className="mt-6 flex flex-wrap gap-3"
+          className={`mt-6 flex gap-3 ${device === "responsive" ? "flex-col sm:flex-row sm:flex-wrap" : device === "mobile" ? "flex-col" : "flex-row flex-wrap"}`}
           style={{
             justifyContent:
               s.alignment === "center"
@@ -725,7 +790,7 @@ export function WebsiteSectionRenderer({
               key={index}
               href={button.url}
               onClick={(e) => e.preventDefault()}
-              className={`rounded-lg px-4 py-2.5 text-sm font-semibold ${button.variant === "outline" ? "border border-slate-400" : button.variant === "secondary" ? "bg-slate-200 text-slate-900" : "bg-blue-700 text-white"}`}
+              className={`rounded-lg px-4 py-2.5 text-center text-sm font-semibold ${button.variant === "outline" ? "border border-slate-400" : button.variant === "secondary" ? "bg-slate-200 text-slate-900" : "bg-blue-700 text-white"}`}
             >
               {button.label}
             </a>
@@ -749,6 +814,7 @@ export function WebsiteSectionRenderer({
     return (
       <RichSection
         section={section}
+        device={device}
         frame={`${frame} ${visual}`}
         assetUrls={assetUrls}
         onClick={click}
@@ -757,19 +823,29 @@ export function WebsiteSectionRenderer({
   return (
     <div
       onClick={click}
-      className={frame}
-      style={{ height: p[device] ?? p.desktop }}
+      className={`${frame} ${device === "responsive" ? "h-[var(--spacer-mobile)] sm:h-[var(--spacer-tablet)] lg:h-[var(--spacer-desktop)]" : ""}`}
+      style={
+        device === "responsive"
+          ? ({
+              "--spacer-mobile": `${p.mobile ?? p.desktop}px`,
+              "--spacer-tablet": `${p.tablet ?? p.desktop}px`,
+              "--spacer-desktop": `${p.desktop}px`,
+            } as React.CSSProperties)
+          : { height: p[device] ?? p.desktop }
+      }
     />
   );
 }
 
 function RichSection({
   section,
+  device,
   frame,
   assetUrls,
   onClick,
 }: {
   section: WebsiteSection;
+  device: WebsiteRenderDevice;
   frame: string;
   assetUrls?: Record<string, string>;
   onClick: () => void;
@@ -778,26 +854,43 @@ function RichSection({
   const s = section.style;
   const items = p.items || [];
   const grid =
-    p.columns === 4
-      ? "lg:grid-cols-4"
-      : p.columns === 2
-        ? "md:grid-cols-2"
-        : "md:grid-cols-3";
+    device === "responsive"
+      ? p.columns === 4
+        ? "sm:grid-cols-2 lg:grid-cols-4"
+        : p.columns === 2
+          ? "md:grid-cols-2"
+          : "sm:grid-cols-2 lg:grid-cols-3"
+      : device === "mobile"
+        ? "grid-cols-1"
+        : device === "tablet"
+          ? "grid-cols-2"
+          : p.columns === 4
+            ? "grid-cols-4"
+            : p.columns === 2
+              ? "grid-cols-2"
+              : "grid-cols-3";
+  const horizontalPadding =
+    device === "responsive"
+      ? "px-5 sm:px-8"
+      : device === "mobile"
+        ? "px-5"
+        : "px-8";
   if (section.type === "contact")
     return (
       <section
         onClick={onClick}
-        className={`${frame} px-8`}
+        className={`${frame} ${horizontalPadding}`}
         style={{
           background: s.backgroundColor,
           color: s.textColor,
-          paddingTop: s.paddingY,
-          paddingBottom: s.paddingY,
+          ...sectionPaddingStyle(s.paddingY, device),
         }}
       >
-        <div className="mx-auto grid max-w-5xl gap-8 md:grid-cols-2">
-          <div>
-            <h2 className="text-3xl font-semibold">{p.heading}</h2>
+        <div
+          className={`mx-auto grid max-w-5xl gap-8 ${device === "responsive" ? "md:grid-cols-2" : device === "mobile" ? "grid-cols-1" : "grid-cols-2"}`}
+        >
+          <div className="min-w-0 break-words">
+            <h2 className="break-words text-3xl font-semibold">{p.heading}</h2>
             <p className="mt-4 opacity-80">{p.text}</p>
             <div className="mt-6 space-y-2 text-sm">
               <p>{p.phone}</p>
@@ -806,7 +899,7 @@ function RichSection({
             </div>
           </div>
           {p.showForm && (
-            <div className="rounded-xl bg-white/10 p-5 text-sm">
+            <div className="min-w-0 rounded-xl bg-white/10 p-5 text-sm">
               <p className="font-semibold">Send a message</p>
               <input
                 aria-label="Name"
@@ -825,7 +918,7 @@ function RichSection({
               />
               <button
                 type="button"
-                className="mt-3 rounded bg-white px-3 py-2 text-slate-900"
+                className={`mt-3 rounded bg-white px-3 py-2 text-slate-900 ${device === "responsive" ? "w-full sm:w-auto" : device === "mobile" ? "w-full" : "w-auto"}`}
               >
                 Send message
               </button>
@@ -847,15 +940,14 @@ function RichSection({
     return (
       <section
         onClick={onClick}
-        className={`${frame} px-8`}
+        className={`${frame} ${horizontalPadding}`}
         style={{
           background: s.backgroundColor,
           color: s.textColor,
-          paddingTop: s.paddingY,
-          paddingBottom: s.paddingY,
+          ...sectionPaddingStyle(s.paddingY, device),
         }}
       >
-        <h2 className="mx-auto max-w-6xl text-3xl font-semibold">
+        <h2 className="mx-auto max-w-6xl break-words text-3xl font-semibold">
           {p.heading}
         </h2>
         {images.length ? (
@@ -881,16 +973,15 @@ function RichSection({
     return (
       <section
         onClick={onClick}
-        className={`${frame} px-8`}
+        className={`${frame} ${horizontalPadding}`}
         style={{
           background: s.backgroundColor,
           color: s.textColor,
-          paddingTop: s.paddingY,
-          paddingBottom: s.paddingY,
+          ...sectionPaddingStyle(s.paddingY, device),
         }}
       >
         <div className="mx-auto max-w-3xl">
-          <h2 className="text-3xl font-semibold">{p.heading}</h2>
+          <h2 className="break-words text-3xl font-semibold">{p.heading}</h2>
           {items.map((item: any, index: number) => (
             <details
               key={index}
@@ -914,24 +1005,23 @@ function RichSection({
   return (
     <section
       onClick={onClick}
-      className={`${frame} px-8`}
+      className={`${frame} ${horizontalPadding}`}
       style={{
         background: s.backgroundColor,
         color: s.textColor,
-        paddingTop: s.paddingY,
-        paddingBottom: s.paddingY,
+        ...sectionPaddingStyle(s.paddingY, device),
       }}
     >
       <div className="mx-auto max-w-6xl">
-        <h2 className="text-3xl font-semibold">{p.heading}</h2>
+        <h2 className="break-words text-3xl font-semibold">{p.heading}</h2>
         {p.subheading && <p className="mt-3 opacity-75">{p.subheading}</p>}
         <div
-          className={`mt-8 grid gap-4 ${section.type === "stats" ? "sm:grid-cols-3" : grid}`}
+          className={`mt-8 grid gap-4 ${section.type === "stats" ? device === "responsive" ? "sm:grid-cols-3" : device === "mobile" ? "grid-cols-1" : "grid-cols-3" : grid}`}
         >
           {cards.map((item: any, index: number) => (
             <article
               key={index}
-              className={`rounded-xl border border-current/15 p-5 ${item.featured ? "ring-2 ring-blue-500" : ""}`}
+              className={`min-w-0 break-words rounded-xl border border-current/15 p-5 ${item.featured ? "ring-2 ring-blue-500" : ""}`}
             >
               {item.assetId && (
                 <img

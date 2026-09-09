@@ -240,7 +240,7 @@ export function PublicWebsitePage() {
       {data.globals.header && (
         <WebsiteSectionRenderer
           section={data.globals.header}
-          device="desktop"
+          device="responsive"
           chrome={false}
           assetUrls={data.asset_urls}
           navigation={data.globals.navigation as NavigationItem[]}
@@ -251,7 +251,7 @@ export function PublicWebsitePage() {
         <WebsiteSectionRenderer
           key={section.id}
           section={section}
-          device="desktop"
+          device="responsive"
           chrome={false}
           assetUrls={data.asset_urls}
         />
@@ -260,7 +260,7 @@ export function PublicWebsitePage() {
       {data.globals.footer && (
         <WebsiteSectionRenderer
           section={data.globals.footer}
-          device="desktop"
+          device="responsive"
           chrome={false}
           assetUrls={data.asset_urls}
           navigation={data.globals.navigation as NavigationItem[]}
@@ -454,10 +454,10 @@ function PublicForms({ forms }: { forms: PublicWebsiteForm[] }) {
     }
   };
   return (
-    <section className="bg-slate-50 px-6 py-12">
+    <section className="bg-slate-50 px-4 py-10 sm:px-6 sm:py-12">
       <form
         onSubmit={submit}
-        className="mx-auto max-w-xl rounded-xl border border-slate-200 bg-white p-6 shadow-sm"
+        className="mx-auto max-w-xl rounded-xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6"
       >
         <h2 className="text-xl font-semibold">{form.name}</h2>
         {form.fields.map((field: PublicWebsiteForm["fields"][number]) => (
@@ -499,7 +499,7 @@ function PublicForms({ forms }: { forms: PublicWebsiteForm[] }) {
         ))}
         <button
           disabled={busy}
-          className="mt-5 rounded bg-blue-700 px-4 py-2 text-sm font-semibold text-white disabled:opacity-60"
+          className="mt-5 w-full rounded bg-blue-700 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60 sm:w-auto"
         >
           {busy ? "Sending…" : "Send message"}
         </button>
