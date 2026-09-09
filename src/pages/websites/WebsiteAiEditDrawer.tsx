@@ -9,6 +9,17 @@ type Proposal = {
   plan: { summary?: string; operations?: any[] };
 };
 
+const isReviewableProposal = (value: any): value is Proposal =>
+  Boolean(
+    value &&
+      typeof value.id === "string" &&
+      value.id.length > 0 &&
+      value.plan &&
+      typeof value.plan.summary === "string" &&
+      Array.isArray(value.plan.operations) &&
+      value.plan.operations.length > 0,
+  );
+
 const examples = [
   "Make this page more premium",
   "Add an FAQ",
@@ -77,6 +88,9 @@ export function WebsiteAiEditDrawer({
       const result = await websiteBuilderService.generateEditPlan({
         organizationId, siteId, currentPageId, instruction: instruction.trim(),
       });
+      if (!isReviewableProposal(result.proposal)) {
+        throw new Error("We couldn't generate a valid edit plan. Please try again.");
+      }
       setProposal(result.proposal);
       await refreshHistory();
     } catch (reason: any) {
@@ -85,7 +99,7 @@ export function WebsiteAiEditDrawer({
     } finally { setStage(""); }
   };
   const apply = async () => {
-    if (!proposal || stage) return;
+    if (!isReviewableProposal(proposal) || stage) return;
     setStage("applying"); setError("");
     try {
       await websiteBuilderService.applyEditPlan(organizationId, proposal.id);
@@ -125,7 +139,7 @@ export function WebsiteAiEditDrawer({
           </>}
         </div>
         <footer className="flex flex-wrap justify-end gap-2 border-t border-white/10 p-4">
-          {proposal ? <><button onClick={() => { setProposal(null); setError(""); }} disabled={Boolean(stage)} className="rounded-lg px-4 py-2 text-sm font-semibold hover:bg-white/10">Regenerate</button><button onClick={close} disabled={Boolean(stage)} className="rounded-lg px-4 py-2 text-sm font-semibold hover:bg-white/10">Cancel</button><button onClick={() => void apply()} disabled={Boolean(stage)} className="inline-flex items-center gap-2 rounded-lg bg-violet-400 px-4 py-2 text-sm font-bold text-slate-950 disabled:opacity-60">{stage === "applying" && <Loader2 className="h-4 w-4 animate-spin" />}{stage === "applying" ? "Applying changes…" : "Apply Changes"}</button></> : <button onClick={() => void generate()} disabled={!instruction.trim() || Boolean(stage)} className="inline-flex items-center gap-2 rounded-lg bg-violet-400 px-4 py-2 text-sm font-bold text-slate-950 disabled:opacity-60">{stage === "generating" && <Loader2 className="h-4 w-4 animate-spin" />}Generate changes</button>}
+          {proposal ? <><button onClick={() => { setProposal(null); setError(""); }} disabled={Boolean(stage)} className="rounded-lg px-4 py-2 text-sm font-semibold hover:bg-white/10">Regenerate</button><button onClick={close} disabled={Boolean(stage)} className="rounded-lg px-4 py-2 text-sm font-semibold hover:bg-white/10">Cancel</button><button onClick={() => void apply()} disabled={!isReviewableProposal(proposal) || Boolean(stage)} className="inline-flex items-center gap-2 rounded-lg bg-violet-400 px-4 py-2 text-sm font-bold text-slate-950 disabled:opacity-60">{stage === "applying" && <Loader2 className="h-4 w-4 animate-spin" />}{stage === "applying" ? "Applying changes…" : "Apply Changes"}</button></> : <button onClick={() => void generate()} disabled={!instruction.trim() || Boolean(stage)} className="inline-flex items-center gap-2 rounded-lg bg-violet-400 px-4 py-2 text-sm font-bold text-slate-950 disabled:opacity-60">{stage === "generating" && <Loader2 className="h-4 w-4 animate-spin" />}Generate changes</button>}
         </footer>
       </aside>
     </div>

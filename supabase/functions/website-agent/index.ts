@@ -51,8 +51,9 @@ const text = (value: unknown, max: number, field: string, required = true) => {
     (required && !value.trim()) ||
     value.length > max ||
     dangerous.test(value)
-  )
+  ) {
     throw new Error(`Website plan ${field} is invalid.`);
+  }
   return value.trim();
 };
 const safeUrl = (value: unknown) =>
@@ -61,8 +62,9 @@ const safeUrl = (value: unknown) =>
   !dangerous.test(value);
 const slug = (value: unknown, field: string) => {
   const result = text(value, 63, field).toLowerCase();
-  if (!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(result))
+  if (!/^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(result)) {
     throw new Error(`Website plan ${field} is invalid.`);
+  }
   return result;
 };
 
@@ -210,6 +212,74 @@ for (const [type, schema] of Object.entries(agentSectionSchemas)) {
   if (type === "hero") schema.props.push("imageIntent");
 }
 
+const persistedSectionSchemas = Object.fromEntries(
+  Object.entries(agentSectionSchemas).map(([type, schema]) => [
+    type,
+    { props: [...schema.props], style: [...schema.style] },
+  ]),
+) as typeof agentSectionSchemas;
+persistedSectionSchemas.hero.props.push("backgroundAssetId", "sideAssetId");
+persistedSectionSchemas.image.props.push("assetId", "url");
+persistedSectionSchemas.contact.props.push("mapUrl");
+// Existing drafts created by the original generator may carry gallery cards in
+// `items`. New AI output is still restricted to the canonical `images` field.
+persistedSectionSchemas.gallery.props.push("items");
+
+const globalSectionSchemas = {
+  header: {
+    props: [
+      "siteName",
+      "logoAssetId",
+      "ctaLabel",
+      "ctaUrl",
+      "sticky",
+      "variant",
+      "mobileOpen",
+    ],
+    style: ["backgroundColor", "textColor", "transparent", "variant"],
+  },
+  footer: {
+    props: [
+      "siteName",
+      "logoAssetId",
+      "description",
+      "copyright",
+      "variant",
+      "socialLinks",
+    ],
+    style: ["backgroundColor", "textColor", "transparent", "variant"],
+  },
+} as const;
+const themeKeys = [
+  "preset",
+  "primaryColor",
+  "secondaryColor",
+  "surfaceColor",
+  "mutedTextColor",
+  "backgroundColor",
+  "textColor",
+  "headingFont",
+  "bodyFont",
+  "radius",
+  "direction",
+] as const;
+const themePresets = new Set([
+  "minimal",
+  "dark",
+  "warm",
+  "bold",
+  "luxury",
+  "wellness",
+]);
+const colorKeys = new Set([
+  "primaryColor",
+  "secondaryColor",
+  "surfaceColor",
+  "mutedTextColor",
+  "backgroundColor",
+  "textColor",
+]);
+
 function normalizePlan(value: unknown): unknown {
   const clean = (item: unknown, key = ""): unknown => {
     if (Array.isArray(item)) return item.map((child) => clean(child));
@@ -222,26 +292,31 @@ function normalizePlan(value: unknown): unknown {
         typeof child === "string" &&
         !child.trim() &&
         /(url|target)$/i.test(childKey)
-      )
+      ) {
         continue;
+      }
       output[childKey] = clean(child, childKey);
     }
     if (key === "sections" || "type" in output) {
       if (output.style === undefined) output.style = {};
     }
-    if (typeof output.slug === "string" && output.slug === "")
+    if (typeof output.slug === "string" && output.slug === "") {
       output.slug = "/";
+    }
     if (record(output.theme)) {
-      for (const color of [
-        "primaryColor",
-        "secondaryColor",
-        "surfaceColor",
-        "mutedTextColor",
-        "backgroundColor",
-        "textColor",
-      ]) {
-        if (typeof output.theme[color] === "string")
+      for (
+        const color of [
+          "primaryColor",
+          "secondaryColor",
+          "surfaceColor",
+          "mutedTextColor",
+          "backgroundColor",
+          "textColor",
+        ]
+      ) {
+        if (typeof output.theme[color] === "string") {
           output.theme[color] = output.theme[color].toLowerCase();
+        }
       }
     }
     return output;
@@ -249,10 +324,103 @@ function normalizePlan(value: unknown): unknown {
   return clean(value);
 }
 
+const arabicFontAliases = new Map([
+  ["noto sans arabic", "Noto Sans Arabic"],
+  ["noto sans arabic, sans-serif", "Noto Sans Arabic"],
+  ["ibm plex sans arabic", "IBM Plex Sans Arabic"],
+  ["ibm plex sans arabic, sans-serif", "IBM Plex Sans Arabic"],
+]);
+
+function normalizeEditPlan(value: unknown): unknown {
+  const cleanStrings = (item: unknown): unknown => {
+    if (Array.isArray(item)) return item.map(cleanStrings);
+    if (!record(item)) return typeof item === "string" ? item.trim() : item;
+    return Object.fromEntries(
+      Object.entries(item).map(([key, child]) => [key, cleanStrings(child)]),
+    );
+  };
+  const normalized = cleanStrings(value);
+  if (!record(normalized) || !Array.isArray(normalized.operations)) {
+    return normalized;
+  }
+
+  const normalizeValues = (container: unknown) => {
+    if (!record(container)) return;
+    for (const [key, child] of Object.entries(container)) {
+      if ((child === null || child === "") && /(url|target)$/i.test(key)) {
+        delete container[key];
+        continue;
+      }
+      if (
+        colorKeys.has(key) && typeof child === "string" &&
+        /^#[0-9a-f]{6}$/i.test(child)
+      ) {
+        container[key] = child.toLowerCase();
+      }
+      if (
+        (key === "headingFont" || key === "bodyFont") &&
+        typeof child === "string"
+      ) {
+        container[key] = arabicFontAliases.get(child.toLowerCase()) || child;
+      }
+    }
+  };
+  const normalizeSection = (section: unknown) => {
+    if (!record(section)) return;
+    if (section.props === null || section.props === undefined) {
+      section.props = {};
+    }
+    if (section.style === null || section.style === undefined) {
+      section.style = {};
+    }
+    normalizeValues(section.props);
+    normalizeValues(section.style);
+  };
+
+  for (const operation of normalized.operations) {
+    if (!record(operation)) continue;
+    for (
+      const key of [
+        "pageId",
+        "pageRef",
+        "targetPageId",
+        "targetPageRef",
+      ] as const
+    ) {
+      if (operation[key] === null) delete operation[key];
+    }
+    normalizeValues(operation.theme);
+    if (record(operation.seo)) {
+      for (const key of ["title", "description"] as const) {
+        if (operation.seo[key] === null) delete operation.seo[key];
+      }
+    }
+    if (record(operation.changes)) {
+      for (const key of ["props", "style"] as const) {
+        if (operation.changes[key] === null) delete operation.changes[key];
+        else normalizeValues(operation.changes[key]);
+        if (
+          record(operation.changes[key]) &&
+          !Object.keys(operation.changes[key]).length
+        ) {
+          delete operation.changes[key];
+        }
+      }
+    }
+    normalizeSection(operation.section);
+    if (Array.isArray(operation.sections)) {
+      operation.sections.forEach(normalizeSection);
+    }
+  }
+  return normalized;
+}
+
 const sectionReference = Object.entries(agentSectionSchemas)
   .map(
     ([type, schema]) =>
-      `${type}: props=[${schema.props.join(",")}], style=[${schema.style.join(",")}]`,
+      `${type}: props=[${schema.props.join(",")}], style=[${
+        schema.style.join(",")
+      }]`,
   )
   .join("; ");
 
@@ -262,12 +430,13 @@ function validateSection(section: any) {
     Object.keys(section).some(
       (key) => !["type", "props", "style"].includes(key),
     )
-  )
+  ) {
     failPlan(
       "PLAN_SECTION_INVALID",
       "Website plan section is invalid.",
       "section",
     );
+  }
   if (
     !sectionTypes.has(String(section.type)) ||
     !record(section.props) ||
@@ -276,23 +445,25 @@ function validateSection(section: any) {
     Object.keys(section.style).length > 40 ||
     JSON.stringify(section).length > 16384 ||
     dangerous.test(JSON.stringify(section))
-  )
+  ) {
     failPlan(
       "PLAN_SECTION_INVALID",
       "Website plan section is invalid.",
       "section",
     );
+  }
   const schema = agentSectionSchemas[String(section.type)];
   if (
     !schema ||
     Object.keys(section.props).some((key) => !schema.props.includes(key)) ||
     Object.keys(section.style).some((key) => !schema.style.includes(key))
-  )
+  ) {
     failPlan(
       "PLAN_SECTION_INVALID",
       "Website plan section uses unsupported props or styles.",
       `section.${String(section.type)}`,
     );
+  }
   const style = section.style;
   if (
     (style.preset !== undefined && !visualPresets.has(String(style.preset))) ||
@@ -304,17 +475,18 @@ function validateSection(section: any) {
       !animationPresets.has(String(style.animation))) ||
     (style.animationDelayPreset !== undefined &&
       !animationDelayPresets.has(String(style.animationDelayPreset)))
-  )
+  ) {
     failPlan(
       "PLAN_VISUAL_INVALID",
       "Website plan uses an unsupported visual preset.",
       `section.${String(section.type)}.style`,
     );
+  }
   const items = Array.isArray(section.props.items)
     ? section.props.items
     : Array.isArray(section.props.images)
-      ? section.props.images
-      : [];
+    ? section.props.images
+    : [];
   const limits: Record<string, number> = {
     features: 12,
     services: 12,
@@ -328,39 +500,43 @@ function validateSection(section: any) {
   if (
     limits[String(section.type)] !== undefined &&
     items.length > limits[String(section.type)]
-  )
+  ) {
     failPlan(
       "PLAN_SECTION_INVALID",
       "Website plan section has too many items.",
       `section.${String(section.type)}.items`,
     );
+  }
   if (
     items.some(
       (item: unknown) => !record(item) || dangerous.test(JSON.stringify(item)),
     )
-  )
+  ) {
     failPlan(
       "PLAN_SECTION_INVALID",
       "Website plan section contains invalid content.",
       `section.${String(section.type)}.items`,
     );
+  }
   const scan = (value: unknown, key = ""): void => {
     if (typeof value === "string") {
       if (
         value.length > 4000 ||
         dangerous.test(value) ||
         (/(url|target)$/i.test(key) && !safeUrl(value))
-      )
+      ) {
         failPlan(
           "PLAN_URL_INVALID",
           "Website plan contains an invalid URL or string.",
           `section.${String(section.type)}.${key}`,
         );
+      }
     } else if (Array.isArray(value)) value.forEach((item) => scan(item));
-    else if (record(value))
+    else if (record(value)) {
       Object.entries(value).forEach(([childKey, child]) =>
-        scan(child, childKey),
+        scan(child, childKey)
       );
+    }
   };
   scan(section.props);
   scan(section.style);
@@ -391,26 +567,30 @@ function validatePlan(value: unknown): Plan {
           "footer",
         ].includes(key),
     )
-  )
+  ) {
     throw new Error("Website plan is invalid.");
+  }
   if (
     value.pages.length < 1 ||
     value.pages.length > 8 ||
     value.navigation.length > 8
-  )
+  ) {
     throw new Error("Website plan page count is invalid.");
+  }
   const site = value.site;
   if (
     Object.keys(site).some(
       (key) => !["name", "slugSuggestion", "language", "theme"].includes(key),
     ) ||
     !record(site.theme)
-  )
+  ) {
     throw new Error("Website plan site settings are invalid.");
+  }
   text(site.name, 120, "site name");
   slug(site.slugSuggestion, "site slug");
-  if (!["en", "ar"].includes(String(site.language)))
+  if (!["en", "ar"].includes(String(site.language))) {
     throw new Error("Website plan language is invalid.");
+  }
   const theme = site.theme;
   if (
     Object.keys(theme).some(
@@ -439,8 +619,9 @@ function validatePlan(value: unknown): Plan {
     !fontAllowlist.has(String(theme.bodyFont)) ||
     !["sm", "md", "lg"].includes(String(theme.radius)) ||
     !["ltr", "rtl"].includes(String(theme.direction))
-  )
+  ) {
     throw new Error("Website plan theme is invalid.");
+  }
   const pageIds = new Set<string>();
   let homepageCount = 0;
   let totalSections = 0;
@@ -461,8 +642,9 @@ function validatePlan(value: unknown): Plan {
       ) ||
       !record(page.seo) ||
       !Array.isArray(page.sections)
-    )
+    ) {
       throw new Error("Website plan page is invalid.");
+    }
     const clientId = text(page.clientId, 40, "page client ID");
     const name = text(page.name, 120, "page name");
     const path = String(page.slug);
@@ -472,8 +654,9 @@ function validatePlan(value: unknown): Plan {
       pageIds.has(clientId) ||
       typeof page.isHomepage !== "boolean" ||
       page.sections.length > 20
-    )
+    ) {
       throw new Error("Website plan page is invalid.");
+    }
     paths.add(path);
     pageIds.add(clientId);
     if (page.isHomepage) homepageCount += 1;
@@ -490,23 +673,26 @@ function validatePlan(value: unknown): Plan {
       sections: page.sections.map(validateSection),
     };
   });
-  if (homepageCount !== 1 || totalSections > 80)
+  if (homepageCount !== 1 || totalSections > 80) {
     throw new Error("Website plan homepage or section count is invalid.");
+  }
   const navigation = value.navigation.map((item: unknown) => {
     if (
       !record(item) ||
       Object.keys(item).some(
         (key) => !["label", "targetPageClientId"].includes(key),
       )
-    )
+    ) {
       throw new Error("Website plan navigation is invalid.");
+    }
     const targetPageClientId = text(
       item.targetPageClientId,
       40,
       "navigation target",
     );
-    if (!pageIds.has(targetPageClientId))
+    if (!pageIds.has(targetPageClientId)) {
       throw new Error("Website plan navigation target is invalid.");
+    }
     return {
       label: text(item.label, 80, "navigation label"),
       targetPageClientId,
@@ -521,8 +707,9 @@ function validatePlan(value: unknown): Plan {
       !record(item.props) ||
       !record(item.style) ||
       dangerous.test(JSON.stringify(item))
-    )
+    ) {
       throw new Error(`Website plan ${type} is invalid.`);
+    }
     return { type, props: item.props, style: item.style };
   };
   return {
@@ -552,7 +739,8 @@ function validatePlan(value: unknown): Plan {
   };
 }
 
-const systemInstruction = `Generate exactly one JSON Website Plan and nothing else. You are designing a premium website, not filling a form. Never publish. Never output HTML, CSS, JavaScript, markdown, image URLs, secrets, database operations, or fields not listed below.
+const systemInstruction =
+  `Generate exactly one JSON Website Plan and nothing else. You are designing a premium website, not filling a form. Never publish. Never output HTML, CSS, JavaScript, markdown, image URLs, secrets, database operations, or fields not listed below.
 Root keys exactly: version, site, pages, navigation, header, footer. version is 1.
 site exactly: name, slugSuggestion, language, theme. language is only en or ar. theme exactly: preset, primaryColor, secondaryColor, surfaceColor, mutedTextColor, backgroundColor, textColor, headingFont, bodyFont, radius, direction. Colors are 6-digit #rrggbb. Fonts only: Inter, Manrope, Playfair Display, DM Sans, Noto Sans Arabic, IBM Plex Sans Arabic. radius only sm, md, lg. direction only ltr, rtl. Use intentional pairings: luxury=Playfair Display + Manrope, SaaS=Manrope + Inter, portfolio=DM Sans + Inter, Arabic luxury=IBM Plex Sans Arabic + Noto Sans Arabic.
 Each page exactly: clientId, name, slug, isHomepage, seo, sections. Exactly one homepage has slug "/" and isHomepage true; all other slugs are lowercase paths such as "/about". seo exactly has non-empty title and description. No null values.
@@ -561,22 +749,28 @@ navigation items exactly: label, targetPageClientId; targets must equal a page c
 
 function classifyPlanError(error: unknown): PlanValidationError {
   if (error instanceof PlanValidationError) return error;
-  const message =
-    error instanceof Error ? error.message : "Website plan is invalid.";
-  if (message.includes("theme"))
+  const message = error instanceof Error
+    ? error.message
+    : "Website plan is invalid.";
+  if (message.includes("theme")) {
     return new PlanValidationError("PLAN_THEME_INVALID", message, "site.theme");
-  if (message.includes("navigation"))
+  }
+  if (message.includes("navigation")) {
     return new PlanValidationError("PLAN_NAV_INVALID", message, "navigation");
-  if (message.includes("URL"))
+  }
+  if (message.includes("URL")) {
     return new PlanValidationError("PLAN_URL_INVALID", message, "sections");
-  if (message.includes("page") || message.includes("homepage"))
+  }
+  if (message.includes("page") || message.includes("homepage")) {
     return new PlanValidationError("PLAN_PAGE_INVALID", message, "pages");
-  if (message.includes("section"))
+  }
+  if (message.includes("section")) {
     return new PlanValidationError(
       "PLAN_SECTION_INVALID",
       message,
       "pages.sections",
     );
+  }
   return new PlanValidationError("PLAN_INVALID", message, "plan");
 }
 
@@ -629,7 +823,9 @@ async function generateWithGemini({
   const timeout = setTimeout(() => controller.abort(), 25_000);
   const request = (requestedModel: string) =>
     fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(requestedModel)}:generateContent`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${
+        encodeURIComponent(requestedModel)
+      }:generateContent`,
       {
         method: "POST",
         signal: controller.signal,
@@ -687,8 +883,9 @@ async function generateWithGemini({
     let providerCode = "unknown";
     try {
       const providerPayload = await response.clone().json();
-      if (typeof providerPayload?.error?.status === "string")
+      if (typeof providerPayload?.error?.status === "string") {
         providerCode = providerPayload.error.status;
+      }
     } catch {
       /* Do not log provider response bodies. */
     }
@@ -698,18 +895,22 @@ async function generateWithGemini({
       provider_code: providerCode,
     });
   }
-  if (response.status === 429)
+  if (response.status === 429) {
     throw new GeminiProviderError(
       "Gemini free-tier usage limit reached. Please try again later.",
     );
-  if (response.status === 404)
+  }
+  if (response.status === 404) {
     throw new GeminiProviderError("The configured AI model is unavailable.");
-  if (response.status === 400)
+  }
+  if (response.status === 400) {
     throw new GeminiProviderError(
       "Website AI configuration is incompatible with the selected model.",
     );
-  if ([401, 403].includes(response.status))
+  }
+  if ([401, 403].includes(response.status)) {
     throw new GeminiProviderError("Website AI is not configured correctly.");
+  }
   if (!response.ok) {
     throw new GeminiProviderError(
       "Website AI is temporarily unavailable. Please try again later.",
@@ -737,8 +938,9 @@ async function authorize(admin: any, userId: string, organizationId: string) {
     admin,
     organizationId,
   );
-  if (!entitlements.access_active || !entitlements.website_builder_access)
+  if (!entitlements.access_active || !entitlements.website_builder_access) {
     throw new Error("Website Builder is not available for this organization.");
+  }
   const { data: service } = await admin
     .from("organization_services")
     .select("service_key")
@@ -746,125 +948,839 @@ async function authorize(admin: any, userId: string, organizationId: string) {
     .eq("service_key", "website_builder")
     .eq("status", "active")
     .maybeSingle();
-  if (!service)
+  if (!service) {
     throw new Error(
       "Activate Website Builder in Services before using Website AI.",
     );
+  }
 }
 
 const editOperations = new Set([
-  "add_section", "update_section", "remove_section", "move_section", "duplicate_section",
-  "update_site_theme", "update_site_metadata", "update_global_header", "update_global_footer",
-  "create_page", "rename_page", "update_page_slug", "update_page_seo",
-  "add_navigation_item", "update_navigation_item", "remove_navigation_item",
+  "add_section",
+  "update_section",
+  "remove_section",
+  "move_section",
+  "duplicate_section",
+  "update_site_theme",
+  "update_site_metadata",
+  "update_global_header",
+  "update_global_footer",
+  "create_page",
+  "rename_page",
+  "update_page_slug",
+  "update_page_seo",
+  "add_navigation_item",
+  "update_navigation_item",
+  "remove_navigation_item",
 ]);
 const safeJson = (value: unknown) => JSON.stringify(value ?? null);
 const exactKeys = (value: Record<string, unknown>, keys: string[]) =>
-  Object.keys(value).length === keys.length && keys.every((key) => key in value);
+  Object.keys(value).length === keys.length &&
+  keys.every((key) => key in value);
 const hasOnly = (value: Record<string, unknown>, keys: string[]) =>
   Object.keys(value).every((key) => keys.includes(key));
 const integer = (value: unknown, min: number, max: number) =>
-  typeof value === "number" && Number.isInteger(value) && value >= min && value <= max;
+  typeof value === "number" && Number.isInteger(value) && value >= min &&
+  value <= max;
 const editFailure = (code: string, path: string) =>
   failPlan(code, "Website edit plan is invalid.", path);
 
+function validateEditStyle(
+  style: Record<string, unknown>,
+  path: string,
+  code = "AI_EDIT_SECTION_INVALID",
+) {
+  for (const [key, value] of Object.entries(style)) {
+    if (
+      (["backgroundColor", "textColor"].includes(key) &&
+        (typeof value !== "string" || !/^#[0-9a-f]{6}$/i.test(value))) ||
+      (key === "paddingY" && !integer(value, 0, 240)) ||
+      (key === "alignment" &&
+        !["left", "center", "right"].includes(String(value))) ||
+      (key === "preset" && !visualPresets.has(String(value))) ||
+      (key === "background" && !backgroundPresets.has(String(value))) ||
+      (key === "cardStyle" && !cardStylePresets.has(String(value))) ||
+      (key === "animation" && !animationPresets.has(String(value))) ||
+      (key === "animationDelayPreset" &&
+        !animationDelayPresets.has(String(value)))
+    ) editFailure(code, `${path}.${key}`);
+  }
+}
+
+function validateEditSection(
+  section: unknown,
+  schema: { props: string[]; style: string[] } | undefined,
+  path: string,
+) {
+  if (
+    !record(section) || !exactKeys(section, ["type", "props", "style"]) ||
+    typeof section.type !== "string" || !sectionTypes.has(section.type) ||
+    !record(section.props) || !record(section.style) || !schema ||
+    Object.keys(section.props).length > 40 ||
+    Object.keys(section.style).length > 40 ||
+    safeJson(section).length > 16384 || dangerous.test(safeJson(section))
+  ) {
+    editFailure("AI_EDIT_SECTION_INVALID", path);
+  }
+  const candidate = section as Record<string, any>;
+  const allowedSchema = schema as { props: string[]; style: string[] };
+  const invalidProp = Object.keys(candidate.props).find((key) =>
+    !allowedSchema.props.includes(key)
+  );
+  if (invalidProp) {
+    editFailure("AI_EDIT_SECTION_INVALID", `${path}.props.${invalidProp}`);
+  }
+  const invalidStyle = Object.keys(candidate.style).find((key) =>
+    !allowedSchema.style.includes(key)
+  );
+  if (invalidStyle) {
+    editFailure("AI_EDIT_SECTION_INVALID", `${path}.style.${invalidStyle}`);
+  }
+  validateEditStyle(candidate.style, `${path}.style`);
+
+  const listKey = candidate.type === "gallery"
+    ? (Array.isArray(candidate.props.images) ? "images" : "items")
+    : "items";
+  const items = candidate.props[listKey];
+  const limits: Record<string, number> = {
+    features: 12,
+    services: 12,
+    testimonials: 12,
+    pricing: 4,
+    faq: 20,
+    gallery: 24,
+    stats: 8,
+    team: 16,
+  };
+  if (
+    items !== undefined && (!Array.isArray(items) ||
+      (limits[candidate.type] !== undefined &&
+        items.length > limits[candidate.type]) ||
+      items.some((item) => !record(item) || dangerous.test(safeJson(item))))
+  ) {
+    editFailure("AI_EDIT_SECTION_INVALID", `${path}.props.${listKey}`);
+  }
+  const scan = (item: unknown, itemPath: string, key = "") => {
+    if (typeof item === "string") {
+      if (
+        item.length > 4000 || dangerous.test(item) ||
+        (/(url|target)$/i.test(key) && !safeUrl(item))
+      ) {
+        editFailure("AI_EDIT_SECTION_INVALID", itemPath);
+      }
+    } else if (Array.isArray(item)) {
+      item.forEach((child, index) => scan(child, `${itemPath}.${index}`));
+    } else if (record(item)) {
+      Object.entries(item).forEach(([childKey, child]) =>
+        scan(child, `${itemPath}.${childKey}`, childKey)
+      );
+    }
+  };
+  scan(candidate.props, `${path}.props`);
+  scan(candidate.style, `${path}.style`);
+}
+
+function validateThemeState(
+  theme: unknown,
+  path: string,
+  requireCore: boolean,
+) {
+  if (
+    !record(theme) || !hasOnly(theme, [...themeKeys]) ||
+    !Object.keys(theme).length
+  ) {
+    editFailure("AI_EDIT_INVALID_THEME", path);
+  }
+  const candidate = theme as Record<string, unknown>;
+  if (
+    requireCore &&
+    !["primaryColor", "backgroundColor", "textColor", "radius"].every((key) =>
+      key in candidate
+    )
+  ) {
+    editFailure("AI_EDIT_INVALID_THEME", path);
+  }
+  for (const [key, value] of Object.entries(candidate)) {
+    if (
+      (colorKeys.has(key) &&
+        (typeof value !== "string" || !/^#[0-9a-f]{6}$/i.test(value))) ||
+      (key === "preset" && !themePresets.has(String(value))) ||
+      (["headingFont", "bodyFont"].includes(key) &&
+        !fontAllowlist.has(String(value))) ||
+      (key === "radius" && !["sm", "md", "lg"].includes(String(value))) ||
+      (key === "direction" && !["ltr", "rtl"].includes(String(value)))
+    ) editFailure("AI_EDIT_INVALID_THEME", `${path}.${key}`);
+  }
+}
+
+function validateGlobalSectionState(
+  section: unknown,
+  type: "header" | "footer",
+  path: string,
+) {
+  const schema = globalSectionSchemas[type];
+  if (
+    !record(section) || !record(section.props) || !record(section.style) ||
+    section.type !== type || safeJson(section).length > 16384 ||
+    dangerous.test(safeJson(section))
+  ) {
+    editFailure("AI_EDIT_INVALID_GLOBAL_SECTION", path);
+  }
+  const candidate = section as Record<string, any>;
+  const invalidProp = Object.keys(candidate.props).find((key) =>
+    !(schema.props as readonly string[]).includes(key)
+  );
+  const invalidStyle = Object.keys(candidate.style).find((key) =>
+    !(schema.style as readonly string[]).includes(key)
+  );
+  if (invalidProp) {
+    editFailure(
+      "AI_EDIT_INVALID_GLOBAL_SECTION",
+      `${path}.props.${invalidProp}`,
+    );
+  }
+  if (invalidStyle) {
+    editFailure(
+      "AI_EDIT_INVALID_GLOBAL_SECTION",
+      `${path}.style.${invalidStyle}`,
+    );
+  }
+  const props = candidate.props;
+  const style = candidate.style;
+  if (
+    props.siteName !== undefined &&
+    (typeof props.siteName !== "string" || !props.siteName.trim() ||
+      props.siteName.length > 120)
+  ) editFailure("AI_EDIT_INVALID_GLOBAL_SECTION", `${path}.props.siteName`);
+  if (
+    props.logoAssetId !== undefined && props.logoAssetId !== null &&
+    !uuid(props.logoAssetId)
+  ) editFailure("AI_EDIT_INVALID_GLOBAL_SECTION", `${path}.props.logoAssetId`);
+  if (
+    style.backgroundColor !== undefined &&
+    (typeof style.backgroundColor !== "string" ||
+      !/^#[0-9a-f]{6}$/i.test(style.backgroundColor))
+  ) {
+    editFailure(
+      "AI_EDIT_INVALID_GLOBAL_SECTION",
+      `${path}.style.backgroundColor`,
+    );
+  }
+  if (
+    style.textColor !== undefined &&
+    (typeof style.textColor !== "string" ||
+      !/^#[0-9a-f]{6}$/i.test(style.textColor))
+  ) editFailure("AI_EDIT_INVALID_GLOBAL_SECTION", `${path}.style.textColor`);
+  if (
+    style.transparent !== undefined && typeof style.transparent !== "boolean"
+  ) {
+    editFailure(
+      "AI_EDIT_INVALID_GLOBAL_SECTION",
+      `${path}.style.transparent`,
+    );
+  }
+  if (type === "header") {
+    if (
+      props.ctaLabel !== undefined &&
+      (typeof props.ctaLabel !== "string" || props.ctaLabel.length > 80)
+    ) editFailure("AI_EDIT_INVALID_GLOBAL_SECTION", `${path}.props.ctaLabel`);
+    if (props.ctaUrl !== undefined && !safeUrl(props.ctaUrl)) {
+      editFailure("AI_EDIT_INVALID_GLOBAL_SECTION", `${path}.props.ctaUrl`);
+    }
+    if (props.sticky !== undefined && typeof props.sticky !== "boolean") {
+      editFailure("AI_EDIT_INVALID_GLOBAL_SECTION", `${path}.props.sticky`);
+    }
+    if (
+      props.mobileOpen !== undefined && typeof props.mobileOpen !== "boolean"
+    ) {
+      editFailure("AI_EDIT_INVALID_GLOBAL_SECTION", `${path}.props.mobileOpen`);
+    }
+    if (
+      (props.variant !== undefined && props.variant !== "logo-left") ||
+      (style.variant !== undefined && style.variant !== "logo-left")
+    ) {
+      editFailure("AI_EDIT_INVALID_GLOBAL_SECTION", `${path}.variant`);
+    }
+  } else {
+    if (
+      props.description !== undefined &&
+      (typeof props.description !== "string" || props.description.length > 1000)
+    ) {
+      editFailure(
+        "AI_EDIT_INVALID_GLOBAL_SECTION",
+        `${path}.props.description`,
+      );
+    }
+    if (
+      props.copyright !== undefined &&
+      (typeof props.copyright !== "string" || props.copyright.length > 200)
+    ) editFailure("AI_EDIT_INVALID_GLOBAL_SECTION", `${path}.props.copyright`);
+    if (
+      (props.variant !== undefined && props.variant !== "columns") ||
+      (style.variant !== undefined && style.variant !== "columns")
+    ) editFailure("AI_EDIT_INVALID_GLOBAL_SECTION", `${path}.variant`);
+    if (
+      props.socialLinks !== undefined &&
+      (!Array.isArray(props.socialLinks) || props.socialLinks.length)
+    ) {
+      editFailure(
+        "AI_EDIT_INVALID_GLOBAL_SECTION",
+        `${path}.props.socialLinks`,
+      );
+    }
+  }
+}
+
+function validateSeo(seo: unknown, path: string) {
+  if (
+    !record(seo) || !hasOnly(seo, ["title", "description"]) ||
+    !Object.keys(seo).length
+  ) editFailure("AI_EDIT_INVALID_SEO", path);
+  const candidate = seo as Record<string, unknown>;
+  if (
+    candidate.title !== undefined &&
+    (typeof candidate.title !== "string" || !candidate.title.trim() ||
+      candidate.title.length > 160)
+  ) editFailure("AI_EDIT_INVALID_SEO", `${path}.title`);
+  if (
+    candidate.description !== undefined &&
+    (typeof candidate.description !== "string" ||
+      !candidate.description.trim() ||
+      candidate.description.length > 320)
+  ) editFailure("AI_EDIT_INVALID_SEO", `${path}.description`);
+}
+
 function validateEditPlan(value: any, context: any): Plan {
-  if (!record(value) || !exactKeys(value, ["version", "summary", "operations"]) || value.version !== 1 ||
-    typeof value.summary !== "string" || !value.summary.trim() || value.summary.length > 500 ||
-    !Array.isArray(value.operations) || value.operations.length < 1 || value.operations.length > 30 || dangerous.test(safeJson(value))) {
+  if (
+    !record(value) || !exactKeys(value, ["version", "summary", "operations"]) ||
+    value.version !== 1 ||
+    typeof value.summary !== "string" || !value.summary.trim() ||
+    value.summary.length > 500 ||
+    !Array.isArray(value.operations) || value.operations.length < 1 ||
+    value.operations.length > 30 || dangerous.test(safeJson(value))
+  ) {
     editFailure("AI_EDIT_INVALID_PLAN", "plan");
   }
   const createdRefs = new Set<string>();
-  const validPageTarget = (operation: Record<string, unknown>, path: string) => {
+  const validPageTarget = (
+    operation: Record<string, unknown>,
+    path: string,
+  ) => {
     const pageId = operation.pageId;
     const pageRef = operation.pageRef;
-    if ((typeof pageId === "string") === (typeof pageRef === "string")) editFailure("AI_EDIT_INVALID_TARGET", path);
-    if (typeof pageId === "string" && !context.pageIds.has(pageId)) editFailure("AI_EDIT_INVALID_TARGET", path);
-    if (typeof pageRef === "string" && !createdRefs.has(pageRef)) editFailure("AI_EDIT_INVALID_TARGET", path);
-  };
-  const operations = (value.operations as any[]).map((raw: any, index: number) => {
-    if (!record(raw) || typeof raw.op !== "string" || !editOperations.has(raw.op)) editFailure("AI_EDIT_UNSUPPORTED_OPERATION", `operations.${index}`);
-    const operation: any = raw;
-    const op = operation.op as string;
-    if (op === "create_page") {
-      if (!exactKeys(operation, ["op", "tempRef", "name", "slug", "seo", "sections"]) || typeof operation.tempRef !== "string" ||
-        !/^new:[a-z0-9][a-z0-9_-]{0,60}$/.test(operation.tempRef) || createdRefs.has(operation.tempRef) ||
-        typeof operation.name !== "string" || !operation.name.trim() || operation.name.length > 120 ||
-        typeof operation.slug !== "string" || !/^\/[a-z0-9](?:[a-z0-9/-]{0,190}[a-z0-9])?$/.test(operation.slug) ||
-        !record(operation.seo) || !hasOnly(operation.seo, ["title", "description"]) ||
-        !Array.isArray(operation.sections) || operation.sections.length > 100) editFailure("AI_EDIT_INVALID_PAGE", `operations.${index}`);
-      createdRefs.add(operation.tempRef);
-      operation.sections.forEach((section: any) => validateSection(section));
-    } else if (op === "update_site_theme") {
-      if (!exactKeys(operation, ["op", "theme"]) || !record(operation.theme) || !hasOnly(operation.theme, ["preset", "primaryColor", "secondaryColor", "surfaceColor", "mutedTextColor", "backgroundColor", "textColor", "headingFont", "bodyFont", "radius", "direction"]) || !Object.keys(operation.theme).length) editFailure("AI_EDIT_INVALID_THEME", `operations.${index}`);
-    } else if (op === "update_site_metadata") {
-      if (!exactKeys(operation, ["op", "changes"]) || !record(operation.changes) || !hasOnly(operation.changes, ["name", "language"]) || !Object.keys(operation.changes).length) editFailure("AI_EDIT_INVALID_METADATA", `operations.${index}`);
-    } else if (op === "update_global_header" || op === "update_global_footer") {
-      if (!exactKeys(operation, ["op", "changes"]) || !record(operation.changes) || !hasOnly(operation.changes, ["props", "style"]) || !Object.keys(operation.changes).length) editFailure("AI_EDIT_INVALID_GLOBAL_SECTION", `operations.${index}`);
-    } else if (op === "add_navigation_item") {
-      if (!hasOnly(operation, ["op", "label", "index", "targetPageId", "targetPageRef"]) || typeof operation.label !== "string" || !operation.label.trim() || operation.label.length > 80 || !integer(operation.index, 0, 20) || ((typeof operation.targetPageId === "string") === (typeof operation.targetPageRef === "string"))) editFailure("AI_EDIT_INVALID_NAVIGATION", `operations.${index}`);
-      if (typeof operation.targetPageId === "string" && !context.pageIds.has(operation.targetPageId)) editFailure("AI_EDIT_NAV_TARGET_INVALID", `operations.${index}`);
-      if (typeof operation.targetPageRef === "string" && !createdRefs.has(operation.targetPageRef)) editFailure("AI_EDIT_NAV_TARGET_INVALID", `operations.${index}`);
-    } else if (op === "update_navigation_item") {
-      if (!exactKeys(operation, ["op", "navigationId", "changes"]) || typeof operation.navigationId !== "string" || !context.navigationIds.has(operation.navigationId) || !record(operation.changes) || !hasOnly(operation.changes, ["label", "index", "targetPageId", "targetPageRef"]) || !Object.keys(operation.changes).length) editFailure("AI_EDIT_INVALID_NAVIGATION", `operations.${index}`);
-    } else if (op === "remove_navigation_item") {
-      if (!exactKeys(operation, ["op", "navigationId"]) || typeof operation.navigationId !== "string" || !context.navigationIds.has(operation.navigationId)) editFailure("AI_EDIT_INVALID_NAVIGATION", `operations.${index}`);
-    } else {
-      validPageTarget(operation, `operations.${index}`);
-      if (op === "add_section") {
-        if (!hasOnly(operation, ["op", "pageId", "pageRef", "index", "section"]) || !integer(operation.index, 0, 100) || !record(operation.section)) editFailure("AI_EDIT_INVALID_SECTION", `operations.${index}`);
-        validateSection(operation.section);
-      } else if (op === "update_section") {
-        if (!hasOnly(operation, ["op", "pageId", "pageRef", "sectionId", "changes"]) || typeof operation.sectionId !== "string" || !context.sectionIds.has(operation.sectionId) || !record(operation.changes) || !hasOnly(operation.changes, ["props", "style"]) || !Object.keys(operation.changes).length) editFailure("AI_EDIT_INVALID_SECTION", `operations.${index}`);
-        const schema = agentSectionSchemas[context.sectionTypes.get(operation.sectionId) || ""];
-        if (!schema || (record(operation.changes.props) && !hasOnly(operation.changes.props, schema.props)) || (record(operation.changes.style) && !hasOnly(operation.changes.style, schema.style))) editFailure("AI_EDIT_SECTION_INVALID", `operations.${index}.changes`);
-      } else if (op === "remove_section") {
-        if (!hasOnly(operation, ["op", "pageId", "pageRef", "sectionId"]) || typeof operation.sectionId !== "string" || !context.sectionIds.has(operation.sectionId)) editFailure("AI_EDIT_INVALID_SECTION", `operations.${index}`);
-      } else if (op === "move_section" || op === "duplicate_section") {
-        if (!hasOnly(operation, ["op", "pageId", "pageRef", "sectionId", "index"]) || typeof operation.sectionId !== "string" || !context.sectionIds.has(operation.sectionId) || !integer(operation.index, 0, 100)) editFailure("AI_EDIT_INVALID_SECTION", `operations.${index}`);
-      } else if (op === "rename_page") {
-        if (!hasOnly(operation, ["op", "pageId", "pageRef", "name"]) || typeof operation.name !== "string" || !operation.name.trim() || operation.name.length > 120) editFailure("AI_EDIT_INVALID_PAGE", `operations.${index}`);
-      } else if (op === "update_page_slug") {
-        if (!hasOnly(operation, ["op", "pageId", "pageRef", "slug"]) || typeof operation.slug !== "string" || !/^\/$|^\/[a-z0-9](?:[a-z0-9/-]{0,190}[a-z0-9])?$/.test(operation.slug)) editFailure("AI_EDIT_INVALID_PAGE", `operations.${index}`);
-      } else if (op === "update_page_seo") {
-        if (!hasOnly(operation, ["op", "pageId", "pageRef", "seo"]) || !record(operation.seo) || !hasOnly(operation.seo, ["title", "description"]) || !Object.keys(operation.seo).length) editFailure("AI_EDIT_INVALID_SEO", `operations.${index}`);
-      }
+    if ((typeof pageId === "string") === (typeof pageRef === "string")) {
+      editFailure("AI_EDIT_INVALID_TARGET", path);
     }
-    return operation;
-  });
+    if (typeof pageId === "string" && !context.pageIds.has(pageId)) {
+      editFailure("AI_EDIT_INVALID_TARGET", path);
+    }
+    if (typeof pageRef === "string" && !createdRefs.has(pageRef)) {
+      editFailure("AI_EDIT_INVALID_TARGET", path);
+    }
+  };
+  let createdPageCount = 0;
+  const operations = (value.operations as any[]).map(
+    (raw: any, index: number) => {
+      const path = `operations.${index}`;
+      if (
+        !record(raw) || typeof raw.op !== "string" ||
+        !editOperations.has(raw.op)
+      ) editFailure("AI_EDIT_UNSUPPORTED_OPERATION", path);
+      const operation: any = raw;
+      const op = operation.op as string;
+      if (op === "create_page") {
+        if (
+          !exactKeys(operation, [
+            "op",
+            "tempRef",
+            "name",
+            "slug",
+            "seo",
+            "sections",
+          ]) || typeof operation.tempRef !== "string" ||
+          !/^new:[a-z0-9][a-z0-9_-]{0,60}$/.test(operation.tempRef) ||
+          createdRefs.has(operation.tempRef) ||
+          typeof operation.name !== "string" || !operation.name.trim() ||
+          operation.name.length > 120 ||
+          typeof operation.slug !== "string" ||
+          !/^\/[a-z0-9](?:[a-z0-9/-]{0,190}[a-z0-9])?$/.test(operation.slug) ||
+          !Array.isArray(operation.sections) ||
+          operation.sections.length > 100 ||
+          context.pageIds.size + ++createdPageCount > 8
+        ) editFailure("AI_EDIT_INVALID_PAGE", path);
+        validateSeo(operation.seo, `${path}.seo`);
+        createdRefs.add(operation.tempRef);
+        operation.sections.forEach((section: any, sectionIndex: number) => {
+          const schema = record(section)
+            ? agentSectionSchemas[String(section.type)]
+            : undefined;
+          validateEditSection(
+            section,
+            schema,
+            `${path}.sections.${sectionIndex}`,
+          );
+        });
+      } else if (op === "update_site_theme") {
+        if (!exactKeys(operation, ["op", "theme"])) {
+          editFailure(
+            "AI_EDIT_INVALID_THEME",
+            path,
+          );
+        }
+        validateThemeState(operation.theme, `${path}.theme`, false);
+        for (const theme of context.themes) {
+          validateThemeState(
+            { ...theme, ...operation.theme },
+            `${path}.theme`,
+            true,
+          );
+        }
+      } else if (op === "update_site_metadata") {
+        if (
+          !exactKeys(operation, ["op", "changes"]) ||
+          !record(operation.changes) ||
+          !hasOnly(operation.changes, ["name", "language"]) ||
+          !Object.keys(operation.changes).length
+        ) editFailure("AI_EDIT_INVALID_METADATA", path);
+        if (
+          operation.changes.name !== undefined &&
+          (typeof operation.changes.name !== "string" ||
+            !operation.changes.name.trim() ||
+            operation.changes.name.length > 120)
+        ) editFailure("AI_EDIT_INVALID_METADATA", `${path}.changes.name`);
+        if (
+          operation.changes.language !== undefined &&
+          !["en", "ar"].includes(operation.changes.language)
+        ) editFailure("AI_EDIT_INVALID_METADATA", `${path}.changes.language`);
+      } else if (
+        op === "update_global_header" || op === "update_global_footer"
+      ) {
+        const type = op === "update_global_header" ? "header" : "footer";
+        if (
+          !exactKeys(operation, ["op", "changes"]) ||
+          !record(operation.changes) ||
+          !hasOnly(operation.changes, ["props", "style"]) ||
+          !Object.keys(operation.changes).length
+        ) editFailure("AI_EDIT_INVALID_GLOBAL_SECTION", path);
+        if (
+          operation.changes.props !== undefined &&
+          !record(operation.changes.props)
+        ) {
+          editFailure(
+            "AI_EDIT_INVALID_GLOBAL_SECTION",
+            `${path}.changes.props`,
+          );
+        }
+        if (
+          operation.changes.style !== undefined &&
+          !record(operation.changes.style)
+        ) {
+          editFailure(
+            "AI_EDIT_INVALID_GLOBAL_SECTION",
+            `${path}.changes.style`,
+          );
+        }
+        const current = context.globalSections[type];
+        validateGlobalSectionState(
+          {
+            ...current,
+            props: { ...current?.props, ...(operation.changes.props || {}) },
+            style: { ...current?.style, ...(operation.changes.style || {}) },
+          },
+          type,
+          `${path}.changes`,
+        );
+      } else if (op === "add_navigation_item") {
+        if (
+          !hasOnly(operation, [
+            "op",
+            "label",
+            "index",
+            "targetPageId",
+            "targetPageRef",
+          ]) || Object.keys(operation).length !== 4 ||
+          typeof operation.label !== "string" || !operation.label.trim() ||
+          operation.label.length > 80 ||
+          !integer(operation.index, 0, context.navigationIds.size) ||
+          ((typeof operation.targetPageId === "string") ===
+            (typeof operation.targetPageRef === "string"))
+        ) editFailure("AI_EDIT_INVALID_NAVIGATION", path);
+        if (
+          typeof operation.targetPageId === "string" &&
+          !context.pageIds.has(operation.targetPageId)
+        ) editFailure("AI_EDIT_NAV_TARGET_INVALID", path);
+        if (
+          typeof operation.targetPageRef === "string" &&
+          !createdRefs.has(operation.targetPageRef)
+        ) editFailure("AI_EDIT_NAV_TARGET_INVALID", path);
+      } else if (op === "update_navigation_item") {
+        if (
+          !exactKeys(operation, ["op", "navigationId", "changes"]) ||
+          typeof operation.navigationId !== "string" ||
+          !context.navigationIds.has(operation.navigationId) ||
+          !record(operation.changes) ||
+          !hasOnly(operation.changes, [
+            "label",
+            "index",
+            "targetPageId",
+            "targetPageRef",
+          ]) || !Object.keys(operation.changes).length
+        ) editFailure("AI_EDIT_INVALID_NAVIGATION", path);
+        if (
+          operation.changes.label !== undefined &&
+          (typeof operation.changes.label !== "string" ||
+            !operation.changes.label.trim() ||
+            operation.changes.label.length > 80)
+        ) editFailure("AI_EDIT_INVALID_NAVIGATION", `${path}.changes.label`);
+        if (
+          operation.changes.index !== undefined &&
+          !integer(
+            operation.changes.index,
+            0,
+            Math.max(0, context.navigationIds.size - 1),
+          )
+        ) editFailure("AI_EDIT_INVALID_NAVIGATION", `${path}.changes.index`);
+        if (
+          operation.changes.targetPageId !== undefined &&
+          (!context.pageIds.has(operation.changes.targetPageId) ||
+            operation.changes.targetPageRef !== undefined)
+        ) editFailure("AI_EDIT_NAV_TARGET_INVALID", path);
+        if (
+          operation.changes.targetPageRef !== undefined &&
+          (!createdRefs.has(operation.changes.targetPageRef) ||
+            operation.changes.targetPageId !== undefined)
+        ) editFailure("AI_EDIT_NAV_TARGET_INVALID", path);
+      } else if (op === "remove_navigation_item") {
+        if (
+          !exactKeys(operation, ["op", "navigationId"]) ||
+          typeof operation.navigationId !== "string" ||
+          !context.navigationIds.has(operation.navigationId)
+        ) editFailure("AI_EDIT_INVALID_NAVIGATION", path);
+      } else {
+        validPageTarget(operation, path);
+        if (op === "add_section") {
+          if (
+            !hasOnly(operation, [
+              "op",
+              "pageId",
+              "pageRef",
+              "index",
+              "section",
+            ]) || !integer(operation.index, 0, 100) ||
+            !record(operation.section)
+          ) editFailure("AI_EDIT_INVALID_SECTION", path);
+          validateEditSection(
+            operation.section,
+            agentSectionSchemas[String(operation.section.type)],
+            `${path}.section`,
+          );
+        } else if (op === "update_section") {
+          if (
+            !hasOnly(operation, [
+              "op",
+              "pageId",
+              "pageRef",
+              "sectionId",
+              "changes",
+            ]) || typeof operation.sectionId !== "string" ||
+            !context.sectionIds.has(operation.sectionId) ||
+            !record(operation.changes) ||
+            !hasOnly(operation.changes, ["props", "style"]) ||
+            !Object.keys(operation.changes).length
+          ) editFailure("AI_EDIT_INVALID_SECTION", path);
+          const current = context.sections.get(operation.sectionId);
+          if (
+            !current || typeof operation.pageId !== "string" ||
+            current.pageId !== operation.pageId
+          ) editFailure("AI_EDIT_INVALID_TARGET", path);
+          const editableSchema = agentSectionSchemas[current.type];
+          if (
+            operation.changes.props !== undefined &&
+            !record(operation.changes.props)
+          ) editFailure("AI_EDIT_SECTION_INVALID", `${path}.changes.props`);
+          if (
+            operation.changes.style !== undefined &&
+            !record(operation.changes.style)
+          ) editFailure("AI_EDIT_SECTION_INVALID", `${path}.changes.style`);
+          const invalidProp = Object.keys(operation.changes.props || {}).find((
+            key,
+          ) => !editableSchema?.props.includes(key));
+          const invalidStyle = Object.keys(operation.changes.style || {}).find((
+            key,
+          ) => !editableSchema?.style.includes(key));
+          if (invalidProp) {
+            editFailure(
+              "AI_EDIT_SECTION_INVALID",
+              `${path}.changes.props.${invalidProp}`,
+            );
+          }
+          if (invalidStyle) {
+            editFailure(
+              "AI_EDIT_SECTION_INVALID",
+              `${path}.changes.style.${invalidStyle}`,
+            );
+          }
+          validateEditSection(
+            {
+              type: current.type,
+              props: { ...current.props, ...(operation.changes.props || {}) },
+              style: { ...current.style, ...(operation.changes.style || {}) },
+            },
+            persistedSectionSchemas[current.type],
+            `${path}.changes`,
+          );
+        } else if (op === "remove_section") {
+          if (
+            !hasOnly(operation, ["op", "pageId", "pageRef", "sectionId"]) ||
+            typeof operation.sectionId !== "string" ||
+            !context.sectionIds.has(operation.sectionId) ||
+            context.sections.get(operation.sectionId)?.pageId !==
+              operation.pageId
+          ) editFailure("AI_EDIT_INVALID_SECTION", path);
+        } else if (op === "move_section" || op === "duplicate_section") {
+          if (
+            !hasOnly(operation, [
+              "op",
+              "pageId",
+              "pageRef",
+              "sectionId",
+              "index",
+            ]) || typeof operation.sectionId !== "string" ||
+            !context.sectionIds.has(operation.sectionId) ||
+            context.sections.get(operation.sectionId)?.pageId !==
+              operation.pageId ||
+            !integer(operation.index, 0, 100)
+          ) editFailure("AI_EDIT_INVALID_SECTION", path);
+        } else if (op === "rename_page") {
+          if (
+            !hasOnly(operation, ["op", "pageId", "pageRef", "name"]) ||
+            typeof operation.name !== "string" || !operation.name.trim() ||
+            operation.name.length > 120
+          ) editFailure("AI_EDIT_INVALID_PAGE", path);
+        } else if (op === "update_page_slug") {
+          if (
+            !hasOnly(operation, ["op", "pageId", "pageRef", "slug"]) ||
+            typeof operation.slug !== "string" ||
+            !/^\/$|^\/[a-z0-9](?:[a-z0-9/-]{0,190}[a-z0-9])?$/.test(
+              operation.slug,
+            ) || operation.slug.includes("//") || /[?#]/.test(operation.slug)
+          ) editFailure("AI_EDIT_INVALID_PAGE", path);
+        } else if (op === "update_page_seo") {
+          if (
+            !hasOnly(operation, ["op", "pageId", "pageRef", "seo"])
+          ) editFailure("AI_EDIT_INVALID_SEO", path);
+          validateSeo(operation.seo, `${path}.seo`);
+        }
+      }
+      return operation;
+    },
+  );
   return { version: 1, summary: value.summary.trim(), operations };
 }
 
-const editOperationReference = `Return only JSON with root keys version, summary, operations. version=1; summary is 1-500 characters; 1-30 operations. Never publish, release, deploy, HTML, CSS, JavaScript, arbitrary code, assets, billing, auth, or integrations. Use only IDs supplied in context.
-Operations: add_section {op,pageId|pageRef,index,section}; update_section {op,pageId|pageRef,sectionId,changes:{props?,style?}}; remove_section {op,pageId|pageRef,sectionId}; move_section {op,pageId|pageRef,sectionId,index}; duplicate_section {op,pageId|pageRef,sectionId,index}; update_site_theme {op,theme}; update_site_metadata {op,changes:{name?,language?}}; update_global_header/update_global_footer {op,changes:{props?,style?}}; create_page {op,tempRef,name,slug,seo:{title?,description?},sections}; rename_page {op,pageId|pageRef,name}; update_page_slug {op,pageId|pageRef,slug}; update_page_seo {op,pageId|pageRef,seo:{title?,description?}}; add_navigation_item {op,label,index,targetPageId|targetPageRef}; update_navigation_item {op,navigationId,changes:{label?,index?,targetPageId?,targetPageRef?}}; remove_navigation_item {op,navigationId}. A new page tempRef must be new:lowercase_name and can be referenced only after its create_page operation. Section has exactly type,props,style. Allowed section types and keys: ${sectionReference}. Theme keys: preset,primaryColor,secondaryColor,surfaceColor,mutedTextColor,backgroundColor,textColor,headingFont,bodyFont,radius,direction. No extra fields.`;
+const editOperationReference =
+  `Return only JSON with root keys version, summary, operations. version=1; summary is 1-500 characters; 1-30 operations. Never publish, release, deploy, HTML, CSS, JavaScript, arbitrary code, assets, billing, auth, or integrations. Use only IDs supplied in context. Every operation must contain exactly the documented fields and no extras.
+Operations: add_section {op,pageId|pageRef,index,section}; update_section {op,pageId|pageRef,sectionId,changes:{props?,style?}}; remove_section {op,pageId|pageRef,sectionId}; move_section {op,pageId|pageRef,sectionId,index}; duplicate_section {op,pageId|pageRef,sectionId,index}; update_site_theme {op,theme}; update_site_metadata {op,changes:{name?,language?}} where language is only en or ar (never locale or direction); update_global_header/update_global_footer {op,changes:{props?,style?}}; create_page {op,tempRef,name,slug,seo:{title?,description?},sections}; rename_page {op,pageId|pageRef,name}; update_page_slug {op,pageId|pageRef,slug}; update_page_seo {op,pageId|pageRef,seo:{title?,description?}}; add_navigation_item {op,label,index,targetPageId|targetPageRef}; update_navigation_item {op,navigationId,changes:{label?,index?,targetPageId?,targetPageRef?}}; remove_navigation_item {op,navigationId}. A new page tempRef must be new:lowercase_name and can be referenced only after its create_page operation. Section has exactly type,props,style. Allowed new-section types and keys: ${sectionReference}. For an existing section, use only its context.allowedEditableProps and context.allowedEditableStyles; never invent generic text, content, label, or items keys. Header props=[${
+    globalSectionSchemas.header.props.join(",")
+  }], header style=[${
+    globalSectionSchemas.header.style.join(",")
+  }]. Footer props=[${
+    globalSectionSchemas.footer.props.join(",")
+  }], footer style=[${
+    globalSectionSchemas.footer.style.join(",")
+  }]. Theme keys=[${
+    themeKeys.join(",")
+  }]; preset is minimal,dark,warm,bold,luxury,or wellness; fonts are ${
+    [...fontAllowlist].join(",")
+  }; radius is sm,md,or lg; direction is ltr or rtl; colors are six-digit hex. Do not mutate media IDs. Translate navigation labels only with update_navigation_item.`;
 
 function editSystemInstruction() {
-  return `You create safe draft-only Website Builder edit proposals. ${editOperationReference} Existing content context is informational and IDs are authoritative. If the request cannot be completed with those operations, return no operations is not allowed; instead return a safe operation only when valid. Do not claim publication. Arabic requests use Arabic content, language ar, direction rtl, and allowed Arabic fonts.`;
+  return `You create safe draft-only Website Builder edit proposals. ${editOperationReference} Existing content context and target-specific allowed keys are authoritative. Preserve fields that were not requested by emitting only changed keys. If the request cannot be represented safely, do not invent an operation. Do not claim publication. Arabic requests use Arabic content, update_site_metadata changes.language="ar", update_site_theme theme.direction="rtl", and allowed Arabic fonts. Return the entire plan, never a partial fragment.`;
 }
 
-async function loadEditContext(admin: any, organizationId: string, siteId: string) {
+async function loadEditContext(
+  admin: any,
+  organizationId: string,
+  siteId: string,
+) {
   const { data: site, error: siteError } = await admin.from("website_sites")
     .select("id,name,default_locale,global_version,global_sections")
-    .eq("id", siteId).eq("organization_id", organizationId).is("archived_at", null).maybeSingle();
+    .eq("id", siteId).eq("organization_id", organizationId).is(
+      "archived_at",
+      null,
+    ).maybeSingle();
   if (siteError) throw siteError;
   if (!site) throw new Error("Website plan not found.");
   const { data: pages, error: pagesError } = await admin.from("website_pages")
-    .select("id,name,slug,seo_title,seo_description,draft_version,updated_at,draft_document")
-    .eq("organization_id", organizationId).eq("site_id", siteId).order("sort_order");
+    .select(
+      "id,name,slug,seo_title,seo_description,draft_version,updated_at,draft_document",
+    )
+    .eq("organization_id", organizationId).eq("site_id", siteId).order(
+      "sort_order",
+    );
   if (pagesError) throw pagesError;
   const pageRows = pages || [];
   const globals = record(site.global_sections) ? site.global_sections : {};
-  const navigation = Array.isArray(globals.navigation) ? globals.navigation : [];
+  const navigation = Array.isArray(globals.navigation)
+    ? globals.navigation
+    : [];
+  const sections = pageRows.flatMap((page: any) =>
+    Array.isArray(page.draft_document?.sections)
+      ? page.draft_document.sections.map((section: any) => ({
+        pageId: page.id,
+        id: section.id,
+        type: section.type,
+        props: section.props,
+        style: section.style,
+        allowedEditableProps:
+          agentSectionSchemas[String(section.type)]?.props || [],
+        allowedEditableStyles:
+          agentSectionSchemas[String(section.type)]?.style || [],
+      }))
+      : []
+  );
   const context = {
-    site: { id: site.id, name: site.name, language: site.default_locale, globalVersion: site.global_version, header: globals.header ?? null, footer: globals.footer ?? null, navigation },
-    pages: pageRows.map((page: any) => ({ id: page.id, name: page.name, slug: page.slug, seo: { title: page.seo_title, description: page.seo_description }, draftVersion: page.draft_version, sections: Array.isArray(page.draft_document?.sections) ? page.draft_document.sections.map((section: any) => ({ id: section.id, type: section.type, props: section.props, style: section.style })) : [] })),
+    site: {
+      id: site.id,
+      name: site.name,
+      language: site.default_locale,
+      globalVersion: site.global_version,
+      metadataEditableKeys: ["name", "language"],
+      themeEditableKeys: [...themeKeys],
+      header: globals.header
+        ? {
+          ...globals.header,
+          allowedEditableProps: globalSectionSchemas.header.props,
+          allowedEditableStyles: globalSectionSchemas.header.style,
+        }
+        : null,
+      footer: globals.footer
+        ? {
+          ...globals.footer,
+          allowedEditableProps: globalSectionSchemas.footer.props,
+          allowedEditableStyles: globalSectionSchemas.footer.style,
+        }
+        : null,
+      navigation,
+    },
+    pages: pageRows.map((page: any) => ({
+      id: page.id,
+      name: page.name,
+      slug: page.slug,
+      seo: { title: page.seo_title, description: page.seo_description },
+      draftVersion: page.draft_version,
+      theme: page.draft_document?.theme || {},
+      sections: sections.filter((section: any) => section.pageId === page.id)
+        .map(({ pageId: _pageId, ...section }: any) => section),
+    })),
   };
   const baseVersions = {
     global_version: site.global_version,
-    pages: Object.fromEntries(pageRows.map((page: any) => [page.id, page.draft_version])),
-    page_updated_at: Object.fromEntries(pageRows.map((page: any) => [page.id, page.updated_at])),
+    pages: Object.fromEntries(
+      pageRows.map((page: any) => [page.id, page.draft_version]),
+    ),
+    page_updated_at: Object.fromEntries(
+      pageRows.map((page: any) => [page.id, page.updated_at]),
+    ),
   };
-  return { context, baseVersions, pageIds: new Set(pageRows.map((page: any) => page.id)), sectionIds: new Set(pageRows.flatMap((page: any) => Array.isArray(page.draft_document?.sections) ? page.draft_document.sections.map((section: any) => section.id) : [])), sectionTypes: new Map(pageRows.flatMap((page: any) => Array.isArray(page.draft_document?.sections) ? page.draft_document.sections.map((section: any) => [section.id, section.type] as [string, string]) : [])), navigationIds: new Set(navigation.map((item: any) => item?.id).filter(Boolean)) };
+  return {
+    context,
+    baseVersions,
+    pageIds: new Set(pageRows.map((page: any) => page.id)),
+    sectionIds: new Set(sections.map((section: any) => section.id)),
+    sections: new Map(sections.map((section: any) => [section.id, section])),
+    sectionTypes: new Map(
+      sections.map((section: any) => [section.id, section.type]),
+    ),
+    navigationIds: new Set(
+      navigation.map((item: any) => item?.id).filter(Boolean),
+    ),
+    globalSections: {
+      header: globals.header ?? null,
+      footer: globals.footer ?? null,
+    },
+    themes: pageRows.map((page: any) =>
+      record(page.draft_document?.theme) ? page.draft_document.theme : {}
+    ),
+  };
+}
+
+function editValidationMetadata(
+  error: PlanValidationError,
+  candidate: unknown,
+) {
+  const match = /^operations\.(\d+)/.exec(error.path);
+  const operationIndex = match ? Number(match[1]) : null;
+  const operation = operationIndex === null || !record(candidate) ||
+      !Array.isArray(candidate.operations)
+    ? undefined
+    : candidate.operations[operationIndex];
+  return {
+    operationIndex,
+    operationType: record(operation) && typeof operation.op === "string"
+      ? operation.op
+      : null,
+  };
+}
+
+function editOperationContract(
+  error: PlanValidationError,
+  candidate: unknown,
+  context: any,
+) {
+  const { operationIndex, operationType } = editValidationMetadata(
+    error,
+    candidate,
+  );
+  const operation = operationIndex === null || !record(candidate) ||
+      !Array.isArray(candidate.operations)
+    ? undefined
+    : candidate.operations[operationIndex];
+  if (operationType === "update_section" && record(operation)) {
+    const section = context.sections.get(operation.sectionId);
+    if (section) {
+      const schema = agentSectionSchemas[section.type];
+      return `Target section type is ${section.type}. Allowed changes.props keys: ${
+        schema.props.join(", ")
+      }. Allowed changes.style keys: ${schema.style.join(", ")}.`;
+    }
+  }
+  if (operationType === "update_global_header") {
+    return `Allowed header props: ${
+      globalSectionSchemas.header.props.join(", ")
+    }. Allowed header style: ${globalSectionSchemas.header.style.join(", ")}.`;
+  }
+  if (operationType === "update_global_footer") {
+    return `Allowed footer props: ${
+      globalSectionSchemas.footer.props.join(", ")
+    }. Allowed footer style: ${globalSectionSchemas.footer.style.join(", ")}.`;
+  }
+  if (operationType === "update_site_metadata") {
+    return "Allowed metadata changes are name and language; language is only en or ar. Locale and direction are not metadata fields.";
+  }
+  if (operationType === "update_site_theme") {
+    return `Allowed theme keys: ${themeKeys.join(", ")}.`;
+  }
+  return editOperationReference;
+}
+
+function editRepairInstruction(
+  error: PlanValidationError,
+  candidate: unknown,
+  context: any,
+) {
+  const { operationIndex, operationType } = editValidationMetadata(
+    error,
+    candidate,
+  );
+  const operationLabel = operationIndex === null
+    ? "The plan"
+    : `Operation ${operationIndex + 1}${
+      operationType ? ` (${operationType})` : ""
+    }`;
+  return `${operationLabel} failed ${error.code} at ${error.path}. ${
+    editOperationContract(error, candidate, context)
+  } Return the ENTIRE corrected edit plan. Keep valid operations, correct or remove only the invalid requested change, use only supplied IDs, and never add publish/release operations.`;
 }
 
 function publicError(error: unknown, operation = "") {
@@ -895,14 +1811,16 @@ function publicError(error: unknown, operation = "") {
     : "We couldn't generate a valid site structure. Please try again.";
 }
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS")
+export const websiteAgentHandler = async (req: Request) => {
+  if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
+  }
   let operation = "";
   let organizationId = "";
   try {
-    if (req.method !== "POST")
+    if (req.method !== "POST") {
       return json({ success: false, error: "Method not allowed." }, 405);
+    }
     const { admin, user } = await authenticate(req);
     const body = await req.json();
     operation = String(body.operation || "");
@@ -926,7 +1844,7 @@ Deno.serve(async (req) => {
         .select("id", { count: "exact", head: true })
         .eq("created_by", user.id)
         .gte("created_at", since);
-      if ((count || 0) >= 3)
+      if ((count || 0) >= 3) {
         return json(
           {
             success: false,
@@ -935,6 +1853,7 @@ Deno.serve(async (req) => {
           },
           429,
         );
+      }
       let plan: Plan;
       try {
         plan = validateGeneratedPlan(
@@ -955,7 +1874,10 @@ Deno.serve(async (req) => {
             businessName,
             language,
             styleHint,
-            repair: `Previous output failed ${validationError.code} at ${validationError.path}: ${validationError.message.slice(0, 300)}. Return the entire corrected JSON using every exact schema constraint in the system instruction.`,
+            repair:
+              `Previous output failed ${validationError.code} at ${validationError.path}: ${
+                validationError.message.slice(0, 300)
+              }. Return the entire corrected JSON using every exact schema constraint in the system instruction.`,
           }),
           2,
         );
@@ -1015,56 +1937,149 @@ Deno.serve(async (req) => {
       const { count } = await admin.from("website_agent_edit_plans")
         .select("id", { count: "exact", head: true })
         .eq("created_by", user.id).gte("created_at", since);
-      if ((count || 0) >= 5) return json({ success: false, error: "Please wait a moment before generating another edit suggestion." }, 429);
+      if ((count || 0) >= 5) {
+        return json({
+          success: false,
+          error:
+            "Please wait a moment before generating another edit suggestion.",
+        }, 429);
+      }
       const loaded = await loadEditContext(admin, organizationId, siteId);
       let plan: Plan;
+      let firstCandidate: unknown;
       try {
-        plan = validateEditPlan(await websiteAgentModel.generateStructuredPlan({
-          prompt: instruction,
-          system: editSystemInstruction(),
-          context: { currentPageId: typeof body.currentPageId === "string" && loaded.pageIds.has(body.currentPageId) ? body.currentPageId : undefined, website: loaded.context },
-        }), loaded);
-      } catch (firstError) {
-        if (firstError instanceof GeminiProviderError) throw firstError;
-        const validationError = firstError instanceof PlanValidationError ? firstError : classifyPlanError(firstError);
-        console.error("website_agent_edit_validation_failed", { attempt: 1, code: validationError.code, operation_index: /^operations\.(\d+)/.exec(validationError.path)?.[1] ? Number(/^operations\.(\d+)/.exec(validationError.path)![1]) : null, operation_type: null, path: validationError.path, model: Deno.env.get("GEMINI_MODEL") || "gemini-3.5-flash-lite" });
-        try {
-          plan = validateEditPlan(await websiteAgentModel.generateStructuredPlan({
+        firstCandidate = normalizeEditPlan(
+          await websiteAgentModel.generateStructuredPlan({
             prompt: instruction,
             system: editSystemInstruction(),
-            context: { currentPageId: typeof body.currentPageId === "string" && loaded.pageIds.has(body.currentPageId) ? body.currentPageId : undefined, website: loaded.context },
-            repair: `Previous output failed ${validationError.code} at ${validationError.path}. Return the complete corrected JSON using only the exact operation contract.`,
-          }), loaded);
+            context: {
+              currentPageId: typeof body.currentPageId === "string" &&
+                  loaded.pageIds.has(body.currentPageId)
+                ? body.currentPageId
+                : undefined,
+              website: loaded.context,
+            },
+          }),
+        );
+        plan = validateEditPlan(firstCandidate, loaded);
+      } catch (firstError) {
+        if (firstError instanceof GeminiProviderError) throw firstError;
+        const validationError = firstError instanceof PlanValidationError
+          ? firstError
+          : new PlanValidationError(
+            "AI_EDIT_INVALID_PLAN",
+            "Website edit plan is invalid.",
+            "plan",
+          );
+        const firstMetadata = editValidationMetadata(
+          validationError,
+          firstCandidate,
+        );
+        console.error("website_agent_edit_validation_failed", {
+          attempt: 1,
+          code: validationError.code,
+          operation_index: firstMetadata.operationIndex,
+          operation_type: firstMetadata.operationType,
+          path: validationError.path,
+          model: Deno.env.get("GEMINI_MODEL") || "gemini-3.5-flash-lite",
+        });
+        let repairCandidate: unknown;
+        try {
+          repairCandidate = normalizeEditPlan(
+            await websiteAgentModel.generateStructuredPlan({
+              prompt: instruction,
+              system: editSystemInstruction(),
+              context: {
+                currentPageId: typeof body.currentPageId === "string" &&
+                    loaded.pageIds.has(body.currentPageId)
+                  ? body.currentPageId
+                  : undefined,
+                website: loaded.context,
+                previousPlan: firstCandidate,
+              },
+              repair: editRepairInstruction(
+                validationError,
+                firstCandidate,
+                loaded,
+              ),
+            }),
+          );
+          plan = validateEditPlan(repairCandidate, loaded);
         } catch (repairError) {
-          const failure = repairError instanceof PlanValidationError ? repairError : classifyPlanError(repairError);
-          const path = failure.path || "plan";
-          const index = /^operations\.(\d+)/.exec(path)?.[1];
-          const operationType = index === undefined ? undefined : (Array.isArray((repairError as any)?.operations) ? (repairError as any).operations[Number(index)]?.op : undefined);
-          console.error("website_agent_edit_validation_failed", { attempt: 2, code: failure.code, operation_index: index === undefined ? null : Number(index), operation_type: operationType || null, path, model: Deno.env.get("GEMINI_MODEL") || "gemini-3.5-flash-lite" });
+          if (repairError instanceof GeminiProviderError) throw repairError;
+          const failure = repairError instanceof PlanValidationError
+            ? repairError
+            : new PlanValidationError(
+              "AI_EDIT_INVALID_PLAN",
+              "Website edit plan is invalid.",
+              "plan",
+            );
+          const repairMetadata = editValidationMetadata(
+            failure,
+            repairCandidate,
+          );
+          console.error("website_agent_edit_validation_failed", {
+            attempt: 2,
+            code: failure.code,
+            operation_index: repairMetadata.operationIndex,
+            operation_type: repairMetadata.operationType,
+            path: failure.path,
+            model: Deno.env.get("GEMINI_MODEL") || "gemini-3.5-flash-lite",
+          });
           throw failure;
         }
       }
-      const { data, error } = await admin.from("website_agent_edit_plans").insert({
-        organization_id: organizationId, site_id: siteId, created_by: user.id,
-        instruction, plan_json: plan, base_versions: loaded.baseVersions,
-      }).select("id,expires_at,plan_json,created_at").single();
+      const { data, error } = await admin.from("website_agent_edit_plans")
+        .insert({
+          organization_id: organizationId,
+          site_id: siteId,
+          created_by: user.id,
+          instruction,
+          plan_json: plan,
+          base_versions: loaded.baseVersions,
+        }).select("id,expires_at,plan_json,created_at").single();
       if (error) throw error;
       await admin.from("audit_logs").insert({
-        organization_id: organizationId, user_name: user.id, action: "website_agent.edit_plan_generated",
-        details: JSON.stringify({ proposal_id: data.id, operation_count: plan.operations.length }),
+        organization_id: organizationId,
+        user_name: user.id,
+        action: "website_agent.edit_plan_generated",
+        details: JSON.stringify({
+          proposal_id: data.id,
+          operation_count: plan.operations.length,
+        }),
       });
-      console.log("website_agent_edit_plan_generated", { model: Deno.env.get("GEMINI_MODEL") || "gemini-3.5-flash-lite", operation_count: plan.operations.length, proposal_id: data.id });
-      return json({ success: true, proposal: { id: data.id, expiresAt: data.expires_at, createdAt: data.created_at, plan: data.plan_json } });
+      console.log("website_agent_edit_plan_generated", {
+        model: Deno.env.get("GEMINI_MODEL") || "gemini-3.5-flash-lite",
+        operation_count: plan.operations.length,
+        proposal_id: data.id,
+      });
+      return json({
+        success: true,
+        proposal: {
+          id: data.id,
+          expiresAt: data.expires_at,
+          createdAt: data.created_at,
+          plan: data.plan_json,
+        },
+      });
     }
     if (operation === "applyEditPlan") {
       const planId = String(body.planId || "");
       if (!uuid(planId)) throw new Error("Website plan not found.");
       const { data, error } = await admin.rpc("apply_website_agent_edit_plan", {
-        p_plan_id: planId, p_organization_id: organizationId, p_actor_id: user.id,
+        p_plan_id: planId,
+        p_organization_id: organizationId,
+        p_actor_id: user.id,
       });
       if (error) {
-        if (String(error.message).includes("AI_EDIT_STALE_PROPOSAL")) throw new Error("This website changed after the AI suggestion was created. Generate the suggestion again.");
-        if (String(error.message).includes("AI_EDIT_EXPIRED")) throw new Error("This AI suggestion expired. Generate it again.");
+        if (String(error.message).includes("AI_EDIT_STALE_PROPOSAL")) {
+          throw new Error(
+            "This website changed after the AI suggestion was created. Generate the suggestion again.",
+          );
+        }
+        if (String(error.message).includes("AI_EDIT_EXPIRED")) {
+          throw new Error("This AI suggestion expired. Generate it again.");
+        }
         throw error;
       }
       return json({ success: true, result: data });
@@ -1073,8 +2088,13 @@ Deno.serve(async (req) => {
       const siteId = String(body.siteId || "");
       if (!uuid(siteId)) throw new Error("Website plan not found.");
       const { data, error } = await admin.from("website_agent_edit_plans")
-        .select("id,instruction,plan_json,status,created_at,expires_at,applied_at")
-        .eq("organization_id", organizationId).eq("site_id", siteId).eq("created_by", user.id)
+        .select(
+          "id,instruction,plan_json,status,created_at,expires_at,applied_at",
+        )
+        .eq("organization_id", organizationId).eq("site_id", siteId).eq(
+          "created_by",
+          user.id,
+        )
         .order("created_at", { ascending: false }).limit(5);
       if (error) throw error;
       return json({ success: true, proposals: data || [] });
@@ -1100,4 +2120,12 @@ Deno.serve(async (req) => {
       400,
     );
   }
-});
+};
+
+export const websiteAgentEditPlanTest = {
+  normalizeEditPlan,
+  validateEditPlan,
+  editRepairInstruction,
+};
+
+if (import.meta.main) Deno.serve(websiteAgentHandler);
