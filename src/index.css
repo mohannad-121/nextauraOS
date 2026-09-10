@@ -163,6 +163,61 @@
   box-shadow: 0 12px 30px rgba(26, 35, 30, 0.055);
   transform: translateY(-1px);
 }
+
+.legal-content {
+  color: #475569;
+  font-size: 1rem;
+  line-height: 1.75;
+}
+.legal-content h2 {
+  color: #0f172a;
+  font-size: 1.25rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+.legal-content h3 {
+  margin-top: 1.5rem;
+  color: #1e293b;
+  font-size: 1rem;
+  font-weight: 650;
+  line-height: 1.5;
+}
+.legal-content p,
+.legal-content ul,
+.legal-content ol {
+  margin-top: 1rem;
+}
+.legal-content ul,
+.legal-content ol {
+  padding-left: 1.5rem;
+}
+.legal-content ul {
+  list-style: disc;
+}
+.legal-content ol {
+  list-style: decimal;
+}
+.legal-content li + li {
+  margin-top: 0.5rem;
+}
+.legal-content a {
+  color: #285143;
+  font-weight: 600;
+  text-decoration: underline;
+  text-decoration-color: #9dbdad;
+  text-underline-offset: 3px;
+}
+.legal-content a:hover {
+  text-decoration-color: #285143;
+}
+.legal-callout {
+  margin-top: 1.25rem;
+  border: 1px solid #c9dacf;
+  border-radius: 0.875rem;
+  background: #edf4f0;
+  padding: 1rem;
+  color: #33443c;
+}
 .glass-panel {
   background: rgba(255, 255, 255, 0.9);
   border: 1px solid rgba(227, 230, 225, 0.9);

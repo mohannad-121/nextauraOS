@@ -64,6 +64,11 @@ import {
   isPublicWebsiteHostname,
   isPublicWebsiteRoot,
 } from "./pages/websites/PublicWebsitePage";
+import {
+  DataDeletionPage,
+  PrivacyPolicyPage,
+} from "./pages/legal/LegalPages";
+import { resolvePublicLegalRoute } from "./pages/legal/legalRoutes";
 
 const NextAuraAI = React.lazy(() =>
   import("./pages/ai/NextAuraAI").then((module) => ({
@@ -236,6 +241,16 @@ const AppContent: React.FC = () => {
 };
 
 export function App() {
+  const legalRoute = resolvePublicLegalRoute(
+    window.location.pathname,
+    window.location.hostname,
+    import.meta.env.DEV,
+  );
+  if (legalRoute) {
+    return legalRoute === "privacy"
+      ? <PrivacyPolicyPage />
+      : <DataDeletionPage />;
+  }
   if (
     isPublicWebsiteRoot() &&
     window.location.pathname.replace(/\/$/, "") === ""

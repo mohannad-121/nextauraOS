@@ -389,6 +389,22 @@ export function PublicWebsiteRoot() {
           </div>
         </div>
       </section>
+      <footer className="border-t border-white/10 bg-slate-950 px-6 py-8 text-sm text-slate-400 sm:px-8">
+        <div className="mx-auto flex max-w-6xl flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <p>© 2026 NextAura. All rights reserved.</p>
+          <nav aria-label="Legal links" className="flex flex-wrap gap-5">
+            <a className="transition-colors hover:text-white" href="/privacy">
+              Privacy Policy
+            </a>
+            <a
+              className="transition-colors hover:text-white"
+              href="/data-deletion"
+            >
+              Data Deletion
+            </a>
+          </nav>
+        </div>
+      </footer>
     </main>
   );
 }
