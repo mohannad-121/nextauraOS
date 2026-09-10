@@ -91,7 +91,7 @@ test("nodeRegistry contains facebook_comment_reply with expected definition", ()
   assert.ok(def.required_scopes?.includes("pages_manage_engagement"));
   assert.ok(def.required_scopes?.includes("pages_read_engagement"));
   assert.ok(def.required_scopes?.includes("pages_show_list"));
-  assert.ok(!def.required_scopes?.includes("pages_read_user_content"));
+  assert.ok(def.required_scopes?.includes("pages_read_user_content"));
   assert.ok(!def.required_scopes?.includes("instagram_basic"));
   assert.ok(!def.required_scopes?.includes("pages_manage_posts"));
   assert.equal(def.defaultConfig.comment_id, "{{trigger.comment_id}}");
@@ -192,7 +192,7 @@ test("workflow graph validator accepts facebook_comment_reply as an action node"
   assert.equal(result.actions[0].type, "facebook_comment_reply");
 });
 
-test("scope validation correctly identifies missing pages_manage_engagement", () => {
+test("scope validation correctly identifies missing pages_read_user_content and pages_manage_engagement", () => {
   const currentScopes = ["public_profile", "pages_show_list", "pages_read_engagement"];
   const def = nodeByType.facebook_comment_reply;
 
@@ -200,29 +200,29 @@ test("scope validation correctly identifies missing pages_manage_engagement", ()
     (scope) => !currentScopes.includes(scope),
   );
 
-  assert.deepEqual(missingScopes, ["pages_manage_engagement"]);
+  assert.deepEqual(missingScopes, ["pages_read_user_content", "pages_manage_engagement"]);
 
-  const updatedScopes = [...currentScopes, "pages_manage_engagement"];
+  const updatedScopes = [...currentScopes, "pages_read_user_content", "pages_manage_engagement"];
   const stillMissing = (def.required_scopes || []).filter(
     (scope) => !updatedScopes.includes(scope),
   );
   assert.deepEqual(stillMissing, []);
 });
 
-test("Facebook Reply reconnect flow requests exactly base scopes plus pages_manage_engagement without pages_read_user_content", () => {
+test("Facebook Reply reconnect flow requests base scopes plus pages_read_user_content and pages_manage_engagement", () => {
   const baseScopes = ["public_profile", "pages_show_list", "pages_read_engagement"];
-  const actionScope = "pages_manage_engagement";
-  const requestedScopes = Array.from(new Set([...baseScopes, actionScope]));
+  const actionScopes = ["pages_read_user_content", "pages_manage_engagement"];
+  const requestedScopes = Array.from(new Set([...baseScopes, ...actionScopes]));
 
   assert.deepEqual(requestedScopes, [
     "public_profile",
     "pages_show_list",
     "pages_read_engagement",
+    "pages_read_user_content",
     "pages_manage_engagement",
   ]);
 
-  // Strictly verify exclusion of pages_read_user_content and other unneeded scopes
-  assert(!requestedScopes.includes("pages_read_user_content"));
+  // Strictly verify exclusion of Instagram and unrelated scopes
   assert(!requestedScopes.includes("instagram_basic"));
   assert(!requestedScopes.includes("pages_manage_posts"));
 });

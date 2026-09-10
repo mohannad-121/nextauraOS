@@ -16,6 +16,7 @@ export const FACEBOOK_PAGE_BASE_SCOPES = [
 ] as const;
 
 export const FACEBOOK_ACTION_SCOPES = [
+  "pages_read_user_content",
   "pages_manage_engagement",
 ] as const;
 
@@ -28,7 +29,6 @@ export const INSTAGRAM_BUSINESS_SCOPES = [
 export const INSTAGRAM_SCOPES = [...INSTAGRAM_BUSINESS_SCOPES] as const;
 
 export const DISALLOWED_FACEBOOK_SCOPES = [
-  "pages_read_user_content",
   "instagram_basic",
   "pages_manage_posts",
 ] as const;

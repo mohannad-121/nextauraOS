@@ -1183,21 +1183,25 @@ function ConfigPanel({
                 <div className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-xs text-amber-100">
                   <p className="font-semibold text-amber-200">
                     Additional Facebook permission required: pages_manage_engagement
+                    Additional Facebook permissions required
                   </p>
                   <p className="mt-1 text-[11px] leading-4 text-amber-300/80">
                     Replying to comments on a Facebook Page requires the <code>pages_manage_engagement</code> scope. Reconnect to authorize this permission.
+                    Replying to comments on a Facebook Page requires the <code>pages_read_user_content</code> and <code>pages_manage_engagement</code> scopes. Reconnect to authorize these permissions.
                   </p>
                   {onAddMetaPermission && (
                     <button
                       type="button"
                       onClick={() =>
                         onAddMetaPermission(String(config.connection_id), [
+                          "pages_read_user_content",
                           "pages_manage_engagement",
                         ])
                       }
                       className="mt-2.5 rounded-lg bg-amber-400/20 px-3 py-1.5 text-xs font-bold text-amber-200 hover:bg-amber-400/30"
                     >
                       Authorize / Reconnect with required permission
+                      Authorize / Reconnect with required permissions
                     </button>
                   )}
                 </div>

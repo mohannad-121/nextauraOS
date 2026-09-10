@@ -372,6 +372,7 @@ const definitions: AutomationNodeDefinition[] = [
     required_scopes: [
       "pages_show_list",
       "pages_read_engagement",
+      "pages_read_user_content",
       "pages_manage_engagement",
     ],
     adapterKey: "facebook.comment.reply",

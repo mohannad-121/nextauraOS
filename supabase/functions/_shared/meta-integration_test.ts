@@ -54,28 +54,28 @@ Deno.test("Meta OAuth URL binds state and requests discovery scopes only", () =>
   assert(!scopes.has("pages_read_user_content"));
 });
 
-Deno.test("Meta OAuth URL reconnect for Facebook reply requests only base scopes plus pages_manage_engagement", () => {
+Deno.test("Meta OAuth URL reconnect for Facebook reply requests base scopes plus pages_read_user_content and pages_manage_engagement", () => {
   const url = new URL(
-    buildMetaAuthorizationUrl("opaque-state", true, ["pages_manage_engagement"]),
+    buildMetaAuthorizationUrl("opaque-state", true, ["pages_read_user_content", "pages_manage_engagement"]),
   );
   assert(url.searchParams.get("auth_type") === "rerequest");
   const scopeParam = url.searchParams.get("scope") || "";
   const scopes = scopeParam.split(",");
 
-  // Exactly the allowed Facebook reconnect set: base + pages_manage_engagement
-  assert(scopes.length === 4);
+  // Exactly the allowed Facebook reconnect set: base + pages_read_user_content + pages_manage_engagement
+  assert(scopes.length === 5);
   assert(scopes.includes("public_profile"));
   assert(scopes.includes("pages_show_list"));
   assert(scopes.includes("pages_read_engagement"));
+  assert(scopes.includes("pages_read_user_content"));
   assert(scopes.includes("pages_manage_engagement"));
 
-  // Strictly must not include pages_read_user_content or other unneeded scopes
-  assert(!scopes.includes("pages_read_user_content"));
+  // Strictly must not include instagram or unneeded scopes
   assert(!scopes.includes("instagram_basic"));
   assert(!scopes.includes("pages_manage_posts"));
 });
 
-Deno.test("Meta OAuth URL strictly rejects pages_read_user_content and other disallowed scopes", () => {
+Deno.test("Meta OAuth URL strictly rejects instagram_basic and other disallowed scopes but allows pages_read_user_content", () => {
   const url = new URL(
     buildMetaAuthorizationUrl("opaque-state", true, [
       "pages_read_user_content",
@@ -87,12 +87,12 @@ Deno.test("Meta OAuth URL strictly rejects pages_read_user_content and other dis
   const scopeParam = url.searchParams.get("scope") || "";
   const scopes = scopeParam.split(",");
 
-  // Only the base scopes remain, invalid scopes are filtered out
-  assert(scopes.length === 3);
+  // Base 3 + pages_read_user_content (allowed action scope) = 4
+  assert(scopes.length === 4);
   assert(scopes.includes("public_profile"));
   assert(scopes.includes("pages_show_list"));
   assert(scopes.includes("pages_read_engagement"));
-  assert(!scopes.includes("pages_read_user_content"));
+  assert(scopes.includes("pages_read_user_content"));
   assert(!scopes.includes("instagram_basic"));
   assert(!scopes.includes("pages_manage_posts"));
   assert(!scopes.includes("unauthorized_scope_xyz"));
@@ -105,17 +105,24 @@ Deno.test("Meta scope constants enforce strict separation and exclusions", () =>
   assert(
     (FACEBOOK_ACTION_SCOPES as readonly string[]).includes("pages_manage_engagement"),
   );
+  // pages_read_user_content is now in FACEBOOK_ACTION_SCOPES (Meta approved it)
   assert(
-    (DISALLOWED_FACEBOOK_SCOPES as readonly string[]).includes("pages_read_user_content"),
+    (FACEBOOK_ACTION_SCOPES as readonly string[]).includes("pages_read_user_content"),
+  );
+  // pages_read_user_content is no longer disallowed
+  assert(
+    !(DISALLOWED_FACEBOOK_SCOPES as readonly string[]).includes("pages_read_user_content"),
+  );
+  // instagram scopes remain disallowed from Facebook reconnect
+  assert(
+    (DISALLOWED_FACEBOOK_SCOPES as readonly string[]).includes("instagram_basic"),
   );
   assert(
     !(FACEBOOK_PAGE_BASE_SCOPES as readonly string[]).includes("pages_read_user_content"),
   );
+  // ALLOWED_FACEBOOK_RECONNECT_SCOPES now includes pages_read_user_content
   assert(
-    !(FACEBOOK_ACTION_SCOPES as readonly string[]).includes("pages_read_user_content"),
-  );
-  assert(
-    !(ALLOWED_FACEBOOK_RECONNECT_SCOPES as readonly string[]).includes("pages_read_user_content"),
+    (ALLOWED_FACEBOOK_RECONNECT_SCOPES as readonly string[]).includes("pages_read_user_content"),
   );
 });
 
