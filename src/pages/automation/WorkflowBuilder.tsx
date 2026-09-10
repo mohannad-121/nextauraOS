@@ -58,6 +58,7 @@ const triggerMap: Record<string, string> = {
   contact_created: "contact.created",
   expense_status_changed: "expense.status_changed",
   incoming_webhook: "incoming_webhook",
+  facebook_page_comment_created: "facebook.page.comment.created",
 };
 const legacyPalette: PaletteItem[] = [
   {
@@ -432,13 +433,31 @@ function ConfigPanel({
   connections,
   connectionLoading,
   onAddGmailPermission,
+  organizationId,
 }: {
   node: WorkflowNode | null;
   update: (config: Record<string, unknown>) => void;
   connections: IntegrationConnection[];
   connectionLoading: boolean;
   onAddGmailPermission: (connectionId: string) => void;
+  organizationId: string;
 }) {
+  const [metaResources, setMetaResources] = useState<any[]>([]);
+  const [loadingResources, setLoadingResources] = useState(false);
+
+  useEffect(() => {
+    const info = nodeInfo[node?.type || ""];
+    const connectionId = node?.data?.config?.connection_id;
+    if (info?.provider === "meta" && connectionId) {
+      setLoadingResources(true);
+      integrationConnectionService.getMetaDetails(organizationId, String(connectionId))
+        .then(res => setMetaResources(res.resources || []))
+        .catch(() => setMetaResources([]))
+        .finally(() => setLoadingResources(false));
+    } else {
+      setMetaResources([]);
+    }
+  }, [node?.data?.config?.connection_id, node?.type, organizationId]);
   if (!node)
     return (
       <aside className="hidden w-80 border-s border-white/10 bg-slate-950/70 p-5 xl:block">
@@ -509,6 +528,37 @@ function ConfigPanel({
             </select>
             <span className="mt-1 block text-[11px] font-normal leading-4 text-slate-500">Only active {info.provider} connections in this company are shown. Credentials are never stored in the workflow.</span>
           </label>
+        )}
+        {info?.provider === "meta" && config.connection_id && (
+          <label className="block text-xs font-medium text-slate-300">
+            Facebook Page
+            <select
+              value={String(config.resource_id || "")}
+              onChange={(event) => field("resource_id", event.target.value)}
+              disabled={loadingResources}
+              className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/70 disabled:opacity-60"
+            >
+              <option value="">{loadingResources ? "Loading pages..." : "Select a Facebook Page"}</option>
+              {metaResources.filter(r => r.resource_type === "facebook_page" && r.selected).map(r => (
+                <option key={r.id} value={r.external_resource_id}>{r.display_name}</option>
+              ))}
+            </select>
+          </label>
+        )}
+        {node.type === "facebook_page_comment_created" && (
+          <>
+            {input("Message contains (optional)", "contains_text", "e.g. refund")}
+            {input("Exact Post ID (optional)", "exact_post_id", "Limit to one specific post")}
+            <label className="flex items-center gap-2 text-xs font-medium text-slate-300">
+              <input
+                type="checkbox"
+                checked={Boolean(config.include_replies)}
+                onChange={(event) => field("include_replies", event.target.checked)}
+                className="rounded border-white/10 bg-slate-900 text-cyan-400 focus:ring-cyan-400"
+              />
+              Include replies to comments
+            </label>
+          </>
         )}
         {node.type === "expense_status_changed" && (
           <label className="block text-xs font-medium text-slate-300">
@@ -1131,7 +1181,7 @@ export function WorkflowBuilder({
               </div>
             )}
           </main>
-          {configOpen && <div className="contents"><button aria-label="Close node configuration" onClick={() => setConfigOpen(false)} className="absolute right-[320px] top-3 z-40 rounded-l-lg border border-white/10 bg-slate-900 px-2 py-2 text-xs text-slate-300 hover:bg-slate-800 xl:right-[320px]">›</button><ConfigPanel node={selected} update={updateConfig} connections={connections} connectionLoading={connectionLoading} onAddGmailPermission={addGmailPermission} /></div>}
+          {configOpen && <div className="contents"><button aria-label="Close node configuration" onClick={() => setConfigOpen(false)} className="absolute right-[320px] top-3 z-40 rounded-l-lg border border-white/10 bg-slate-900 px-2 py-2 text-xs text-slate-300 hover:bg-slate-800 xl:right-[320px]">›</button><ConfigPanel node={selected} update={updateConfig} connections={connections} connectionLoading={connectionLoading} onAddGmailPermission={addGmailPermission} organizationId={organizationId} /></div>}
         </div>
       </div>
     </div>,

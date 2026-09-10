@@ -274,7 +274,53 @@ const definitions: AutomationNodeDefinition[] = [
     connection_type: "oauth" as const,
   })),
   {
+    type: "facebook_page_comment_created",
+    title: "New Page Comment",
+    category: "Trigger",
+    description: "Runs when a new comment is posted on a Facebook Page",
+    icon: Bot,
+    accent: "emerald",
+    available: true,
+    kind: "trigger",
+    inputs: [],
+    outputs: ["default"],
+    fields: [
+      {
+        key: "resource_id",
+        label: "Facebook Page",
+        type: "select",
+        options: [],
+        description: "Select the specific Facebook page in the workflow UI."
+      },
+      {
+        key: "contains_text",
+        label: "Message contains (optional)",
+        type: "text",
+        placeholder: "e.g. refund"
+      },
+      {
+        key: "exact_post_id",
+        label: "Exact Post ID (optional)",
+        type: "text",
+        placeholder: "Limit to one specific post"
+      },
+      {
+        key: "include_replies",
+        label: "Include replies to comments",
+        type: "boolean"
+      }
+    ],
+    defaultConfig: { connection_id: "", resource_id: "", contains_text: "", exact_post_id: "", include_replies: false },
+    validate: (config: any) => Boolean(config.connection_id && config.resource_id),
+    provider: "meta",
+    requires_connection: true,
+    connection_type: "oauth",
+    required_scopes: ["pages_show_list", "pages_read_engagement"],
+    adapterKey: "facebook.page.comment.created",
+  },
+  {
     type: "ai_agent",
+
     title: "AI Agent",
     category: "AI",
     description: "Coming soon — AI workflow step",

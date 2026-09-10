@@ -9,6 +9,7 @@ const encoder = new TextEncoder();
 const sensitiveKey =
   /^(access[_-]?token|authorization|cookie|client[_-]?secret|app[_-]?secret)$/i;
 
+export const META_DISCOVERY_SCOPES = [
 export const FACEBOOK_PAGE_BASE_SCOPES = [
   "public_profile",
   "pages_show_list",
@@ -170,6 +171,7 @@ export function buildMetaAuthorizationUrl(
   url.searchParams.set("redirect_uri", client.redirectUri);
   url.searchParams.set("response_type", "code");
   url.searchParams.set("state", state);
+  url.searchParams.set("scope", META_DISCOVERY_SCOPES.join(","));
   url.searchParams.set("scope", FACEBOOK_PAGE_BASE_SCOPES.join(","));
   if (reconnect) url.searchParams.set("auth_type", "rerequest");
   return url.toString();
@@ -531,6 +533,7 @@ export function assessMetaDiscoveryHealth(
   selectedKeys: Iterable<string>,
   discoveredKeys: ReadonlySet<string>,
 ) {
+  const missingPermissions = META_DISCOVERY_SCOPES.filter((scope) =>
   const missingPermissions = FACEBOOK_PAGE_BASE_SCOPES.filter((scope) =>
     !grantedScopes.includes(scope)
   );

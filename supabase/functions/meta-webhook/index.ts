@@ -118,6 +118,40 @@ export const metaWebhookHandler = async (request: Request) => {
         ignoreDuplicates: true,
       });
       if (error) throw error;
+
+      const automationEvents = rows.filter((row: any) => 
+        row.product === 'facebook' && 
+        row.event_type === 'change.feed' &&
+        row.payload?.item === 'comment' &&
+        row.payload?.verb === 'add'
+      ).map((row: any) => ({
+        organization_id: row.organization_id,
+        event_type: 'facebook.page.comment.created',
+        entity_type: 'facebook_comment',
+        entity_id: null,
+        payload: {
+          connection_id: row.connection_id,
+          page_id: row.external_resource_id,
+          post_id: row.payload.post_id,
+          comment_id: row.payload.comment_id,
+          parent_comment_id: row.payload.parent_id !== row.payload.post_id ? row.payload.parent_id : undefined,
+          message: row.payload.message,
+          author_id: row.payload.sender_id,
+          author_name: row.payload.sender_name,
+          created_time: row.payload.created_time,
+        },
+        source: 'meta_webhook',
+        dedupe_key: `meta_webhook:comment:${row.connection_id}:${row.external_event_id}`,
+        occurred_at: row.occurred_at,
+      }));
+
+      if (automationEvents.length) {
+        const { error: autoError } = await admin.from("automation_events").upsert(automationEvents, {
+          onConflict: "dedupe_key",
+          ignoreDuplicates: true,
+        });
+        if (autoError) throw autoError;
+      }
     }
     return new Response("EVENT_RECEIVED", { status: 200 });
   } catch (error) {

@@ -170,6 +170,19 @@ async function executeActions(admin: any, run: AutomationRun) {
     loadEvent(admin, run),
   ]);
   if (workflowError || !workflow) throw new WebhookActionError('Automation workflow is unavailable.', false);
+
+  if (isRecord(workflow.execution_plan) && isRecord(workflow.execution_plan.trigger) && isRecord(workflow.execution_plan.trigger.config)) {
+    const config = workflow.execution_plan.trigger.config;
+    if (event.event_type === 'facebook.page.comment.created') {
+      const payload = event.payload as Record<string, unknown>;
+      if (config.connection_id && config.connection_id !== payload.connection_id) throw new TriggerMismatchError('Event does not match trigger connection.');
+      if (config.resource_id && config.resource_id !== payload.page_id) throw new TriggerMismatchError('Event does not match trigger page.');
+      if (config.contains_text && typeof payload.message === 'string' && !payload.message.toLowerCase().includes(String(config.contains_text).toLowerCase())) throw new TriggerMismatchError('Message does not contain required text.');
+      if (config.exact_post_id && config.exact_post_id !== payload.post_id) throw new TriggerMismatchError('Event does not match exact post ID.');
+      if (config.include_replies === false && payload.parent_comment_id) throw new TriggerMismatchError('Replies are ignored by trigger configuration.');
+    }
+  }
+
   const { actions, selectedBranch } = resolveWorkflowActions(workflow, event);
   let notificationActions = 0;
   let webhookActions = 0;
@@ -188,6 +201,8 @@ async function executeActions(admin: any, run: AutomationRun) {
   if (notificationActions) return NOTIFICATION_RESULT_SUMMARY + branchSuffix;
   return NO_SUPPORTED_ACTIONS_SUMMARY + branchSuffix;
 }
+
+class TriggerMismatchError extends Error {}
 
 Deno.serve(async (req) => {
   if (req.method !== 'POST') return Response.json({ success: false, error: 'Method not allowed.' }, { status: 405 });
@@ -211,6 +226,12 @@ Deno.serve(async (req) => {
         if (error) throw error;
         completedRuns += 1;
       } catch (error) {
+        if (error instanceof TriggerMismatchError) {
+          const { error: completeError } = await admin.rpc('complete_automation_run', { p_run_id: run.id, p_lease_token: leaseToken, p_succeeded: true, p_summary: error.message });
+          if (completeError) throw completeError;
+          completedRuns += 1;
+          continue;
+        }
         const actionError = error instanceof WebhookActionError ? error : error instanceof AutomationConditionError ? new WebhookActionError(error.message, false) : new WebhookActionError('Automation action could not be completed.', true);
         const rpc = actionError.retryable ? 'complete_automation_run' : 'complete_automation_run_terminal_failure';
         const args = actionError.retryable ? { p_run_id: run.id, p_lease_token: leaseToken, p_succeeded: false, p_summary: actionError.message } : { p_run_id: run.id, p_lease_token: leaseToken, p_summary: actionError.message };

@@ -6,6 +6,7 @@ import {
   hmacSha256Hex,
   isMetaTokenExpired,
   mapMetaPermissionStatuses,
+  META_DISCOVERY_SCOPES,
   FACEBOOK_PAGE_BASE_SCOPES,
   MetaIntegrationError,
   normalizeMetaWebhookPayload,
@@ -43,6 +44,7 @@ Deno.test("Meta OAuth URL binds state and requests discovery scopes only", () =>
   assert(url.searchParams.get("state") === "opaque-state");
   assert(url.searchParams.get("auth_type") === "rerequest");
   const scopes = new Set((url.searchParams.get("scope") || "").split(","));
+  assert(META_DISCOVERY_SCOPES.every((scope) => scopes.has(scope)));
   assert(FACEBOOK_PAGE_BASE_SCOPES.every((scope) => scopes.has(scope)));
   assert(!scopes.has("pages_manage_posts"));
   assert(!scopes.has("instagram_manage_messages"));
@@ -143,6 +145,7 @@ Deno.test("Meta health distinguishes valid, expired, missing-permission, and rev
 
   const selected = new Set(["facebook_page:100"]);
   const healthy = assessMetaDiscoveryHealth(
+    [...META_DISCOVERY_SCOPES],
     [...FACEBOOK_PAGE_BASE_SCOPES],
     selected,
     new Set(["facebook_page:100"]),
@@ -158,6 +161,7 @@ Deno.test("Meta health distinguishes valid, expired, missing-permission, and rev
   assert(missing.missingPermissions.includes("pages_read_engagement"));
 
   const revoked = assessMetaDiscoveryHealth(
+    [...META_DISCOVERY_SCOPES],
     [...FACEBOOK_PAGE_BASE_SCOPES],
     selected,
     new Set(),
