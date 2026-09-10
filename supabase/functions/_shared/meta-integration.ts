@@ -205,9 +205,9 @@ export function buildMetaAuthorizationUrl(
       !(DISALLOWED_FACEBOOK_SCOPES as readonly string[]).includes(scope),
   );
 
-  const combinedScopes = Array.from(
-    new Set([...FACEBOOK_PAGE_BASE_SCOPES, ...allowedExtra]),
-  );
+  const combinedScopes = [
+    ...new Set([...FACEBOOK_PAGE_BASE_SCOPES, ...allowedExtra]),
+  ];
   url.searchParams.set("scope", combinedScopes.join(","));
   if (reconnect) url.searchParams.set("auth_type", "rerequest");
   return url.toString();
