@@ -3,7 +3,6 @@ import { getOrganizationEntitlements } from '../_shared/entitlements.ts';
 import { validateOutgoingWebhookAction } from '../_shared/webhook-security.ts';
 import { createIncomingWebhookToken, hashIncomingWebhookToken } from '../_shared/incoming-webhook.ts';
 
-const TRIGGER_TYPES = new Set(['employee.created', 'contact.created', 'expense.status_changed', 'incoming_webhook', 'website.form_submitted', 'schedule']);
 const TRIGGER_TYPES = new Set(['employee.created', 'contact.created', 'expense.status_changed', 'incoming_webhook', 'website.form_submitted', 'schedule', 'facebook.page.comment.created']);
 const CONDITION_OPERATORS = new Set(['equals', 'not_equals', 'contains', 'greater_than', 'less_than', 'is_empty', 'is_not_empty', 'changed_from', 'changed_to']);
 const ACTION_TYPES = new Set(['create_notification', 'outgoing_webhook', 'gmail_send_email']);
@@ -16,8 +15,6 @@ const hasOnlyKeys = (value: Record<string, unknown>, keys: string[]) => Object.k
 const stringValue = (value: unknown, maximum: number) => typeof value === 'string' && value.trim().length > 0 && value.length <= maximum;
 const simpleValue = (value: unknown) => value === null || ['string', 'number', 'boolean'].includes(typeof value);
 const publicWorkflow = (workflow: Record<string, unknown>) => { const { incoming_webhook_token_hash: _hash, ...safe } = workflow; return safe; };
-const GRAPH_TYPES = new Set(['employee_created','contact_created','expense_status_changed','incoming_webhook','website_form_submitted','if','create_notification','outgoing_webhook','gmail_send_email']);
-const GRAPH_TRIGGER_TYPES = new Map([['employee_created', 'employee.created'], ['contact_created', 'contact.created'], ['expense_status_changed', 'expense.status_changed'], ['incoming_webhook', 'incoming_webhook'], ['website_form_submitted', 'website.form_submitted']]);
 const GRAPH_TYPES = new Set(['employee_created','contact_created','expense_status_changed','incoming_webhook','website_form_submitted','facebook_page_comment_created','if','create_notification','outgoing_webhook','gmail_send_email']);
 const GRAPH_TRIGGER_TYPES = new Map([['employee_created', 'employee.created'], ['contact_created', 'contact.created'], ['expense_status_changed', 'expense.status_changed'], ['incoming_webhook', 'incoming_webhook'], ['website_form_submitted', 'website.form_submitted'], ['facebook_page_comment_created', 'facebook.page.comment.created']]);
 const CONNECTION_NODE_REQUIREMENTS: Record<string, { provider: string; authType: string; scopes: string[] }> = {
@@ -42,7 +39,6 @@ function compileGraph(nodes: unknown, edges: unknown, enabled: boolean = true) {
   if (!Array.isArray(nodes) || !Array.isArray(edges)) return null;
   const byId = new Map(nodes.map((node: any) => [node.id, node]));
   const triggers = nodes.filter((node: any) => GRAPH_TRIGGER_TYPES.has(node.type));
-  if (triggers.length !== 1) throw new Error('Graph requires exactly one trigger.');
   if (triggers.length > 1) throw new Error('Graph allows at most one trigger.');
   if (triggers.length === 0) {
     if (enabled) throw new Error('Enabled workflow requires exactly one trigger.');
@@ -131,19 +127,9 @@ async function validateDefinition(admin: any, organizationId: string, body: Reco
   const name = String(body.name || '').trim();
   const description = body.description === undefined || body.description === null || body.description === '' ? null : String(body.description).trim();
   if (!name || name.length > 120 || (description && description.length > 1000)) throw new Error('Workflow name or description is invalid.');
-  validateTrigger(body.triggerType, body.triggerConfig);
-  validateConditions(body.conditions);
-  validateActions(body.actions);
   const isEnabled = body.enabled === true;
   if (body.enabled !== undefined && typeof body.enabled !== 'boolean') throw new Error('enabled must be a boolean.');
 
-  const graph = validateGraph(body.graphNodes, body.graphEdges); const execution_plan = Array.isArray(graph.graph_nodes) && graph.graph_nodes.length > 0 ? compileGraph(graph.graph_nodes, graph.graph_edges) : undefined;
-  const graph = validateGraph(body.graphNodes, body.graphEdges);
-  const execution_plan = Array.isArray(graph.graph_nodes) && graph.graph_nodes.length > 0 ? compileGraph(graph.graph_nodes, graph.graph_edges, isEnabled) : undefined;
-  await validateGraphConnectionReferences(admin, organizationId, graph.graph_nodes);
-  return { name, description, trigger_type: body.triggerType, trigger_config: body.triggerConfig, conditions: body.conditions, actions: body.actions, enabled: body.enabled === true, ...graph, execution_plan };
-
-  const effectiveTriggerType = body.triggerType || 'employee.created';
   const effectiveTriggerType = (body.triggerType as string) || 'employee.created';
   const effectiveTriggerConfig = isObject(body.triggerConfig) ? body.triggerConfig : {};
   if (isEnabled || body.triggerType) {
