@@ -3,7 +3,7 @@ import { getOrganizationEntitlements } from '../_shared/entitlements.ts';
 import { validateOutgoingWebhookAction } from '../_shared/webhook-security.ts';
 import { createIncomingWebhookToken, hashIncomingWebhookToken } from '../_shared/incoming-webhook.ts';
 
-const TRIGGER_TYPES = new Set(['employee.created', 'contact.created', 'expense.status_changed', 'incoming_webhook', 'website.form_submitted', 'schedule']);
+const TRIGGER_TYPES = new Set(['employee.created', 'contact.created', 'expense.status_changed', 'incoming_webhook', 'website.form_submitted', 'schedule', 'facebook.page.comment.created']);
 const CONDITION_OPERATORS = new Set(['equals', 'not_equals', 'contains', 'greater_than', 'less_than', 'is_empty', 'is_not_empty', 'changed_from', 'changed_to']);
 const ACTION_TYPES = new Set(['create_notification', 'outgoing_webhook', 'gmail_send_email']);
 const MAX_WORKFLOWS = 50;
@@ -15,14 +15,15 @@ const hasOnlyKeys = (value: Record<string, unknown>, keys: string[]) => Object.k
 const stringValue = (value: unknown, maximum: number) => typeof value === 'string' && value.trim().length > 0 && value.length <= maximum;
 const simpleValue = (value: unknown) => value === null || ['string', 'number', 'boolean'].includes(typeof value);
 const publicWorkflow = (workflow: Record<string, unknown>) => { const { incoming_webhook_token_hash: _hash, ...safe } = workflow; return safe; };
-const GRAPH_TYPES = new Set(['employee_created','contact_created','expense_status_changed','incoming_webhook','website_form_submitted','if','create_notification','outgoing_webhook','gmail_send_email']);
-const GRAPH_TRIGGER_TYPES = new Map([['employee_created', 'employee.created'], ['contact_created', 'contact.created'], ['expense_status_changed', 'expense.status_changed'], ['incoming_webhook', 'incoming_webhook'], ['website_form_submitted', 'website.form_submitted']]);
+const GRAPH_TYPES = new Set(['employee_created','contact_created','expense_status_changed','incoming_webhook','website_form_submitted','facebook_page_comment_created','if','create_notification','outgoing_webhook','gmail_send_email']);
+const GRAPH_TRIGGER_TYPES = new Map([['employee_created', 'employee.created'], ['contact_created', 'contact.created'], ['expense_status_changed', 'expense.status_changed'], ['incoming_webhook', 'incoming_webhook'], ['website_form_submitted', 'website.form_submitted'], ['facebook_page_comment_created', 'facebook.page.comment.created']]);
 const CONNECTION_NODE_REQUIREMENTS: Record<string, { provider: string; authType: string; scopes: string[] }> = {
   gmail: { provider: 'google', authType: 'oauth', scopes: [] },
   google_sheets: { provider: 'google', authType: 'oauth', scopes: [] },
   google_calendar: { provider: 'google', authType: 'oauth', scopes: [] },
   slack: { provider: 'slack', authType: 'oauth', scopes: [] },
   whatsapp: { provider: 'meta', authType: 'oauth', scopes: [] },
+  facebook_page_comment_created: { provider: 'meta', authType: 'oauth', scopes: [] },
   gmail_send_email: { provider: 'google', authType: 'oauth', scopes: ['https://www.googleapis.com/auth/gmail.send'] },
 };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -34,11 +35,15 @@ function validateGraph(nodes: unknown, edges: unknown) {
   for (const edge of edges) { if (!isObject(edge) || typeof edge.id !== 'string' || typeof edge.source !== 'string' || typeof edge.target !== 'string' || !ids.has(edge.source) || !ids.has(edge.target)) throw new Error('Workflow graph edge is invalid.'); }
   return { graph_nodes: nodes, graph_edges: edges };
 }
-function compileGraph(nodes: unknown, edges: unknown) {
+function compileGraph(nodes: unknown, edges: unknown, enabled: boolean = true) {
   if (!Array.isArray(nodes) || !Array.isArray(edges)) return null;
   const byId = new Map(nodes.map((node: any) => [node.id, node]));
   const triggers = nodes.filter((node: any) => GRAPH_TRIGGER_TYPES.has(node.type));
-  if (triggers.length !== 1) throw new Error('Graph requires exactly one trigger.');
+  if (triggers.length > 1) throw new Error('Graph allows at most one trigger.');
+  if (triggers.length === 0) {
+    if (enabled) throw new Error('Enabled workflow requires exactly one trigger.');
+    return null;
+  }
   const outgoing = new Map<string, any[]>(); const incoming = new Map<string, number>();
   for (const edge of edges as any[]) { outgoing.set(edge.source, [...(outgoing.get(edge.source) || []), edge]); incoming.set(edge.target, (incoming.get(edge.target) || 0) + 1); }
   const trigger = triggers[0]; const triggerType = GRAPH_TRIGGER_TYPES.get(trigger.type)!;
@@ -58,6 +63,12 @@ function compileGraph(nodes: unknown, edges: unknown) {
 function validateTrigger(triggerType: unknown, triggerConfig: unknown) {
   if (typeof triggerType !== 'string' || !TRIGGER_TYPES.has(triggerType)) throw new Error('Unsupported automation trigger type.');
   if (!isObject(triggerConfig) || JSON.stringify(triggerConfig).length > 4096) throw new Error('Invalid trigger configuration.');
+  if (triggerType === 'facebook.page.comment.created') {
+    if (!isObject(triggerConfig)) throw new Error('facebook.page.comment.created requires a valid configuration.');
+    if (!stringValue(triggerConfig.connection_id, 36) || !UUID.test(String(triggerConfig.connection_id))) throw new Error('facebook.page.comment.created requires a valid Meta connection.');
+    if (!stringValue(triggerConfig.resource_id, 120)) throw new Error('facebook.page.comment.created requires a valid Facebook Page.');
+    return;
+  }
   if (triggerType === 'expense.status_changed') {
     if (!hasOnlyKeys(triggerConfig, ['to_status']) || !stringValue(triggerConfig.to_status, 64)) throw new Error('expense.status_changed requires a valid to_status.');
     return;
@@ -116,14 +127,24 @@ async function validateDefinition(admin: any, organizationId: string, body: Reco
   const name = String(body.name || '').trim();
   const description = body.description === undefined || body.description === null || body.description === '' ? null : String(body.description).trim();
   if (!name || name.length > 120 || (description && description.length > 1000)) throw new Error('Workflow name or description is invalid.');
-  validateTrigger(body.triggerType, body.triggerConfig);
-  validateConditions(body.conditions);
-  validateActions(body.actions);
+  const isEnabled = body.enabled === true;
   if (body.enabled !== undefined && typeof body.enabled !== 'boolean') throw new Error('enabled must be a boolean.');
 
-  const graph = validateGraph(body.graphNodes, body.graphEdges); const execution_plan = Array.isArray(graph.graph_nodes) && graph.graph_nodes.length > 0 ? compileGraph(graph.graph_nodes, graph.graph_edges) : undefined;
+  const graph = validateGraph(body.graphNodes, body.graphEdges);
+  const execution_plan = Array.isArray(graph.graph_nodes) && graph.graph_nodes.length > 0 ? compileGraph(graph.graph_nodes, graph.graph_edges, isEnabled) : undefined;
   await validateGraphConnectionReferences(admin, organizationId, graph.graph_nodes);
-  return { name, description, trigger_type: body.triggerType, trigger_config: body.triggerConfig, conditions: body.conditions, actions: body.actions, enabled: body.enabled === true, ...graph, execution_plan };
+
+  const effectiveTriggerType = body.triggerType || 'employee.created';
+  const effectiveTriggerConfig = isObject(body.triggerConfig) ? body.triggerConfig : {};
+  if (isEnabled || body.triggerType) {
+    validateTrigger(effectiveTriggerType, effectiveTriggerConfig);
+  }
+  validateConditions(body.conditions);
+  if (isEnabled || (Array.isArray(body.actions) && body.actions.length > 0)) {
+    validateActions(body.actions);
+  }
+
+  return { name, description, trigger_type: effectiveTriggerType, trigger_config: effectiveTriggerConfig, conditions: body.conditions, actions: body.actions, enabled: isEnabled, ...graph, execution_plan };
 }
 
 async function requireWorkflowAccess(admin: any, userId: string, organizationId: string) {

@@ -13,7 +13,6 @@ import {
   useNodesState,
   type Connection,
   type Edge,
-  type Node,
   type NodeProps,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
@@ -43,8 +42,15 @@ import {
   type AutomationNodeDefinition,
 } from "../../features/automation/nodeRegistry";
 import { integrationConnectionService, type IntegrationConnection } from "../../services/integrationConnectionService";
+import {
+  triggerMap,
+  type WorkflowNode,
+  validateWorkflowGraph,
+  replaceTriggerInGraph,
+  deleteTriggerFromGraph,
+  getTriggerNodes,
+} from "../../features/automation/workflowValidation";
 
-type WorkflowNode = Node<Record<string, any>>;
 type PaletteItem = {
   type: string;
   title: string;
@@ -52,13 +58,6 @@ type PaletteItem = {
   subtitle: string;
   icon: any;
   accent: string;
-};
-const triggerMap: Record<string, string> = {
-  employee_created: "employee.created",
-  contact_created: "contact.created",
-  expense_status_changed: "expense.status_changed",
-  incoming_webhook: "incoming_webhook",
-  facebook_page_comment_created: "facebook.page.comment.created",
 };
 const legacyPalette: PaletteItem[] = [
   {
@@ -171,15 +170,18 @@ function restoreGraph(workflow: any) {
       nodes: workflow.graph_nodes.map(normalize),
       edges: workflow.graph_edges || [],
     };
+  if (!workflow || !workflow.trigger_type) {
+    return { nodes: [], edges: [] };
+  }
   const nodes: any[] = [
     normalize({
       id: "trigger",
       position: { x: 100, y: 220 },
-      type: workflow?.trigger_type?.replace(".", "_") || "employee_created",
+      type: workflow.trigger_type.replace(".", "_"),
       data: {
         config:
-          workflow?.trigger_config ||
-          defaults[workflow?.trigger_type?.replace(".", "_")] ||
+          workflow.trigger_config ||
+          defaults[workflow.trigger_type.replace(".", "_")] ||
           {},
       },
     }),
@@ -224,44 +226,37 @@ function restoreGraph(workflow: any) {
   return { nodes, edges };
 }
 
-function compatibilityDefinition(nodes: WorkflowNode[], edges: Edge[]) {
-  const triggers = nodes.filter((node) => triggerMap[node.type || ""]);
-  if (triggers.length !== 1) throw Error("Add exactly one trigger node.");
-  if (new Set(edges.map((edge) => edge.target)).has(triggers[0].id))
-    throw Error("The trigger must begin the graph.");
-  const conditions = nodes
-    .filter((node) => node.type === "if")
-    .map((node) => node.data.config || {});
-  if (conditions.length > 1) throw Error("Only one IF node is supported.");
-  const actions = nodes
-    .filter(
-      (node) =>
-        node.type === "create_notification" || node.type === "outgoing_webhook" || node.type === "gmail_send_email",
-    )
-    .map((node) => ({ type: node.type, config: node.data.config || {} }));
-  if (!actions.length) throw Error("Add at least one action node.");
-  return {
-    triggerType: triggerMap[triggers[0].type || ""],
-    triggerConfig: triggers[0].data.config || {},
-    conditions,
-    actions,
-  };
+function compatibilityDefinition(
+  nodes: WorkflowNode[],
+  edges: Edge[],
+  enabled: boolean = true,
+  fallbackTriggerType?: string,
+) {
+  return validateWorkflowGraph({
+    nodes,
+    edges,
+    enabled,
+    fallbackTriggerType,
+  });
 }
 
 function WorkflowNodeCard({ id, data, selected }: NodeProps<WorkflowNode>) {
   const info = nodeInfo[data.nodeType] || nodeInfo.create_notification;
   const Icon = info.icon;
   const accent = accentClasses[info.accent] || accentClasses.blue;
+  const isTrigger = Boolean(triggerMap[data.nodeType]);
   return (
     <div
-      className={`relative min-w-[200px] overflow-hidden rounded-xl border bg-slate-900/95 text-slate-100 shadow-xl backdrop-blur transition ${accent.border} ${accent.glow} ${selected ? "ring-2 ring-white/70" : "hover:-translate-y-0.5 hover:shadow-2xl"}`}
+      className={`relative min-w-[210px] overflow-hidden rounded-xl border bg-slate-900/95 text-slate-100 shadow-xl backdrop-blur transition ${accent.border} ${accent.glow} ${selected ? "ring-2 ring-white/70" : "hover:-translate-y-0.5 hover:shadow-2xl"}`}
     >
       <div className={`h-1 ${accent.stripe}`} />
-      <Handle
-        type="target"
-        position={Position.Left}
-        className="!h-3 !w-3 !border-2 !border-slate-950 !bg-slate-200"
-      />
+      {!isTrigger && (
+        <Handle
+          type="target"
+          position={Position.Left}
+          className="!h-3 !w-3 !border-2 !border-slate-950 !bg-slate-200"
+        />
+      )}
       <div className="flex gap-3 p-3">
         <div
           className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${accent.icon}`}
@@ -269,11 +264,61 @@ function WorkflowNodeCard({ id, data, selected }: NodeProps<WorkflowNode>) {
           <Icon className="h-4 w-4" />
         </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center justify-between gap-1.5">
             <p className="truncate text-sm font-semibold">{info.title}</p>
-            <span className="rounded-full bg-white/5 px-1.5 py-0.5 text-[9px] uppercase tracking-wide text-slate-400">
-              idle
-            </span>
+            <div className="flex items-center gap-1">
+              {isTrigger ? (
+                <>
+                  <button
+                    type="button"
+                    title="Replace trigger"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      data.onReplaceTrigger?.(id);
+                    }}
+                    className="nodrag rounded bg-cyan-400/10 px-1.5 py-0.5 text-[9px] font-semibold text-cyan-300 hover:bg-cyan-400/20"
+                  >
+                    Replace
+                  </button>
+                  <button
+                    type="button"
+                    title="Delete trigger"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      data.onDeleteNode?.(id);
+                    }}
+                    className="nodrag rounded p-1 text-slate-400 hover:bg-red-500/20 hover:text-red-300"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    title="Duplicate node"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      data.onDuplicateNode?.(id);
+                    }}
+                    className="nodrag rounded p-1 text-slate-400 hover:bg-white/10 hover:text-white"
+                  >
+                    <Copy className="h-3 w-3" />
+                  </button>
+                  <button
+                    type="button"
+                    title="Delete node"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      data.onDeleteNode?.(id);
+                    }}
+                    className="nodrag rounded p-1 text-slate-400 hover:bg-red-500/20 hover:text-red-300"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </>
+              )}
+            </div>
           </div>
           <p className="mt-1 text-[11px] leading-4 text-slate-400">
             {info.description}
@@ -333,12 +378,104 @@ const visualNodeTypes = Object.fromEntries(
   palette.map((item) => [item.type, WorkflowNodeCard]),
 );
 
+function ReplaceTriggerModal({
+  currentTriggerNode,
+  newTriggerDefinition,
+  onConfirm,
+  onCancel,
+}: {
+  currentTriggerNode: WorkflowNode;
+  newTriggerDefinition: AutomationNodeDefinition;
+  onConfirm: () => void;
+  onCancel: () => void;
+}) {
+  const currentInfo = nodeInfo[currentTriggerNode.type || ""] || {
+    title: currentTriggerNode.type || "Current trigger",
+    accent: "emerald",
+    icon: Sparkles,
+    description: "",
+  };
+  const CurrentIcon = currentInfo.icon || Sparkles;
+  const NewIcon = newTriggerDefinition.icon || Sparkles;
+
+  return (
+    <div
+      className="fixed inset-0 z-[1100] grid place-items-center bg-slate-950/75 p-4 backdrop-blur-xs"
+      role="alertdialog"
+      aria-modal="true"
+      aria-label="Replace current trigger"
+    >
+      <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-white/10 bg-slate-900 shadow-2xl">
+        <div className="p-6">
+          <h3 className="text-lg font-bold text-white">Replace current trigger?</h3>
+          <p className="mt-1.5 text-xs text-slate-400">
+            A workflow can have only one trigger. Replacing the trigger will keep your action and logic nodes while updating the event that starts this workflow.
+          </p>
+
+          <div className="mt-6 space-y-3">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Current trigger</p>
+              <div className="mt-1.5 flex items-center gap-3 rounded-xl border border-white/10 bg-white/5 p-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-400/15 text-emerald-300">
+                  <CurrentIcon className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-slate-200">{currentInfo.title}</p>
+                  <p className="text-xs text-slate-400">{currentInfo.description}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-center py-0.5">
+              <span className="rounded-full bg-cyan-400/10 px-2.5 py-0.5 text-[11px] font-medium text-cyan-300">
+                replacing with
+              </span>
+            </div>
+
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-wider text-slate-500">New trigger</p>
+              <div className="mt-1.5 flex items-center gap-3 rounded-xl border border-cyan-400/30 bg-cyan-400/10 p-3">
+                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-400/20 text-cyan-200">
+                  <NewIcon className="h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-cyan-100">{newTriggerDefinition.title}</p>
+                  <p className="text-xs text-cyan-200/70">{newTriggerDefinition.description}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-6 flex items-center justify-end gap-3">
+            <button
+              onClick={onCancel}
+              className="rounded-xl border border-white/10 px-4 py-2 text-xs font-semibold text-slate-300 hover:bg-white/5"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={onConfirm}
+              className="rounded-xl bg-gradient-to-r from-emerald-400 to-cyan-400 px-4 py-2 text-xs font-bold text-slate-950 shadow-lg shadow-emerald-500/15 hover:opacity-95"
+            >
+              Replace trigger
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function NodePicker({
   onChoose,
   onClose,
+  initialCategory,
+  replacementForTitle,
 }: {
   onChoose: (node: AutomationNodeDefinition) => void;
   onClose: () => void;
+  initialCategory?: "Trigger" | "Logic" | "Action" | "Integration" | "AI" | "Data" | "Utility";
+  replacementForTitle?: string;
 }) {
   const [query, setQuery] = useState("");
   const matches = palette.filter((node) =>
@@ -346,6 +483,19 @@ function NodePicker({
       .toLowerCase()
       .includes(query.toLowerCase()),
   );
+
+  const allCategories = [
+    "Trigger",
+    "Logic",
+    "Action",
+    "Integration",
+    "AI",
+    "Data",
+    "Utility",
+  ] as const;
+
+  const categories = initialCategory ? [initialCategory] : allCategories;
+
   return (
     <div
       className="fixed inset-0 z-[90] grid place-items-center bg-slate-950/55 p-4"
@@ -354,13 +504,18 @@ function NodePicker({
       aria-label="Add workflow node"
     >
       <div className="w-full max-w-2xl overflow-hidden rounded-2xl border border-white/10 bg-slate-900 shadow-2xl">
+        {replacementForTitle && (
+          <div className="border-b border-cyan-400/20 bg-cyan-400/10 px-4 py-2.5 text-xs text-cyan-200">
+            <span className="font-semibold text-cyan-100">Replace Trigger:</span> Currently using <span className="underline">{replacementForTitle}</span>. Select a new trigger below.
+          </div>
+        )}
         <div className="flex items-center gap-3 border-b border-white/10 p-4">
           <Search className="h-5 w-5 text-cyan-300" />
           <input
             autoFocus
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search nodes..."
+            placeholder={initialCategory ? `Search ${initialCategory.toLowerCase()}s...` : "Search nodes..."}
             className="flex-1 bg-transparent text-sm text-white outline-none placeholder:text-slate-500"
           />
           <button
@@ -371,17 +526,7 @@ function NodePicker({
           </button>
         </div>
         <div className="max-h-[60vh] overflow-y-auto p-4">
-          {(
-            [
-              "Trigger",
-              "Logic",
-              "Action",
-              "Integration",
-              "AI",
-              "Data",
-              "Utility",
-            ] as const
-          ).map((category) => {
+          {categories.map((category) => {
             const nodes = matches.filter((node) => node.category === category);
             return nodes.length ? (
               <section key={category} className="mb-5">
@@ -434,6 +579,8 @@ function ConfigPanel({
   connectionLoading,
   onAddGmailPermission,
   organizationId,
+  onDeleteNode,
+  onReplaceTrigger,
 }: {
   node: WorkflowNode | null;
   update: (config: Record<string, unknown>) => void;
@@ -441,6 +588,8 @@ function ConfigPanel({
   connectionLoading: boolean;
   onAddGmailPermission: (connectionId: string) => void;
   organizationId: string;
+  onDeleteNode?: () => void;
+  onReplaceTrigger?: () => void;
 }) {
   const [metaResources, setMetaResources] = useState<any[]>([]);
   const [loadingResources, setLoadingResources] = useState(false);
@@ -657,6 +806,36 @@ function ConfigPanel({
           </div>
         )}
       </div>
+      <div className="mt-6 border-t border-white/10 pt-4 space-y-2">
+        {triggerMap[node.type || ""] ? (
+          <>
+            <button
+              type="button"
+              onClick={onReplaceTrigger}
+              className="w-full rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-200 hover:bg-cyan-400/20"
+            >
+              Replace trigger
+            </button>
+            <button
+              type="button"
+              onClick={onDeleteNode}
+              className="w-full rounded-xl border border-red-400/30 bg-red-400/10 px-3 py-2 text-xs font-semibold text-red-200 hover:bg-red-400/20"
+            >
+              <Trash2 className="me-1 inline h-3.5 w-3.5" />
+              Delete trigger
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={onDeleteNode}
+            className="w-full rounded-xl border border-red-400/30 bg-red-400/10 px-3 py-2 text-xs font-semibold text-red-200 hover:bg-red-400/20"
+          >
+            <Trash2 className="me-1 inline h-3.5 w-3.5" />
+            Delete node
+          </button>
+        )}
+      </div>
       <details className="mt-8 border-t border-white/10 pt-4">
         <summary className="cursor-pointer text-xs font-medium text-slate-500">
           Advanced / debug configuration
@@ -697,15 +876,113 @@ export function WorkflowBuilder({
   const [configOpen, setConfigOpen] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
   const [search, setSearch] = useState("");
+  const [replaceModal, setReplaceModal] = useState<{
+    currentTrigger: WorkflowNode;
+    newTriggerDef: AutomationNodeDefinition;
+  } | null>(null);
   const [picker, setPicker] = useState<{
     sourceId?: string;
     sourceHandle?: string;
     position?: { x: number; y: number };
+    initialCategory?: "Trigger" | "Logic" | "Action" | "Integration" | "AI" | "Data" | "Utility";
+    replacementForTitle?: string;
   } | null>(null);
   const flowRef = useRef<any>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => { const previousOverflow = document.body.style.overflow; const previousPadding = document.body.style.paddingRight; const scrollbar = window.innerWidth - document.documentElement.clientWidth; document.body.style.overflow = "hidden"; if (scrollbar > 0) document.body.style.paddingRight = `${scrollbar}px`; return () => { document.body.style.overflow = previousOverflow; document.body.style.paddingRight = previousPadding; }; }, []);
   useEffect(() => { let cancelled = false; setConnections([]); setConnectionLoading(true); integrationConnectionService.list(organizationId).then((items) => { if (!cancelled) setConnections(items); }).catch(() => { if (!cancelled) setConnections([]); }).finally(() => { if (!cancelled) setConnectionLoading(false); }); return () => { cancelled = true; }; }, [organizationId]);
+
+  const openTriggerPicker = (replacementForTriggerId?: string) => {
+    const currentTrigger = replacementForTriggerId
+      ? nodes.find((n) => n.id === replacementForTriggerId)
+      : nodes.find((n) => triggerMap[n.type || ""]);
+
+    const currentTitle = currentTrigger
+      ? (nodeInfo[currentTrigger.type || ""]?.title || currentTrigger.type)
+      : undefined;
+
+    setPicker({
+      initialCategory: "Trigger",
+      replacementForTitle: currentTitle,
+      position: currentTrigger ? currentTrigger.position : { x: 100, y: 220 },
+    });
+  };
+
+  const confirmReplaceTrigger = () => {
+    if (!replaceModal) return;
+    const { currentTrigger, newTriggerDef } = replaceModal;
+    const result = replaceTriggerInGraph({
+      nodes,
+      edges,
+      currentTriggerId: currentTrigger.id,
+      newTriggerDefinition: newTriggerDef,
+    });
+
+    setNodes(result.nodes);
+    setEdges(result.edges);
+    setSelected(result.newTriggerNode);
+    setConfigOpen(true);
+    setError("");
+    setReplaceModal(null);
+  };
+
+  const deleteNode = useCallback((nodeId: string) => {
+    const target = nodes.find((n) => n.id === nodeId);
+    if (!target) return;
+
+    const isTrigger = Boolean(triggerMap[target.type || ""]);
+    if (isTrigger) {
+      if (
+        !confirm(
+          "Delete the trigger? The workflow will be switched to draft until you choose another trigger.",
+        )
+      ) {
+        return;
+      }
+      const result = deleteTriggerFromGraph({ nodes, edges, triggerId: nodeId });
+      setNodes(result.nodes);
+      setEdges(result.edges);
+      setEnabled(false);
+      if (selected?.id === nodeId) {
+        setSelected(null);
+        setConfigOpen(false);
+      }
+      setError("");
+      return;
+    }
+
+    setNodes((current) => current.filter((node) => node.id !== nodeId));
+    setEdges((current) =>
+      current.filter(
+        (edge) => edge.source !== nodeId && edge.target !== nodeId,
+      ),
+    );
+    if (selected?.id === nodeId) {
+      setSelected(null);
+      setConfigOpen(false);
+    }
+  }, [nodes, edges, selected, setNodes, setEdges]);
+
+  const deleteSelected = () => {
+    if (!selected) return;
+    deleteNode(selected.id);
+  };
+
+  useEffect(() => {
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Delete" && event.key !== "Backspace") return;
+      const activeTag = (document.activeElement?.tagName || "").toLowerCase();
+      if (activeTag === "input" || activeTag === "textarea" || activeTag === "select") return;
+      if ((document.activeElement as HTMLElement)?.isContentEditable) return;
+      if (selected) {
+        event.preventDefault();
+        deleteNode(selected.id);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [selected, deleteNode]);
+
   const add = (
     item: AutomationNodeDefinition,
     position?: { x: number; y: number },
@@ -713,34 +990,62 @@ export function WorkflowBuilder({
     sourceHandle?: string,
   ) => {
     if (!item.available) return;
-    if (
-      item.kind === "trigger" &&
-      nodes.some((node) => triggerMap[node.type || ""])
-    ) {
-      setError("A workflow can currently have one trigger.");
-      return;
+
+    const isTrigger = item.category === "Trigger" || Boolean(triggerMap[item.type]);
+    if (isTrigger) {
+      const existingTrigger = nodes.find((node) => triggerMap[node.type || ""]);
+      if (existingTrigger) {
+        setReplaceModal({
+          currentTrigger: existingTrigger,
+          newTriggerDef: item,
+        });
+        return;
+      }
     }
+
     if (nodes.length >= 100) {
       setError("Workflow node limit reached.");
       return;
     }
+
     const id = crypto.randomUUID();
-    setNodes((current) => [
-      ...current,
-      {
-        id,
-        type: item.type,
-        position: position || {
-          x: 180 + current.length * 40,
-          y: 140 + current.length * 35,
-        },
-        data: {
-          nodeType: item.type,
-          config: item.defaultConfig || defaults[item.type] || {},
-        },
+    const defaultPosition = isTrigger
+      ? { x: 100, y: 220 }
+      : {
+          x: 180 + nodes.length * 40,
+          y: 140 + nodes.length * 35,
+        };
+
+    const newNode: WorkflowNode = {
+      id,
+      type: item.type,
+      position: position || defaultPosition,
+      data: {
+        nodeType: item.type,
+        config: item.defaultConfig || defaults[item.type] || {},
       },
-    ]);
-    if (sourceId)
+    };
+
+    setNodes((current) => [...current, newNode]);
+
+    if (isTrigger && !sourceId) {
+      const targetAction = nodes.find(
+        (node) => !triggerMap[node.type || ""] && !edges.some((e) => e.target === node.id),
+      );
+      if (targetAction) {
+        setEdges((current) =>
+          addEdge(
+            {
+              id: crypto.randomUUID(),
+              source: id,
+              target: targetAction.id,
+              type: "smoothstep",
+            },
+            current,
+          ),
+        );
+      }
+    } else if (sourceId) {
       setEdges((current) =>
         addEdge(
           {
@@ -755,7 +1060,13 @@ export function WorkflowBuilder({
           current,
         ),
       );
+    }
+
+    setSelected(newNode);
+    setConfigOpen(true);
+    setError("");
   };
+
   const openQuickAdd = (sourceId?: string, sourceHandle?: string) => {
     const source = nodes.find((node) => node.id === sourceId);
     setPicker({
@@ -775,6 +1086,7 @@ export function WorkflowBuilder({
         : undefined,
     });
   };
+
   const duplicateSelected = () => {
     if (!selected || triggerMap[selected.type || ""]) return;
     add(nodeByType[selected.type || ""], {
@@ -782,23 +1094,7 @@ export function WorkflowBuilder({
       y: selected.position.y + 48,
     });
   };
-  const deleteSelected = () => {
-    if (!selected) return;
-    if (
-      triggerMap[selected.type || ""] &&
-      !confirm(
-        "Delete the trigger? The workflow will be invalid until you add another trigger.",
-      )
-    )
-      return;
-    setNodes((current) => current.filter((node) => node.id !== selected.id));
-    setEdges((current) =>
-      current.filter(
-        (edge) => edge.source !== selected.id && edge.target !== selected.id,
-      ),
-    );
-    setSelected(null);
-  };
+
   const connect = useCallback(
     (connection: Connection) =>
       setEdges((current) =>
@@ -824,6 +1120,7 @@ export function WorkflowBuilder({
       ),
     [setEdges],
   );
+
   const isValidConnection = useCallback(
     (connection: Connection) => {
       if (
@@ -861,6 +1158,7 @@ export function WorkflowBuilder({
     },
     [nodes, edges],
   );
+
   const drop = (event: React.DragEvent) => {
     event.preventDefault();
     const type = event.dataTransfer.getData("application/nextaura-node");
@@ -874,6 +1172,7 @@ export function WorkflowBuilder({
         }),
       );
   };
+
   const updateConfig = (config: Record<string, unknown>) => {
     if (!selected) return;
     setNodes((current) =>
@@ -887,7 +1186,18 @@ export function WorkflowBuilder({
       current ? { ...current, data: { ...current.data, config } } : current,
     );
   };
-  const addGmailPermission = (connectionId: string) => { integrationConnectionService.startGoogleOAuth(organizationId, connectionId, ['https://www.googleapis.com/auth/gmail.send']).then((result) => window.location.assign(result.authorizationUrl)).catch((reason) => setError(reason.message || 'Unable to add Gmail permission.')); };
+
+  const addGmailPermission = (connectionId: string) => {
+    integrationConnectionService
+      .startGoogleOAuth(organizationId, connectionId, [
+        "https://www.googleapis.com/auth/gmail.send",
+      ])
+      .then((result) => window.location.assign(result.authorizationUrl))
+      .catch((reason) =>
+        setError(reason.message || "Unable to add Gmail permission."),
+      );
+  };
+
   const save = async ({
     enabledOverride = enabled,
     closeOnSuccess = true,
@@ -898,7 +1208,12 @@ export function WorkflowBuilder({
     try {
       setSaving(true);
       setError("");
-      const definition = compatibilityDefinition(nodes, edges);
+      const definition = compatibilityDefinition(
+        nodes,
+        edges,
+        enabledOverride,
+        workflow?.trigger_type,
+      );
       const body = {
         organizationId,
         name,
@@ -931,8 +1246,31 @@ export function WorkflowBuilder({
       setSaving(false);
     }
   };
+
   const toggleEnabled = async () => {
     const nextEnabled = !enabled;
+    if (nextEnabled) {
+      const triggers = getTriggerNodes(nodes);
+      if (triggers.length === 0) {
+        setError("An enabled workflow requires a trigger. Add a trigger first.");
+        return;
+      }
+      if (triggers.length > 1) {
+        setError("A workflow can have at most one trigger.");
+        return;
+      }
+      const actions = nodes.filter(
+        (n) =>
+          n.type === "create_notification" ||
+          n.type === "outgoing_webhook" ||
+          n.type === "gmail_send_email",
+      );
+      if (actions.length === 0) {
+        setError("Add at least one action node before enabling.");
+        return;
+      }
+    }
+
     if (!workflow) {
       setEnabled(nextEnabled);
       setError("Save the workflow before changing its enabled status.");
@@ -943,24 +1281,43 @@ export function WorkflowBuilder({
     const persisted = await save({ enabledOverride: nextEnabled, closeOnSuccess: false });
     if (!persisted) setEnabled(!nextEnabled);
   };
+
   const filtered = palette.filter((item) =>
     `${item.title} ${item.category} ${item.description}`
       .toLowerCase()
       .includes(search.toLowerCase()),
   );
+
   const displayNodes = nodes.map((node) => ({
     ...node,
-    data: { ...node.data, onQuickAdd: openQuickAdd },
+    data: {
+      ...node.data,
+      onQuickAdd: openQuickAdd,
+      onReplaceTrigger: (id: string) => openTriggerPicker(id),
+      onDeleteNode: (id: string) => deleteNode(id),
+      onDuplicateNode: () => duplicateSelected(),
+    },
   }));
+
   return createPortal(
     <div className="fixed inset-0 z-[1000] h-[100dvh] w-screen overflow-hidden bg-[#07111c] text-slate-100" style={{ pointerEvents: "auto" }}>
       {picker && (
         <NodePicker
+          initialCategory={picker.initialCategory}
+          replacementForTitle={picker.replacementForTitle}
           onClose={() => setPicker(null)}
           onChoose={(item) => {
             add(item, picker.position, picker.sourceId, picker.sourceHandle);
             setPicker(null);
           }}
+        />
+      )}
+      {replaceModal && (
+        <ReplaceTriggerModal
+          currentTriggerNode={replaceModal.currentTrigger}
+          newTriggerDefinition={replaceModal.newTriggerDef}
+          onConfirm={confirmReplaceTrigger}
+          onCancel={() => setReplaceModal(null)}
         />
       )}
       <div className="flex h-full flex-col">
@@ -992,22 +1349,43 @@ export function WorkflowBuilder({
           </button>
           <button onClick={() => flowRef.current?.fitView({ padding: 0.28, minZoom: 0.55, maxZoom: 1.1, duration: 180 })} className="hidden rounded-xl border border-white/10 px-3 py-2 text-xs text-slate-300 hover:bg-white/5 md:inline-flex">Fit view</button>
           <button onClick={() => setFocusMode((value) => !value)} className="hidden rounded-xl border border-white/10 px-3 py-2 text-xs text-slate-300 lg:inline-flex">{focusMode ? "Exit focus" : "Focus"}</button>
-          {selected && !triggerMap[selected.type || ""] && (
-            <>
-              <button
-                onClick={duplicateSelected}
-                className="hidden rounded-xl border border-white/10 px-3 py-2 text-xs text-slate-300 hover:bg-white/5 lg:inline-flex"
-              >
-                <Copy className="me-1 h-3.5 w-3.5" />
-                Duplicate
-              </button>
-              <button
-                onClick={deleteSelected}
-                className="hidden rounded-xl border border-red-400/20 px-3 py-2 text-xs text-red-200 hover:bg-red-400/10 lg:inline-flex"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            </>
+          {selected && (
+            <div className="flex items-center gap-1.5">
+              {triggerMap[selected.type || ""] ? (
+                <>
+                  <button
+                    onClick={() => openTriggerPicker(selected.id)}
+                    className="rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-200 hover:bg-cyan-400/20"
+                  >
+                    Replace trigger
+                  </button>
+                  <button
+                    onClick={deleteSelected}
+                    className="rounded-xl border border-red-400/20 px-3 py-2 text-xs text-red-200 hover:bg-red-400/10"
+                    title="Delete trigger"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    onClick={duplicateSelected}
+                    className="rounded-xl border border-white/10 px-3 py-2 text-xs text-slate-300 hover:bg-white/5"
+                  >
+                    <Copy className="me-1 h-3.5 w-3.5" />
+                    Duplicate
+                  </button>
+                  <button
+                    onClick={deleteSelected}
+                    className="rounded-xl border border-red-400/20 px-3 py-2 text-xs text-red-200 hover:bg-red-400/10"
+                    title="Delete node"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </>
+              )}
+            </div>
           )}
           <button
             onClick={() => void toggleEnabled()}
@@ -1167,21 +1545,59 @@ export function WorkflowBuilder({
                 }
               />
             </ReactFlow>
-            {!nodes.length && (
-              <div className="pointer-events-none absolute inset-0 grid place-items-center">
-                <div className="rounded-2xl border border-white/10 bg-slate-900/85 p-6 text-center shadow-2xl backdrop-blur">
-                  <Sparkles className="mx-auto h-6 w-6 text-emerald-300" />
-                  <p className="mt-3 font-semibold">
-                    Start by adding a trigger
+            {!nodes.length ? (
+              <div className="pointer-events-auto absolute inset-0 grid place-items-center">
+                <div className="max-w-md rounded-2xl border border-dashed border-cyan-400/30 bg-slate-900/95 p-8 text-center shadow-2xl backdrop-blur">
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-400/15 text-emerald-300">
+                    <Sparkles className="h-7 w-7" />
+                  </div>
+                  <h3 className="mt-4 text-base font-bold text-white">Choose a trigger</h3>
+                  <p className="mt-1.5 text-xs leading-5 text-slate-400">
+                    Every automation starts with an event. Select a trigger to begin your workflow.
                   </p>
-                  <p className="mt-1 text-sm text-slate-400">
-                    Choose a node from the library to begin.
-                  </p>
+                  <button
+                    onClick={() => openTriggerPicker()}
+                    className="mt-5 inline-flex items-center gap-2 rounded-xl bg-gradient-to-r from-emerald-400 to-cyan-400 px-5 py-2.5 text-xs font-bold text-slate-950 shadow-lg shadow-emerald-500/20 hover:opacity-95"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Choose a trigger
+                  </button>
                 </div>
               </div>
-            )}
+            ) : !nodes.some((n) => triggerMap[n.type || ""]) ? (
+              <div className="pointer-events-auto absolute top-4 left-4 z-20 flex items-center gap-3 rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-2.5 text-xs text-amber-200 backdrop-blur shadow-xl">
+                <Info className="h-4 w-4 shrink-0 text-amber-300" />
+                <span>Workflow has no trigger. Choose a trigger to make this workflow runnable.</span>
+                <button
+                  onClick={() => openTriggerPicker()}
+                  className="rounded-lg bg-amber-400/20 px-3 py-1 font-semibold text-amber-100 hover:bg-amber-400/30"
+                >
+                  Choose a trigger
+                </button>
+              </div>
+            ) : null}
           </main>
-          {configOpen && <div className="contents"><button aria-label="Close node configuration" onClick={() => setConfigOpen(false)} className="absolute right-[320px] top-3 z-40 rounded-l-lg border border-white/10 bg-slate-900 px-2 py-2 text-xs text-slate-300 hover:bg-slate-800 xl:right-[320px]">›</button><ConfigPanel node={selected} update={updateConfig} connections={connections} connectionLoading={connectionLoading} onAddGmailPermission={addGmailPermission} organizationId={organizationId} /></div>}
+          {configOpen && (
+            <div className="contents">
+              <button
+                aria-label="Close node configuration"
+                onClick={() => setConfigOpen(false)}
+                className="absolute right-[320px] top-3 z-40 rounded-l-lg border border-white/10 bg-slate-900 px-2 py-2 text-xs text-slate-300 hover:bg-slate-800 xl:right-[320px]"
+              >
+                ›
+              </button>
+              <ConfigPanel
+                node={selected}
+                update={updateConfig}
+                connections={connections}
+                connectionLoading={connectionLoading}
+                onAddGmailPermission={addGmailPermission}
+                organizationId={organizationId}
+                onDeleteNode={deleteSelected}
+                onReplaceTrigger={selected && triggerMap[selected.type || ""] ? () => openTriggerPicker(selected.id) : undefined}
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>,
