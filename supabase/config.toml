@@ -50,3 +50,13 @@ entrypoint = "./functions/github-oauth-callback/index.ts"
 # Specifies static files to be bundled with the function. Supports glob patterns.
 # For example, if you want to serve static HTML pages in your function:
 # static_files = [ "./functions/website-export/*.html" ]
+
+[functions.meta-oauth-callback]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/meta-oauth-callback/index.ts"
+
+[functions.meta-webhook]
+enabled = true
+verify_jwt = false
+entrypoint = "./functions/meta-webhook/index.ts"

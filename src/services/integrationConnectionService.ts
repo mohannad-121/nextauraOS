@@ -5,14 +5,57 @@ export type IntegrationConnection = {
   organization_id: string;
   provider: 'google' | 'github' | 'slack' | 'meta' | 'generic_api';
   name: string;
-  status: 'active' | 'expired' | 'revoked' | 'error';
+  status: 'active' | 'degraded' | 'reconnect_required' | 'disconnected' | 'expired' | 'revoked' | 'error';
   auth_type: 'api_key' | 'oauth';
   scopes: string[];
   account_label: string | null;
   expires_at: string | null;
   last_verified_at: string | null;
   revoked_at: string | null;
+  provider_metadata: MetaProviderMetadata;
   created_at: string;
+  updated_at: string;
+};
+
+export type MetaPermissionStatus = {
+  name: string;
+  status: string;
+  purpose: string;
+  available_in_development: boolean;
+  available_in_production: boolean;
+  requires_app_review: boolean;
+};
+
+export type MetaProviderMetadata = {
+  meta_user_id?: string;
+  display_name?: string;
+  graph_api_version?: string;
+  connected_at?: string;
+  pages_count?: number;
+  instagram_accounts_count?: number;
+  permission_statuses?: MetaPermissionStatus[];
+  health?: {
+    checked_at?: string;
+    missing_permissions?: string[];
+    unavailable_selected_resources?: string[];
+  };
+};
+
+export type MetaConnectionResource = {
+  id: string;
+  resource_type: 'facebook_page' | 'instagram_account';
+  external_resource_id: string;
+  display_name: string;
+  selected: boolean;
+  metadata: {
+    category?: string | null;
+    picture_url?: string | null;
+    connected_instagram_account_id?: string | null;
+    username?: string | null;
+    name?: string | null;
+    profile_picture_url?: string | null;
+    page_id?: string;
+  };
   updated_at: string;
 };
 
@@ -43,6 +86,14 @@ export const integrationConnectionService = {
     call({ operation: 'startGoogleOAuth', organizationId, ...(connectionId ? { connectionId } : {}), ...(additionalScopes?.length ? { additionalScopes } : {}) }),
   startGithubOAuth: (organizationId: string, connectionId?: string) =>
     call({ operation: 'startGithubOAuth', organizationId, ...(connectionId ? { connectionId } : {}) }),
+  startMetaOAuth: (organizationId: string, connectionId?: string) =>
+    call({ operation: 'startMetaOAuth', organizationId, ...(connectionId ? { connectionId } : {}) }),
+  getMetaDetails: (organizationId: string, connectionId: string) =>
+    call({ operation: 'getMetaDetails', organizationId, connectionId }) as Promise<{ success: true; connection: IntegrationConnection; resources: MetaConnectionResource[] }>,
+  updateMetaResources: (organizationId: string, connectionId: string, pageIds: string[], instagramIds: string[]) =>
+    call({ operation: 'updateMetaResources', organizationId, connectionId, pageIds, instagramIds }),
+  checkMetaConnection: (organizationId: string, connectionId: string) =>
+    call({ operation: 'checkMetaConnection', organizationId, connectionId }),
   rename: (organizationId: string, connectionId: string, name: string) =>
     call({ operation: 'rename', organizationId, connectionId, name }),
   test: (organizationId: string, connectionId: string) =>
