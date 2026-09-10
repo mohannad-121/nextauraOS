@@ -42,4 +42,3 @@ Deno.serve(async (req) => {
     return json({ success: false, error: error.message || 'Unable to create checkout session.' }, status);
   }
 });
-

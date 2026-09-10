@@ -13,4 +13,3 @@ Deno.serve(async (req) => {
     return json({ success: true, url: portal.url });
   } catch (error: any) { return json({ success: false, error: error.message || 'Unable to open billing portal.' }, 400); }
 });
-
