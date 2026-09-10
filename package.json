@@ -7,8 +7,8 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "oxlint",
-    "test": "node --experimental-strip-types --test src/features/automation/workflowValidation.test.ts src/features/automation/facebookTriggerTest.test.ts",
-    "test:automation": "node --experimental-strip-types --test src/features/automation/workflowValidation.test.ts src/features/automation/facebookTriggerTest.test.ts",
+    "test": "node --experimental-strip-types --test src/features/automation/workflowValidation.test.ts src/features/automation/facebookTriggerTest.test.ts src/features/automation/facebookActionTest.test.ts",
+    "test:automation": "node --experimental-strip-types --test src/features/automation/workflowValidation.test.ts src/features/automation/facebookTriggerTest.test.ts src/features/automation/facebookActionTest.test.ts",
     "test:ai": "node scripts/test-local-ai.mjs",
     "preview": "vite preview"
   },

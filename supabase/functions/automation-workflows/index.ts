@@ -5,7 +5,7 @@ import { createIncomingWebhookToken, hashIncomingWebhookToken } from '../_shared
 
 const TRIGGER_TYPES = new Set(['employee.created', 'contact.created', 'expense.status_changed', 'incoming_webhook', 'website.form_submitted', 'schedule', 'facebook.page.comment.created']);
 const CONDITION_OPERATORS = new Set(['equals', 'not_equals', 'contains', 'greater_than', 'less_than', 'is_empty', 'is_not_empty', 'changed_from', 'changed_to']);
-const ACTION_TYPES = new Set(['create_notification', 'outgoing_webhook', 'gmail_send_email']);
+const ACTION_TYPES = new Set(['create_notification', 'outgoing_webhook', 'gmail_send_email', 'facebook_comment_reply']);
 const MAX_WORKFLOWS = 50;
 const MAX_CONDITIONS = 10;
 const MAX_ACTIONS = 10;
@@ -15,7 +15,7 @@ const hasOnlyKeys = (value: Record<string, unknown>, keys: string[]) => Object.k
 const stringValue = (value: unknown, maximum: number) => typeof value === 'string' && value.trim().length > 0 && value.length <= maximum;
 const simpleValue = (value: unknown) => value === null || ['string', 'number', 'boolean'].includes(typeof value);
 const publicWorkflow = (workflow: Record<string, unknown>) => { const { incoming_webhook_token_hash: _hash, ...safe } = workflow; return safe; };
-const GRAPH_TYPES = new Set(['employee_created','contact_created','expense_status_changed','incoming_webhook','website_form_submitted','facebook_page_comment_created','if','create_notification','outgoing_webhook','gmail_send_email']);
+const GRAPH_TYPES = new Set(['employee_created','contact_created','expense_status_changed','incoming_webhook','website_form_submitted','facebook_page_comment_created','if','create_notification','outgoing_webhook','gmail_send_email','facebook_comment_reply']);
 const GRAPH_TRIGGER_TYPES = new Map([['employee_created', 'employee.created'], ['contact_created', 'contact.created'], ['expense_status_changed', 'expense.status_changed'], ['incoming_webhook', 'incoming_webhook'], ['website_form_submitted', 'website.form_submitted'], ['facebook_page_comment_created', 'facebook.page.comment.created']]);
 const CONNECTION_NODE_REQUIREMENTS: Record<string, { provider: string; authType: string; scopes: string[] }> = {
   gmail: { provider: 'google', authType: 'oauth', scopes: [] },
@@ -24,6 +24,7 @@ const CONNECTION_NODE_REQUIREMENTS: Record<string, { provider: string; authType:
   slack: { provider: 'slack', authType: 'oauth', scopes: [] },
   whatsapp: { provider: 'meta', authType: 'oauth', scopes: [] },
   facebook_page_comment_created: { provider: 'meta', authType: 'oauth', scopes: [] },
+  facebook_comment_reply: { provider: 'meta', authType: 'oauth', scopes: [] },
   gmail_send_email: { provider: 'google', authType: 'oauth', scopes: ['https://www.googleapis.com/auth/gmail.send'] },
 };
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -105,6 +106,11 @@ function validateActions(actions: unknown) {
       if (!hasOnlyKeys(config, ['connection_id', 'to', 'cc', 'bcc', 'subject', 'body']) || !stringValue(config.connection_id, 36) || !UUID.test(String(config.connection_id)) || !stringValue(config.to, 1000) || !String(config.to).split(',').every((email) => /^[^\s@,]+@[^\s@,]+\.[^\s@,]+$/.test(email.trim())) || addresses.slice(1).some((key) => config[key] !== undefined && config[key] !== '' && (!stringValue(config[key], 1000) || !String(config[key]).split(',').every((email) => /^[^\s@,]+@[^\s@,]+\.[^\s@,]+$/.test(email.trim())))) || !stringValue(config.subject, 300) || !stringValue(config.body, 20000)) throw new Error('Gmail send requires a valid Google connection, recipient, subject, and body.');
       continue;
     }
+    if (action.type === 'facebook_comment_reply') {
+      const config = action.config as Record<string, unknown>;
+      if (!hasOnlyKeys(config, ['connection_id', 'resource_id', 'comment_id', 'message']) || !stringValue(config.connection_id, 36) || !UUID.test(String(config.connection_id)) || !stringValue(config.resource_id, 120) || !stringValue(config.comment_id, 500) || !stringValue(config.message, 5000)) throw new Error('facebook_comment_reply requires a valid Meta connection, Facebook Page, comment ID, and message.');
+      continue;
+    }
     validateOutgoingWebhookAction(action);
   }
 }
@@ -180,9 +186,9 @@ function safeRunActions(workflow: Record<string, unknown>, branch: 'true' | 'fal
     const indexes = new Map<string, number>();
     for (const [index, action] of all.entries()) if (isObject(action) && typeof action.node_id === 'string') indexes.set(action.node_id, index);
     const selected = branch === 'false' ? plan.false_actions : plan.true_actions;
-    return selected.flatMap((action) => { if (!isObject(action) || typeof action.node_id !== 'string' || (action.type !== 'create_notification' && action.type !== 'outgoing_webhook' && action.type !== 'gmail_send_email')) return []; const action_index = indexes.get(action.node_id); return action_index === undefined ? [] : [{ action_index, type: action.type }]; });
+    return selected.flatMap((action) => { if (!isObject(action) || typeof action.node_id !== 'string' || (action.type !== 'create_notification' && action.type !== 'outgoing_webhook' && action.type !== 'gmail_send_email' && action.type !== 'facebook_comment_reply')) return []; const action_index = indexes.get(action.node_id); return action_index === undefined ? [] : [{ action_index, type: action.type }]; });
   }
-  return Array.isArray(workflow.actions) ? workflow.actions.flatMap((action, action_index) => isObject(action) && (action.type === 'create_notification' || action.type === 'outgoing_webhook' || action.type === 'gmail_send_email') ? [{ action_index, type: action.type }] : []) : [];
+  return Array.isArray(workflow.actions) ? workflow.actions.flatMap((action, action_index) => isObject(action) && (action.type === 'create_notification' || action.type === 'outgoing_webhook' || action.type === 'gmail_send_email' || action.type === 'facebook_comment_reply') ? [{ action_index, type: action.type }] : []) : [];
 }
 
 Deno.serve(async (req) => {

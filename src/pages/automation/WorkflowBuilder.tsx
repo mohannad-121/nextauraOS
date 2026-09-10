@@ -157,6 +157,12 @@ const defaults: Record<string, Record<string, unknown>> = {
   },
   outgoing_webhook: { url: "", method: "POST" },
   gmail_send_email: { connection_id: "", to: "", cc: "", bcc: "", subject: "", body: "" },
+  facebook_comment_reply: {
+    connection_id: "",
+    resource_id: "",
+    comment_id: "{{trigger.comment_id}}",
+    message: "",
+  },
 };
 
 function restoreGraph(workflow: any) {
@@ -893,6 +899,7 @@ function ConfigPanel({
   connections,
   connectionLoading,
   onAddGmailPermission,
+  onAddMetaPermission,
   organizationId,
   onDeleteNode,
   onReplaceTrigger,
@@ -903,6 +910,7 @@ function ConfigPanel({
   connections: IntegrationConnection[];
   connectionLoading: boolean;
   onAddGmailPermission: (connectionId: string) => void;
+  onAddMetaPermission?: (connectionId: string, additionalScopes: string[]) => void;
   organizationId: string;
   onDeleteNode?: () => void;
   onReplaceTrigger?: () => void;
@@ -1113,6 +1121,87 @@ function ConfigPanel({
             {input("Subject", "subject", "Email subject")}
             <label className="block text-xs font-medium text-slate-300">Body<textarea value={String(config.body || "")} onChange={(event) => field("body", event.target.value)} className="mt-1.5 h-32 w-full resize-none rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/70" /></label>
             {String(config.connection_id || "") && info?.required_scopes?.some((scope) => !connections.find((item) => item.id === config.connection_id)?.scopes.includes(scope)) && <div className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-xs text-amber-100">Gmail permission required<button onClick={() => onAddGmailPermission(String(config.connection_id))} className="mt-2 block font-semibold underline">Add Gmail permission</button></div>}
+          </>
+        )}
+        {node.type === "facebook_comment_reply" && (
+          <>
+            <p className="rounded-xl border border-purple-400/20 bg-purple-400/10 p-3 text-xs text-purple-100">
+              Post a public reply to a comment on your Facebook Page using the authorized Page connection.
+            </p>
+            {input("Comment ID", "comment_id", "{{trigger.comment_id}}")}
+            <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+              <span className="text-[10px] text-slate-400">Dynamic tag:</span>
+              {["{{trigger.comment_id}}", "{{trigger.post_id}}"].map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => field("comment_id", tag)}
+                  className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] font-mono text-cyan-300 hover:bg-white/10"
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+            <label className="block text-xs font-medium text-slate-300">
+              Reply Message
+              <textarea
+                value={String(config.message || "")}
+                onChange={(event) => field("message", event.target.value)}
+                placeholder="Write your comment reply... e.g. Thanks for reaching out, {{trigger.author_name}}!"
+                className="mt-1.5 h-28 w-full resize-none rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-600 focus:border-cyan-400/70"
+              />
+            </label>
+            <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+              <span className="text-[10px] text-slate-400">Insert tag:</span>
+              {[
+                "{{trigger.author_name}}",
+                "{{trigger.message}}",
+                "{{trigger.comment_id}}",
+                "{{trigger.post_id}}",
+                "{{trigger.page_id}}",
+              ].map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => {
+                    const current = String(config.message || "");
+                    field("message", current ? `${current} ${tag}` : tag);
+                  }}
+                  className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] font-mono text-cyan-300 hover:bg-white/10"
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+            {String(config.connection_id || "") &&
+              info?.required_scopes?.some(
+                (scope) =>
+                  !connections
+                    .find((item) => item.id === config.connection_id)
+                    ?.scopes.includes(scope),
+              ) && (
+                <div className="rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-xs text-amber-100">
+                  <p className="font-semibold text-amber-200">
+                    Additional Facebook permission required: pages_manage_engagement
+                  </p>
+                  <p className="mt-1 text-[11px] leading-4 text-amber-300/80">
+                    Replying to comments on a Facebook Page requires the <code>pages_manage_engagement</code> scope. Reconnect to authorize this permission.
+                  </p>
+                  {onAddMetaPermission && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        onAddMetaPermission(String(config.connection_id), [
+                          "pages_manage_engagement",
+                        ])
+                      }
+                      className="mt-2.5 rounded-lg bg-amber-400/20 px-3 py-1.5 text-xs font-bold text-amber-200 hover:bg-amber-400/30"
+                    >
+                      Authorize / Reconnect with required permission
+                    </button>
+                  )}
+                </div>
+              )}
           </>
         )}
         {["employee_created", "contact_created", "incoming_webhook"].includes(
@@ -1557,6 +1646,15 @@ export function WorkflowBuilder({
       );
   };
 
+  const addMetaPermission = (connectionId: string, additionalScopes: string[]) => {
+    integrationConnectionService
+      .startMetaOAuth(organizationId, connectionId, additionalScopes)
+      .then((result) => window.location.assign(result.authorizationUrl))
+      .catch((reason) =>
+        setError(reason.message || "Unable to add Facebook permission."),
+      );
+  };
+
   const save = async ({
     enabledOverride = enabled,
     closeOnSuccess = true,
@@ -1622,7 +1720,8 @@ export function WorkflowBuilder({
         (n) =>
           n.type === "create_notification" ||
           n.type === "outgoing_webhook" ||
-          n.type === "gmail_send_email",
+          n.type === "gmail_send_email" ||
+          n.type === "facebook_comment_reply",
       );
       if (actions.length === 0) {
         setError("Add at least one action node before enabling.");
@@ -1988,6 +2087,7 @@ export function WorkflowBuilder({
                 connections={connections}
                 connectionLoading={connectionLoading}
                 onAddGmailPermission={addGmailPermission}
+                onAddMetaPermission={addMetaPermission}
                 organizationId={organizationId}
                 onDeleteNode={deleteSelected}
                 onReplaceTrigger={selected && triggerMap[selected.type || ""] ? () => openTriggerPicker(selected.id) : undefined}

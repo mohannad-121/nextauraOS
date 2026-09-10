@@ -163,6 +163,7 @@ export const metaClient = () => ({
 export function buildMetaAuthorizationUrl(
   state: string,
   reconnect = false,
+  extraScopes: string[] = [],
 ) {
   const client = metaClient();
   const url = new URL(
@@ -172,8 +173,10 @@ export function buildMetaAuthorizationUrl(
   url.searchParams.set("redirect_uri", client.redirectUri);
   url.searchParams.set("response_type", "code");
   url.searchParams.set("state", state);
-  url.searchParams.set("scope", META_DISCOVERY_SCOPES.join(","));
-  url.searchParams.set("scope", FACEBOOK_PAGE_BASE_SCOPES.join(","));
+  const combinedScopes = Array.from(
+    new Set([...FACEBOOK_PAGE_BASE_SCOPES, ...extraScopes]),
+  );
+  url.searchParams.set("scope", combinedScopes.join(","));
   if (reconnect) url.searchParams.set("auth_type", "rerequest");
   return url.toString();
 }
@@ -1000,6 +1003,87 @@ export async function normalizeMetaWebhookPayload(payload: unknown) {
     }
   }
   return events;
+}
+
+export async function postFacebookCommentReply({
+  pageAccessToken,
+  commentId,
+  message,
+  requester = fetch,
+}: {
+  pageAccessToken: string;
+  commentId: string;
+  message: string;
+  requester?: typeof fetch;
+}): Promise<{ id: string }> {
+  if (!commentId || !commentId.trim()) {
+    throw new MetaIntegrationError(
+      "FACEBOOK_COMMENT_ID_REQUIRED",
+      "Facebook comment ID is required.",
+      400,
+    );
+  }
+  if (!message || !message.trim()) {
+    throw new MetaIntegrationError(
+      "FACEBOOK_REPLY_MESSAGE_REQUIRED",
+      "Reply message is required.",
+      400,
+    );
+  }
+  const cleanCommentId = commentId.trim();
+  const url = graphUrl(`${encodeURIComponent(cleanCommentId)}/comments`);
+  const response = await requester(url, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${pageAccessToken}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ message: message.trim() }),
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    const errorObj = body?.error;
+    const errorCode = errorObj?.code;
+    const subcode = errorObj?.error_subcode;
+    const rawMsg = typeof errorObj?.message === "string" ? errorObj.message : "";
+    const sanitizedMsg = rawMsg.replace(/access_token=[^&\s]+/gi, "access_token=REDACTED");
+
+    if (errorCode === 100 || /does not exist|unsupported post request|invalid object/i.test(sanitizedMsg)) {
+      throw new MetaIntegrationError(
+        "FACEBOOK_COMMENT_NOT_FOUND",
+        `Facebook comment ${cleanCommentId} was not found or is inaccessible.`,
+        404,
+      );
+    }
+    if (errorCode === 200 || errorCode === 10 || /permission/i.test(sanitizedMsg)) {
+      throw new MetaIntegrationError(
+        "FACEBOOK_PERMISSION_MISSING",
+        "Permission pages_manage_engagement is required to reply to this comment.",
+        403,
+      );
+    }
+    if (errorCode === 190 || subcode === 463 || subcode === 467) {
+      throw new MetaIntegrationError(
+        "FACEBOOK_RECONNECT_REQUIRED",
+        "Meta authorization expired or invalid. Reconnect Meta to continue.",
+        401,
+      );
+    }
+    throw new MetaIntegrationError(
+      "FACEBOOK_REPLY_FAILED",
+      sanitizedMsg || "Failed to post reply to Facebook comment.",
+      response.status >= 500 ? 502 : 400,
+    );
+  }
+
+  if (typeof body.id !== "string" || !body.id) {
+    throw new MetaIntegrationError(
+      "FACEBOOK_REPLY_FAILED",
+      "Meta did not return a valid reply comment ID.",
+      502,
+    );
+  }
+  return { id: body.id };
 }
 
 export { encryptIntegrationCredential };

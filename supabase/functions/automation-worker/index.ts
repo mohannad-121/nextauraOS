@@ -3,6 +3,7 @@ import { getOrganizationEntitlements } from '../_shared/entitlements.ts';
 import { assertPublicWebhookTarget, discardBoundedResponse, isRetryableWebhookStatus, validateOutgoingWebhookAction, WebhookActionError } from '../_shared/webhook-security.ts';
 import { AutomationConditionError, evaluateAutomationCondition } from '../_shared/automation-condition.ts';
 import { getValidGoogleAccessToken } from '../_shared/google-oauth.ts';
+import { getMetaConnection, postFacebookCommentReply, MetaIntegrationError } from '../_shared/meta-integration.ts';
 
 const DEFAULT_BATCH_SIZE = 25;
 const LEASE_SECONDS = 120;
@@ -13,7 +14,7 @@ const GMAIL_RESULT_SUMMARY = 'Gmail action completed.';
 const NOTIFICATION_FAILURE_SUMMARY = 'Automation notification action could not be completed.';
 
 type AutomationRun = Record<string, unknown>;
-type AutomationEvent = { id: string; organization_id: string; event_type: string; entity_type: string; entity_id: string | null; payload: Record<string, unknown>; occurred_at: string };
+type AutomationEvent = { id: string; organization_id: string; event_type: string; entity_type: string; entity_id: string | null; payload: Record<string, unknown>; occurred_at: string; source?: string | null };
 type ResolvedAction = { action: unknown; actionIndex: number };
 
 function boundedBatchSize(value: unknown) {
@@ -50,7 +51,7 @@ async function recordWebhookAudit(admin: any, organizationId: string, action: st
 async function loadEvent(admin: any, run: AutomationRun): Promise<AutomationEvent> {
   const organizationId = String(run.organization_id || '');
   const eventId = String(run.event_id || '');
-  const { data, error } = await admin.from('automation_events').select('id,organization_id,event_type,entity_type,entity_id,payload,occurred_at').eq('id', eventId).eq('organization_id', organizationId).maybeSingle();
+  const { data, error } = await admin.from('automation_events').select('id,organization_id,event_type,entity_type,entity_id,payload,occurred_at,source').eq('id', eventId).eq('organization_id', organizationId).maybeSingle();
   if (error || !data || !data.payload || typeof data.payload !== 'object' || Array.isArray(data.payload)) throw new WebhookActionError('Automation event is unavailable.', false);
   return data as AutomationEvent;
 }
@@ -132,6 +133,323 @@ async function executeGmailSend(admin: any, run: AutomationRun, action: unknown,
   catch (error) { const e = error instanceof GmailActionError ? error : error instanceof WebhookActionError ? new GmailActionError(error.message, error.retryable) : new GmailActionError('Gmail delivery could not be completed.', true); await admin.from('automation_action_deliveries').update({ status: 'failed', http_status: e.httpStatus, error_summary: e.message.slice(0, 1000), provider_error_code: e.providerErrorCode, provider_error_reason: e.providerErrorReason, completed_at: new Date().toISOString() }).eq('id', delivery.data.id); throw e; }
 }
 
+class FacebookActionError extends WebhookActionError {
+  constructor(
+    message: string,
+    retryable: boolean,
+    public readonly httpStatus: number | null = null,
+    public readonly providerErrorCode: string | null = null,
+    public readonly providerErrorReason: string | null = null,
+  ) {
+    super(message, retryable);
+    this.name = 'FacebookActionError';
+  }
+}
+
+export function interpolateVariables(template: string, eventPayload: Record<string, unknown>): string {
+  if (!template) return '';
+  return template.replace(/\{\{\s*trigger\.([a-zA-Z0-9_]+)\s*\}\}/g, (_match, key) => {
+    const val = eventPayload[key];
+    return val !== undefined && val !== null ? String(val) : '';
+  });
+}
+
+function facebookReplyConfig(action: unknown) {
+  const config = (action as any)?.config;
+  if (!config || typeof config !== 'object' || (action as any).type !== 'facebook_comment_reply') {
+    throw new FacebookActionError('Facebook reply configuration is invalid.', false);
+  }
+  if (!config.connection_id) {
+    throw new FacebookActionError('Facebook connection is required.', false, 400, 'FACEBOOK_CONNECTION_REQUIRED');
+  }
+  if (!config.resource_id) {
+    throw new FacebookActionError('Facebook Page is required.', false, 400, 'FACEBOOK_PAGE_REQUIRED');
+  }
+  if (!config.comment_id) {
+    throw new FacebookActionError('Facebook comment ID is required.', false, 400, 'FACEBOOK_COMMENT_ID_REQUIRED');
+  }
+  if (!config.message) {
+    throw new FacebookActionError('Facebook reply message is required.', false, 400, 'FACEBOOK_REPLY_MESSAGE_REQUIRED');
+  }
+  return config as Record<string, string>;
+}
+
+async function acquireFacebookReplyDelivery(admin: any, organizationId: string, runId: string, actionIndex: number) {
+  const { data: existing, error: existingError } = await admin
+    .from('automation_action_deliveries')
+    .select('id,status,attempt_count')
+    .eq('organization_id', organizationId)
+    .eq('run_id', runId)
+    .eq('action_index', actionIndex)
+    .maybeSingle();
+
+  if (existingError) throw new Error('Unable to load Facebook reply delivery.');
+  if (existing?.status === 'succeeded') return { id: String(existing.id), succeeded: true };
+
+  const now = new Date().toISOString();
+  if (existing) {
+    const { data, error } = await admin
+      .from('automation_action_deliveries')
+      .update({
+        status: 'running',
+        attempt_count: Number(existing.attempt_count || 0) + 1,
+        http_status: null,
+        error_summary: null,
+        provider_error_code: null,
+        provider_error_reason: null,
+        started_at: now,
+        completed_at: null,
+      })
+      .eq('id', existing.id)
+      .eq('organization_id', organizationId)
+      .select('id')
+      .single();
+
+    if (error || !data) throw new Error('Unable to claim Facebook reply delivery.');
+    return { id: String(data.id), succeeded: false };
+  }
+
+  const { data, error } = await admin
+    .from('automation_action_deliveries')
+    .insert({
+      organization_id: organizationId,
+      run_id: runId,
+      action_index: actionIndex,
+      action_type: 'facebook_comment_reply',
+      status: 'running',
+      attempt_count: 1,
+      started_at: now,
+    })
+    .select('id')
+    .single();
+
+  if (error || !data) throw new Error('Unable to create Facebook reply delivery.');
+  return { id: String(data.id), succeeded: false };
+}
+
+async function executeFacebookCommentReply(
+  admin: any,
+  run: AutomationRun,
+  event: AutomationEvent,
+  action: unknown,
+  actionIndex: number,
+): Promise<{ testMode: boolean }> {
+  const organizationId = String(run.organization_id);
+  const runId = String(run.id);
+  const workflowId = String(run.workflow_id || '');
+  const config = facebookReplyConfig(action);
+
+  const delivery = await acquireFacebookReplyDelivery(admin, organizationId, runId, actionIndex);
+  if (delivery.succeeded) {
+    const isTest = Boolean((event.payload as any)?.test_event) || event.source === 'meta_test';
+    return { testMode: isTest };
+  }
+
+  const isTest = Boolean((event.payload as any)?.test_event) || event.source === 'meta_test';
+  const resolvedCommentId = interpolateVariables(config.comment_id, event.payload).trim();
+  const resolvedMessage = interpolateVariables(config.message, event.payload).trim();
+
+  if (!resolvedCommentId) {
+    const err = new FacebookActionError('Facebook comment ID is required.', false, 400, 'FACEBOOK_COMMENT_ID_REQUIRED');
+    await admin.from('automation_action_deliveries').update({
+      status: 'failed',
+      http_status: 400,
+      error_summary: err.message,
+      provider_error_code: err.providerErrorCode,
+      completed_at: new Date().toISOString(),
+    }).eq('id', delivery.id);
+    throw err;
+  }
+
+  if (!resolvedMessage) {
+    const err = new FacebookActionError('Facebook reply message is required.', false, 400, 'FACEBOOK_REPLY_MESSAGE_REQUIRED');
+    await admin.from('automation_action_deliveries').update({
+      status: 'failed',
+      http_status: 400,
+      error_summary: err.message,
+      provider_error_code: err.providerErrorCode,
+      completed_at: new Date().toISOString(),
+    }).eq('id', delivery.id);
+    throw err;
+  }
+
+  if (isTest) {
+    try {
+      const { data: connection, error: connError } = await admin
+        .from('integration_connections')
+        .select('id,provider,status')
+        .eq('id', config.connection_id)
+        .eq('organization_id', organizationId)
+        .maybeSingle();
+
+      if (connError || !connection || connection.provider !== 'meta' || !['active', 'degraded'].includes(connection.status)) {
+        throw new FacebookActionError(
+          'Active Meta connection is required.',
+          false,
+          404,
+          'FACEBOOK_CONNECTION_REQUIRED',
+        );
+      }
+
+      const { data: resource, error: resError } = await admin
+        .from('integration_connection_resources')
+        .select('id,external_resource_id,selected')
+        .eq('connection_id', config.connection_id)
+        .eq('organization_id', organizationId)
+        .eq('resource_type', 'facebook_page')
+        .eq('external_resource_id', config.resource_id)
+        .eq('selected', true)
+        .maybeSingle();
+
+      if (resError || !resource) {
+        throw new FacebookActionError(
+          'Selected Facebook Page is not authorized for this connection.',
+          false,
+          403,
+          'FACEBOOK_PAGE_NOT_AUTHORIZED',
+        );
+      }
+
+      await admin.from('automation_action_deliveries').update({
+        status: 'succeeded',
+        http_status: 200,
+        provider_error_code: null,
+        provider_error_reason: 'test_mode',
+        error_summary: null,
+        completed_at: new Date().toISOString(),
+      }).eq('id', delivery.id);
+
+      await recordWebhookAudit(admin, organizationId, 'automation.facebook.reply.simulated', {
+        workflow_id: workflowId,
+        run_id: runId,
+        action_index: actionIndex,
+        test_mode: true,
+        page_id: config.resource_id,
+        comment_id: resolvedCommentId,
+      });
+
+      return { testMode: true };
+    } catch (error) {
+      const err = error instanceof FacebookActionError ? error : new FacebookActionError(
+        (error as any)?.message || 'Test mode validation failed.',
+        false,
+      );
+      await admin.from('automation_action_deliveries').update({
+        status: 'failed',
+        http_status: err.httpStatus,
+        error_summary: err.message.slice(0, 1000),
+        provider_error_code: err.providerErrorCode,
+        provider_error_reason: err.providerErrorReason,
+        completed_at: new Date().toISOString(),
+      }).eq('id', delivery.id);
+      throw err;
+    }
+  }
+
+  try {
+    let context: any;
+    try {
+      context = await getMetaConnection({
+        organizationId,
+        connectionId: config.connection_id,
+        requiredScopes: ['pages_manage_engagement'],
+        requiredResourceType: 'facebook_page',
+        resourceId: config.resource_id,
+        admin,
+      });
+    } catch (metaErr: any) {
+      if (metaErr instanceof MetaIntegrationError) {
+        if (metaErr.code === 'META_PERMISSION_MISSING') {
+          throw new FacebookActionError(
+            'Additional Facebook permission required: pages_manage_engagement.',
+            false,
+            403,
+            'FACEBOOK_PERMISSION_MISSING',
+            'permission_missing',
+          );
+        }
+        if (metaErr.code === 'META_PAGE_NOT_FOUND' || metaErr.code === 'META_RESOURCE_NOT_AUTHORIZED') {
+          throw new FacebookActionError(
+            'Selected Facebook Page is not authorized.',
+            false,
+            403,
+            'FACEBOOK_PAGE_NOT_AUTHORIZED',
+            'page_not_authorized',
+          );
+        }
+        if (metaErr.code === 'META_TOKEN_EXPIRED' || metaErr.code === 'META_RECONNECT_REQUIRED') {
+          throw new FacebookActionError(
+            'Facebook connection authorization expired. Please reconnect.',
+            false,
+            401,
+            'FACEBOOK_RECONNECT_REQUIRED',
+            'reconnect_required',
+          );
+        }
+      }
+      throw metaErr;
+    }
+
+    const replyResult = await postFacebookCommentReply({
+      pageAccessToken: context.accessToken,
+      commentId: resolvedCommentId,
+      message: resolvedMessage,
+    });
+
+    await admin.from('automation_action_deliveries').update({
+      status: 'succeeded',
+      http_status: 200,
+      completed_at: new Date().toISOString(),
+      error_summary: null,
+      provider_error_code: null,
+      provider_error_reason: null,
+    }).eq('id', delivery.id);
+
+    await recordWebhookAudit(admin, organizationId, 'automation.facebook.reply.succeeded', {
+      workflow_id: workflowId,
+      run_id: runId,
+      action_index: actionIndex,
+      page_id: config.resource_id,
+      comment_id: resolvedCommentId,
+      reply_comment_id: replyResult.id,
+    });
+
+    return { testMode: false };
+  } catch (error) {
+    let e: FacebookActionError;
+    if (error instanceof FacebookActionError) {
+      e = error;
+    } else if (error instanceof MetaIntegrationError) {
+      const retryable = error.status >= 500 || error.status === 429;
+      e = new FacebookActionError(error.message, retryable, error.status, error.code, error.code);
+    } else if (error instanceof WebhookActionError) {
+      e = new FacebookActionError(error.message, error.retryable);
+    } else {
+      e = new FacebookActionError('Facebook reply could not be completed.', true);
+    }
+
+    await admin.from('automation_action_deliveries').update({
+      status: 'failed',
+      http_status: e.httpStatus,
+      error_summary: e.message.slice(0, 1000),
+      provider_error_code: e.providerErrorCode,
+      provider_error_reason: e.providerErrorReason,
+      completed_at: new Date().toISOString(),
+    }).eq('id', delivery.id);
+
+    await recordWebhookAudit(admin, organizationId, 'automation.facebook.reply.failed', {
+      workflow_id: workflowId,
+      run_id: runId,
+      action_index: actionIndex,
+      http_status: e.httpStatus,
+      error_code: e.providerErrorCode,
+      error_message: e.message.slice(0, 500),
+    });
+
+    throw e;
+  }
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> { return Boolean(value) && typeof value === 'object' && !Array.isArray(value); }
 
 function resolveWorkflowActions(workflow: Record<string, unknown>, event: AutomationEvent): { actions: ResolvedAction[]; selectedBranch: 'true' | 'false' | 'linear' } {
@@ -187,15 +505,28 @@ async function executeActions(admin: any, run: AutomationRun) {
   let notificationActions = 0;
   let webhookActions = 0;
   let gmailActions = 0;
+  let facebookActions = 0;
+  let lastFacebookTestMode = false;
   for (const { action, actionIndex } of actions) {
     if (!action || typeof action !== 'object' || Array.isArray(action)) throw new WebhookActionError('Automation action is invalid.', false);
     const actionType = (action as Record<string, unknown>).type;
     if (actionType === 'create_notification') { await executeNotificationAction(admin, run, action, actionIndex); notificationActions += 1; continue; }
     if (actionType === 'outgoing_webhook') { await executeOutgoingWebhook(admin, run, event, action, actionIndex); webhookActions += 1; continue; }
     if (actionType === 'gmail_send_email') { await executeGmailSend(admin, run, action, actionIndex); gmailActions += 1; continue; }
+    if (actionType === 'facebook_comment_reply') {
+      const res = await executeFacebookCommentReply(admin, run, event, action, actionIndex);
+      facebookActions += 1;
+      lastFacebookTestMode = res.testMode;
+      continue;
+    }
     throw new WebhookActionError('Automation action is not supported.', false);
   }
   const branchSuffix = ` (${selectedBranch} branch)`;
+  if (facebookActions) {
+    return (lastFacebookTestMode
+      ? 'Test mode — Facebook reply validated, no external reply sent.'
+      : 'Facebook reply action completed.') + branchSuffix;
+  }
   if (webhookActions) return WEBHOOK_RESULT_SUMMARY + branchSuffix;
   if (gmailActions) return GMAIL_RESULT_SUMMARY + branchSuffix;
   if (notificationActions) return NOTIFICATION_RESULT_SUMMARY + branchSuffix;

@@ -70,7 +70,8 @@ export function validateWorkflowGraph({
         Boolean(node.type) &&
         (node.type === "create_notification" ||
           node.type === "outgoing_webhook" ||
-          node.type === "gmail_send_email"),
+          node.type === "gmail_send_email" ||
+          node.type === "facebook_comment_reply"),
     )
     .map((node) => ({
       type: node.type,

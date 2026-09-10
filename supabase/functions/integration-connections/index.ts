@@ -271,11 +271,15 @@ export const integrationConnectionsHandler = async (req: Request) => {
           : "integration.meta.initiated",
         connectionId || "pending",
       );
+      const additionalScopes = Array.isArray(body.additionalScopes)
+        ? body.additionalScopes.filter((s: unknown): s is string => typeof s === "string")
+        : [];
       return json({
         success: true,
         authorizationUrl: buildMetaAuthorizationUrl(
           state,
           Boolean(connectionId),
+          additionalScopes,
         ),
       });
     }

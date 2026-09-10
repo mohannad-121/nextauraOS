@@ -6,6 +6,7 @@ import {
   GitBranch,
   Layers3,
   Mail,
+  MessageSquare,
   Send,
   Sheet,
   UserPlus,
@@ -317,6 +318,64 @@ const definitions: AutomationNodeDefinition[] = [
     connection_type: "oauth",
     required_scopes: ["pages_show_list", "pages_read_engagement"],
     adapterKey: "facebook.page.comment.created",
+  },
+  {
+    type: "facebook_comment_reply",
+    title: "Facebook · Reply to Comment",
+    category: "Integration",
+    description: "Reply to a Facebook comment using the connected Page",
+    icon: MessageSquare,
+    accent: "purple",
+    available: true,
+    kind: "integration",
+    inputs: ["default"],
+    outputs: ["default"],
+    fields: [
+      {
+        key: "resource_id",
+        label: "Facebook Page",
+        type: "select",
+        options: [],
+        description: "Select the specific Facebook page in the workflow UI.",
+      },
+      {
+        key: "comment_id",
+        label: "Comment ID",
+        type: "text",
+        placeholder: "{{trigger.comment_id}}",
+        description: "ID of the comment to reply to.",
+      },
+      {
+        key: "message",
+        label: "Reply Message",
+        type: "textarea",
+        placeholder: "Write a reply...",
+        description: "Message content to post as a reply.",
+      },
+    ],
+    defaultConfig: {
+      connection_id: "",
+      resource_id: "",
+      comment_id: "{{trigger.comment_id}}",
+      message: "",
+    },
+    validate: (config: any) =>
+      Boolean(
+        config.connection_id &&
+          config.resource_id &&
+          config.comment_id &&
+          config.message,
+      ),
+    provider: "meta",
+    requires_connection: true,
+    connection_type: "oauth",
+    required_scopes: [
+      "pages_show_list",
+      "pages_read_engagement",
+      "pages_manage_engagement",
+    ],
+    adapterKey: "facebook.comment.reply",
+    entitlement: "automation_access",
   },
   {
     type: "ai_agent",

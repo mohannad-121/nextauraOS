@@ -86,8 +86,8 @@ export const integrationConnectionService = {
     call({ operation: 'startGoogleOAuth', organizationId, ...(connectionId ? { connectionId } : {}), ...(additionalScopes?.length ? { additionalScopes } : {}) }),
   startGithubOAuth: (organizationId: string, connectionId?: string) =>
     call({ operation: 'startGithubOAuth', organizationId, ...(connectionId ? { connectionId } : {}) }),
-  startMetaOAuth: (organizationId: string, connectionId?: string) =>
-    call({ operation: 'startMetaOAuth', organizationId, ...(connectionId ? { connectionId } : {}) }),
+  startMetaOAuth: (organizationId: string, connectionId?: string, additionalScopes?: string[]) =>
+    call({ operation: 'startMetaOAuth', organizationId, ...(connectionId ? { connectionId } : {}), ...(additionalScopes?.length ? { additionalScopes } : {}) }),
   getMetaDetails: (organizationId: string, connectionId: string) =>
     call({ operation: 'getMetaDetails', organizationId, connectionId }) as Promise<{ success: true; connection: IntegrationConnection; resources: MetaConnectionResource[] }>,
   updateMetaResources: (organizationId: string, connectionId: string, pageIds: string[], instagramIds: string[]) =>
