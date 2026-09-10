@@ -18,22 +18,25 @@ import {
 import "@xyflow/react/dist/style.css";
 import {
   Bell,
+  CheckCircle2,
   ChevronLeft,
   Code2,
   ContactRound,
+  Copy,
   GitBranch,
   GripVertical,
   Info,
   Layers3,
   Play,
   Plus,
-  Copy,
   Search,
-  Trash2,
   Send,
   Sparkles,
+  Trash2,
   UserPlus,
   Webhook,
+  X,
+  XCircle,
 } from "lucide-react";
 import { automationService } from "../../services/automationService";
 import {
@@ -269,6 +272,19 @@ function WorkflowNodeCard({ id, data, selected }: NodeProps<WorkflowNode>) {
             <div className="flex items-center gap-1">
               {isTrigger ? (
                 <>
+                  {data.nodeType === "facebook_page_comment_created" && (
+                    <button
+                      type="button"
+                      title="Test trigger"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        data.onTestTrigger?.(id);
+                      }}
+                      className="nodrag rounded bg-emerald-400/15 px-1.5 py-0.5 text-[9px] font-semibold text-emerald-300 hover:bg-emerald-400/25"
+                    >
+                      Test
+                    </button>
+                  )}
                   <button
                     type="button"
                     title="Replace trigger"
@@ -466,6 +482,305 @@ function ReplaceTriggerModal({
   );
 }
 
+function TestFacebookCommentModal({
+  open,
+  onClose,
+  triggerNode,
+  metaResources,
+  organizationId,
+  workflowId,
+  onRunSuccess,
+}: {
+  open: boolean;
+  onClose: () => void;
+  triggerNode: WorkflowNode;
+  metaResources?: any[];
+  organizationId: string;
+  workflowId: string;
+  onRunSuccess?: (run: any) => void;
+}) {
+  const triggerConfig = (triggerNode.data?.config || {}) as Record<string, unknown>;
+  const resourceId = String(triggerConfig.resource_id || "");
+  const [resources, setResources] = useState<any[]>(metaResources || []);
+
+  useEffect(() => {
+    const connId = String(triggerConfig.connection_id || "");
+    if (connId && (!resources || resources.length === 0)) {
+      integrationConnectionService
+        .getMetaDetails(organizationId, connId)
+        .then((res) => setResources(res.resources || []))
+        .catch(() => setResources([]));
+    }
+  }, [triggerConfig.connection_id, organizationId]);
+
+  const selectedResource = resources.find(
+    (r) => String(r.external_resource_id) === resourceId,
+  );
+  const pageName = selectedResource?.display_name || resourceId || "NextAura AI";
+
+  const defaultMsg = triggerConfig.contains_text
+    ? `NextAura test comment with ${triggerConfig.contains_text}`
+    : "NextAura Facebook automation test comment";
+
+  const [message, setMessage] = useState(defaultMsg);
+  const [isReply, setIsReply] = useState(false);
+  const [status, setStatus] = useState<
+    "idle" | "preparing" | "event_created" | "waiting" | "running" | "succeeded" | "mismatch" | "failed"
+  >("idle");
+  const [statusMessage, setStatusMessage] = useState("");
+  const [resultSummary, setResultSummary] = useState<string | null>(null);
+  const [errorSummary, setErrorSummary] = useState<string | null>(null);
+  const [runId, setRunId] = useState<string | null>(null);
+
+  useEffect(() => {
+    setMessage(
+      triggerConfig.contains_text
+        ? `NextAura test comment with ${triggerConfig.contains_text}`
+        : "NextAura Facebook automation test comment",
+    );
+    setStatus("idle");
+    setStatusMessage("");
+    setResultSummary(null);
+    setErrorSummary(null);
+    setRunId(null);
+  }, [triggerConfig.contains_text, open]);
+
+  if (!open) return null;
+
+  const exactPostId = triggerConfig.exact_post_id ? String(triggerConfig.exact_post_id) : null;
+  const isRunning = ["preparing", "event_created", "waiting", "running"].includes(status);
+
+  const handleRunTest = async () => {
+    try {
+      setStatus("preparing");
+      setStatusMessage("Preparing test event...");
+      setResultSummary(null);
+      setErrorSummary(null);
+
+      const response = await automationService.testTrigger({
+        organizationId,
+        workflowId,
+        triggerNodeId: triggerNode.id,
+        message: message.trim(),
+        isReply,
+        postId: exactPostId || undefined,
+      });
+
+      setStatus("event_created");
+      setStatusMessage("Synthetic Facebook comment event created.");
+
+      let currentRun = response.run;
+      const currentRunId = response.runId || currentRun?.id;
+      setRunId(currentRunId);
+
+      if (
+        currentRunId &&
+        (!currentRun || currentRun.status === "pending" || currentRun.status === "running")
+      ) {
+        setStatus("waiting");
+        setStatusMessage("Waiting for workflow execution...");
+        for (let attempt = 0; attempt < 12; attempt++) {
+          await new Promise((resolve) => setTimeout(resolve, 800));
+          setStatus("running");
+          setStatusMessage("Worker executing downstream actions...");
+          const detailRes = await automationService.runDetail(organizationId, currentRunId);
+          if (
+            detailRes.run &&
+            (detailRes.run.status === "completed" || detailRes.run.status === "failed")
+          ) {
+            currentRun = detailRes.run;
+            break;
+          }
+        }
+      }
+
+      if (!currentRun) {
+        setStatus("failed");
+        setErrorSummary("Run was enqueued but worker status could not be confirmed.");
+        return;
+      }
+
+      if (currentRun.status === "completed") {
+        const summary = currentRun.result_summary || "";
+        const isMismatch =
+          summary.includes("does not match") ||
+          summary.includes("not contain required text") ||
+          summary.includes("Replies are ignored");
+
+        if (isMismatch) {
+          setStatus("mismatch");
+          setStatusMessage("Trigger conditions not met");
+          setResultSummary(summary);
+        } else {
+          setStatus("succeeded");
+          setStatusMessage("Test succeeded! Downstream actions executed.");
+          setResultSummary(summary || "Workflow action executed successfully.");
+          onRunSuccess?.(currentRun);
+        }
+      } else if (currentRun.status === "failed") {
+        setStatus("failed");
+        setStatusMessage("Test failed");
+        setErrorSummary(currentRun.error_summary || "Workflow run failed during execution.");
+      }
+    } catch (err: any) {
+      setStatus("failed");
+      setStatusMessage("Test failed");
+      setErrorSummary(err.message || "Failed to execute test.");
+    }
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-[95] grid place-items-center bg-slate-950/65 p-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Test Facebook Comment"
+    >
+      <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-white/10 bg-slate-900 shadow-2xl">
+        <header className="flex items-center justify-between border-b border-white/10 p-5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan-400/15 text-cyan-300">
+              <Play className="h-5 w-5 fill-current" />
+            </div>
+            <div>
+              <h2 className="text-base font-semibold text-white">Test Facebook Comment</h2>
+              <p className="text-xs text-slate-400">
+                Safe internal development test for Facebook triggers
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            disabled={isRunning}
+            className="rounded-lg p-1.5 text-slate-400 hover:bg-white/5 hover:text-white disabled:opacity-40"
+          >
+            <X className="h-5 w-5" />
+          </button>
+        </header>
+
+        <div className="space-y-4 p-5">
+          <div className="rounded-xl border border-white/10 bg-white/5 p-3.5">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
+              Target Facebook Page
+            </p>
+            <div className="mt-1 flex items-center justify-between">
+              <p className="text-sm font-semibold text-white">{pageName}</p>
+              <span className="rounded-full bg-cyan-400/10 px-2 py-0.5 text-[11px] font-medium text-cyan-300">
+                Authorized Page
+              </span>
+            </div>
+            {exactPostId && (
+              <p className="mt-2 text-xs text-amber-300">
+                Exact Post ID filter: <span className="font-mono">{exactPostId}</span>
+              </p>
+            )}
+          </div>
+
+          <label className="block text-xs font-medium text-slate-300">
+            Comment text
+            <input
+              type="text"
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              disabled={isRunning}
+              placeholder="Enter test comment text..."
+              className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-950 px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-600 focus:border-cyan-400/70 disabled:opacity-60"
+            />
+            {Boolean(triggerConfig.contains_text) && (
+              <span className="mt-1 block text-[11px] text-slate-400">
+                Trigger requires text containing: <span className="text-cyan-300 font-mono">"{String(triggerConfig.contains_text)}"</span>
+              </span>
+            )}
+          </label>
+
+          <label className="flex items-center gap-2 text-xs font-medium text-slate-300 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={isReply}
+              onChange={(e) => setIsReply(e.target.checked)}
+              disabled={isRunning}
+              className="rounded border-white/10 bg-slate-900 text-cyan-400 focus:ring-cyan-400 disabled:opacity-60"
+            />
+            Reply to another comment
+            {triggerConfig.include_replies === false && (
+              <span className="text-[11px] text-amber-400 italic">
+                (Trigger ignores replies)
+              </span>
+            )}
+          </label>
+
+          {status !== "idle" && (
+            <div
+              className={`rounded-xl border p-4 text-xs ${
+                status === "succeeded"
+                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-200"
+                  : status === "mismatch"
+                  ? "border-amber-500/30 bg-amber-500/10 text-amber-200"
+                  : status === "failed"
+                  ? "border-red-500/30 bg-red-500/10 text-red-200"
+                  : "border-cyan-500/30 bg-cyan-500/10 text-cyan-200"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                {isRunning ? (
+                  <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-cyan-400 border-t-transparent" />
+                ) : status === "succeeded" ? (
+                  <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                ) : status === "mismatch" ? (
+                  <Info className="h-4 w-4 text-amber-400" />
+                ) : (
+                  <XCircle className="h-4 w-4 text-red-400" />
+                )}
+                <span className="font-semibold">{statusMessage}</span>
+              </div>
+              {resultSummary && (
+                <p className="mt-1.5 pl-6 text-[11px] opacity-90">{resultSummary}</p>
+              )}
+              {errorSummary && (
+                <p className="mt-1.5 pl-6 text-[11px] opacity-90">{errorSummary}</p>
+              )}
+              {runId && (
+                <p className="mt-2 pl-6 font-mono text-[10px] text-slate-400">
+                  Run ID: {runId}
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+
+        <footer className="flex items-center justify-end gap-3 border-t border-white/10 bg-slate-950/40 p-4">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isRunning}
+            className="rounded-xl border border-white/10 px-4 py-2 text-xs font-semibold text-slate-300 hover:bg-white/5 disabled:opacity-50"
+          >
+            {status === "succeeded" ? "Done" : "Cancel"}
+          </button>
+          <button
+            type="button"
+            onClick={() => void handleRunTest()}
+            disabled={isRunning || !message.trim()}
+            className="flex items-center gap-1.5 rounded-xl bg-gradient-to-r from-emerald-400 to-cyan-400 px-4 py-2 text-xs font-bold text-slate-950 shadow-lg shadow-emerald-500/15 hover:opacity-95 disabled:opacity-50"
+          >
+            {isRunning ? (
+              <>
+                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-950 border-t-transparent" />
+                Running test...
+              </>
+            ) : (
+              <>
+                <Play className="h-3.5 w-3.5 fill-current" />
+                Run test
+              </>
+            )}
+          </button>
+        </footer>
+      </div>
+    </div>
+  );
+}
+
 function NodePicker({
   onChoose,
   onClose,
@@ -581,6 +896,7 @@ function ConfigPanel({
   organizationId,
   onDeleteNode,
   onReplaceTrigger,
+  onTestTrigger,
 }: {
   node: WorkflowNode | null;
   update: (config: Record<string, unknown>) => void;
@@ -590,6 +906,7 @@ function ConfigPanel({
   organizationId: string;
   onDeleteNode?: () => void;
   onReplaceTrigger?: () => void;
+  onTestTrigger?: () => void;
 }) {
   const [metaResources, setMetaResources] = useState<any[]>([]);
   const [loadingResources, setLoadingResources] = useState(false);
@@ -809,6 +1126,16 @@ function ConfigPanel({
       <div className="mt-6 border-t border-white/10 pt-4 space-y-2">
         {triggerMap[node.type || ""] ? (
           <>
+            {node.type === "facebook_page_comment_created" && onTestTrigger && (
+              <button
+                type="button"
+                onClick={onTestTrigger}
+                className="w-full rounded-xl border border-cyan-400/40 bg-cyan-400/15 px-3 py-2 text-xs font-bold text-cyan-100 hover:bg-cyan-400/25"
+              >
+                <Play className="me-1 inline h-3.5 w-3.5 fill-current text-cyan-300" />
+                Test trigger
+              </button>
+            )}
             <button
               type="button"
               onClick={onReplaceTrigger}
@@ -889,6 +1216,38 @@ export function WorkflowBuilder({
   } | null>(null);
   const flowRef = useRef<any>(null);
   const canvasRef = useRef<HTMLDivElement | null>(null);
+  const [testModalNode, setTestModalNode] = useState<WorkflowNode | null>(null);
+  const hasFacebookTrigger = nodes.some(
+    (n) => n.type === "facebook_page_comment_created",
+  );
+
+  const handleOpenTest = (triggerNodeId?: string) => {
+    const trigger = triggerNodeId
+      ? nodes.find((n) => n.id === triggerNodeId)
+      : nodes.find((n) => n.type === "facebook_page_comment_created");
+
+    if (!trigger) return;
+
+    if (!workflow?.id) {
+      setError("Please save the workflow before running a test.");
+      return;
+    }
+    if (!enabled) {
+      setError("Workflow must be enabled to run a test.");
+      return;
+    }
+
+    const config = (trigger.data?.config || {}) as Record<string, unknown>;
+    if (!config.connection_id || !config.resource_id) {
+      setSelected(trigger);
+      setConfigOpen(true);
+      setError("Please configure an active Meta connection and select a Facebook Page in the trigger first.");
+      return;
+    }
+
+    setError("");
+    setTestModalNode(trigger);
+  };
   useEffect(() => { const previousOverflow = document.body.style.overflow; const previousPadding = document.body.style.paddingRight; const scrollbar = window.innerWidth - document.documentElement.clientWidth; document.body.style.overflow = "hidden"; if (scrollbar > 0) document.body.style.paddingRight = `${scrollbar}px`; return () => { document.body.style.overflow = previousOverflow; document.body.style.paddingRight = previousPadding; }; }, []);
   useEffect(() => { let cancelled = false; setConnections([]); setConnectionLoading(true); integrationConnectionService.list(organizationId).then((items) => { if (!cancelled) setConnections(items); }).catch(() => { if (!cancelled) setConnections([]); }).finally(() => { if (!cancelled) setConnectionLoading(false); }); return () => { cancelled = true; }; }, [organizationId]);
 
@@ -1296,6 +1655,7 @@ export function WorkflowBuilder({
       onReplaceTrigger: (id: string) => openTriggerPicker(id),
       onDeleteNode: (id: string) => deleteNode(id),
       onDuplicateNode: () => duplicateSelected(),
+      onTestTrigger: (id: string) => handleOpenTest(id),
     },
   }));
 
@@ -1318,6 +1678,16 @@ export function WorkflowBuilder({
           newTriggerDefinition={replaceModal.newTriggerDef}
           onConfirm={confirmReplaceTrigger}
           onCancel={() => setReplaceModal(null)}
+        />
+      )}
+      {testModalNode && (
+        <TestFacebookCommentModal
+          open={Boolean(testModalNode)}
+          triggerNode={testModalNode}
+          organizationId={organizationId}
+          workflowId={workflow?.id || ""}
+          onClose={() => setTestModalNode(null)}
+          onRunSuccess={() => onSaved()}
         />
       )}
       <div className="flex h-full flex-col">
@@ -1353,6 +1723,15 @@ export function WorkflowBuilder({
             <div className="flex items-center gap-1.5">
               {triggerMap[selected.type || ""] ? (
                 <>
+                  {selected.type === "facebook_page_comment_created" && (
+                    <button
+                      onClick={() => handleOpenTest(selected.id)}
+                      className="rounded-xl border border-cyan-400/40 bg-cyan-400/15 px-3 py-2 text-xs font-semibold text-cyan-100 hover:bg-cyan-400/25"
+                    >
+                      <Play className="me-1 inline h-3.5 w-3.5 fill-current text-cyan-300" />
+                      Test trigger
+                    </button>
+                  )}
                   <button
                     onClick={() => openTriggerPicker(selected.id)}
                     className="rounded-xl border border-cyan-400/30 bg-cyan-400/10 px-3 py-2 text-xs font-semibold text-cyan-200 hover:bg-cyan-400/20"
@@ -1394,6 +1773,23 @@ export function WorkflowBuilder({
           >
             {enabled ? "Disable" : "Enable"}
           </button>
+          {hasFacebookTrigger ? (
+            <button
+              onClick={() => handleOpenTest()}
+              className="inline-flex items-center rounded-xl border border-cyan-400/40 bg-cyan-400/15 px-3 py-2 text-xs font-semibold text-cyan-100 hover:bg-cyan-400/25"
+            >
+              <Play className="me-1 h-3.5 w-3.5 fill-current text-cyan-300" />
+              Test trigger
+            </button>
+          ) : (
+            <button
+              disabled
+              className="hidden rounded-xl border border-white/10 px-3 py-2 text-xs text-slate-500 md:inline-flex"
+            >
+              <Play className="me-1 h-3.5 w-3.5" />
+              Test soon
+            </button>
+          )}
           <button
             disabled
             className="hidden rounded-xl border border-white/10 px-3 py-2 text-xs text-slate-500 md:inline-flex"
@@ -1595,6 +1991,7 @@ export function WorkflowBuilder({
                 organizationId={organizationId}
                 onDeleteNode={deleteSelected}
                 onReplaceTrigger={selected && triggerMap[selected.type || ""] ? () => openTriggerPicker(selected.id) : undefined}
+                onTestTrigger={selected?.type === "facebook_page_comment_created" ? () => handleOpenTest(selected.id) : undefined}
               />
             </div>
           )}

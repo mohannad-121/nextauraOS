@@ -3,6 +3,7 @@ import { getOrganizationEntitlements } from '../_shared/entitlements.ts';
 import { validateOutgoingWebhookAction } from '../_shared/webhook-security.ts';
 import { createIncomingWebhookToken, hashIncomingWebhookToken } from '../_shared/incoming-webhook.ts';
 
+const TRIGGER_TYPES = new Set(['employee.created', 'contact.created', 'expense.status_changed', 'incoming_webhook', 'website.form_submitted', 'schedule']);
 const TRIGGER_TYPES = new Set(['employee.created', 'contact.created', 'expense.status_changed', 'incoming_webhook', 'website.form_submitted', 'schedule', 'facebook.page.comment.created']);
 const CONDITION_OPERATORS = new Set(['equals', 'not_equals', 'contains', 'greater_than', 'less_than', 'is_empty', 'is_not_empty', 'changed_from', 'changed_to']);
 const ACTION_TYPES = new Set(['create_notification', 'outgoing_webhook', 'gmail_send_email']);
@@ -15,6 +16,8 @@ const hasOnlyKeys = (value: Record<string, unknown>, keys: string[]) => Object.k
 const stringValue = (value: unknown, maximum: number) => typeof value === 'string' && value.trim().length > 0 && value.length <= maximum;
 const simpleValue = (value: unknown) => value === null || ['string', 'number', 'boolean'].includes(typeof value);
 const publicWorkflow = (workflow: Record<string, unknown>) => { const { incoming_webhook_token_hash: _hash, ...safe } = workflow; return safe; };
+const GRAPH_TYPES = new Set(['employee_created','contact_created','expense_status_changed','incoming_webhook','website_form_submitted','if','create_notification','outgoing_webhook','gmail_send_email']);
+const GRAPH_TRIGGER_TYPES = new Map([['employee_created', 'employee.created'], ['contact_created', 'contact.created'], ['expense_status_changed', 'expense.status_changed'], ['incoming_webhook', 'incoming_webhook'], ['website_form_submitted', 'website.form_submitted']]);
 const GRAPH_TYPES = new Set(['employee_created','contact_created','expense_status_changed','incoming_webhook','website_form_submitted','facebook_page_comment_created','if','create_notification','outgoing_webhook','gmail_send_email']);
 const GRAPH_TRIGGER_TYPES = new Map([['employee_created', 'employee.created'], ['contact_created', 'contact.created'], ['expense_status_changed', 'expense.status_changed'], ['incoming_webhook', 'incoming_webhook'], ['website_form_submitted', 'website.form_submitted'], ['facebook_page_comment_created', 'facebook.page.comment.created']]);
 const CONNECTION_NODE_REQUIREMENTS: Record<string, { provider: string; authType: string; scopes: string[] }> = {
@@ -39,6 +42,7 @@ function compileGraph(nodes: unknown, edges: unknown, enabled: boolean = true) {
   if (!Array.isArray(nodes) || !Array.isArray(edges)) return null;
   const byId = new Map(nodes.map((node: any) => [node.id, node]));
   const triggers = nodes.filter((node: any) => GRAPH_TRIGGER_TYPES.has(node.type));
+  if (triggers.length !== 1) throw new Error('Graph requires exactly one trigger.');
   if (triggers.length > 1) throw new Error('Graph allows at most one trigger.');
   if (triggers.length === 0) {
     if (enabled) throw new Error('Enabled workflow requires exactly one trigger.');
@@ -127,14 +131,20 @@ async function validateDefinition(admin: any, organizationId: string, body: Reco
   const name = String(body.name || '').trim();
   const description = body.description === undefined || body.description === null || body.description === '' ? null : String(body.description).trim();
   if (!name || name.length > 120 || (description && description.length > 1000)) throw new Error('Workflow name or description is invalid.');
+  validateTrigger(body.triggerType, body.triggerConfig);
+  validateConditions(body.conditions);
+  validateActions(body.actions);
   const isEnabled = body.enabled === true;
   if (body.enabled !== undefined && typeof body.enabled !== 'boolean') throw new Error('enabled must be a boolean.');
 
+  const graph = validateGraph(body.graphNodes, body.graphEdges); const execution_plan = Array.isArray(graph.graph_nodes) && graph.graph_nodes.length > 0 ? compileGraph(graph.graph_nodes, graph.graph_edges) : undefined;
   const graph = validateGraph(body.graphNodes, body.graphEdges);
   const execution_plan = Array.isArray(graph.graph_nodes) && graph.graph_nodes.length > 0 ? compileGraph(graph.graph_nodes, graph.graph_edges, isEnabled) : undefined;
   await validateGraphConnectionReferences(admin, organizationId, graph.graph_nodes);
+  return { name, description, trigger_type: body.triggerType, trigger_config: body.triggerConfig, conditions: body.conditions, actions: body.actions, enabled: body.enabled === true, ...graph, execution_plan };
 
   const effectiveTriggerType = body.triggerType || 'employee.created';
+  const effectiveTriggerType = (body.triggerType as string) || 'employee.created';
   const effectiveTriggerConfig = isObject(body.triggerConfig) ? body.triggerConfig : {};
   if (isEnabled || body.triggerType) {
     validateTrigger(effectiveTriggerType, effectiveTriggerConfig);
@@ -143,6 +153,10 @@ async function validateDefinition(admin: any, organizationId: string, body: Reco
   if (isEnabled || (Array.isArray(body.actions) && body.actions.length > 0)) {
     validateActions(body.actions);
   }
+
+  const graph = validateGraph(body.graphNodes, body.graphEdges);
+  const execution_plan = Array.isArray(graph.graph_nodes) && graph.graph_nodes.length > 0 ? compileGraph(graph.graph_nodes, graph.graph_edges, isEnabled) : undefined;
+  await validateGraphConnectionReferences(admin, organizationId, graph.graph_nodes);
 
   return { name, description, trigger_type: effectiveTriggerType, trigger_config: effectiveTriggerConfig, conditions: body.conditions, actions: body.actions, enabled: isEnabled, ...graph, execution_plan };
 }
@@ -212,7 +226,7 @@ Deno.serve(async (req) => {
     }
     if (body.operation === 'listRuns') {
       await requireMembership(admin, user.id, organizationId);
-      const { data, error } = await admin.from('automation_runs').select('id,status,workflow_id,event_id,attempt_count,error_summary,result_summary,started_at,completed_at,created_at,automation_workflows(name),automation_events(event_type)').eq('organization_id', organizationId).order('created_at', { ascending: false }).limit(50);
+      const { data, error } = await admin.from('automation_runs').select('id,status,workflow_id,event_id,attempt_count,error_summary,result_summary,started_at,completed_at,created_at,automation_workflows(name),automation_events(event_type,payload,source)').eq('organization_id', organizationId).order('created_at', { ascending: false }).limit(50);
       if (error) throw error;
       return json({ success: true, runs: data || [] });
     }
@@ -225,7 +239,7 @@ Deno.serve(async (req) => {
       if (!run) return json({ success: false, error: 'Run not found.' }, 404);
       const [{ data: workflow, error: workflowError }, { data: event, error: eventError }, { data: notifications, error: notificationsError }, { data: deliveries, error: deliveriesError }] = await Promise.all([
         admin.from('automation_workflows').select('name,trigger_type,execution_plan,actions').eq('id', run.workflow_id).eq('organization_id', organizationId).maybeSingle(),
-        admin.from('automation_events').select('event_type').eq('id', run.event_id).eq('organization_id', organizationId).maybeSingle(),
+        admin.from('automation_events').select('event_type,payload,source').eq('id', run.event_id).eq('organization_id', organizationId).maybeSingle(),
         admin.from('notifications').select('automation_action_index,created_at').eq('organization_id', organizationId).eq('automation_run_id', run.id),
         admin.from('automation_action_deliveries').select('action_index,status,http_status,error_summary,provider_error_code,provider_error_reason,started_at,completed_at').eq('organization_id', organizationId).eq('run_id', run.id),
       ]);
@@ -234,7 +248,161 @@ Deno.serve(async (req) => {
       const notificationIndexes = new Set((notifications || []).map((item: any) => Number(item.automation_action_index)));
       const deliveryByIndex = new Map((deliveries || []).map((item: any) => [Number(item.action_index), item]));
       const actions = safeRunActions(workflow, branch_taken).map((action) => action.type === 'create_notification' ? { ...action, status: notificationIndexes.has(action.action_index) ? 'completed' : 'not_recorded' } : { ...action, ...(deliveryByIndex.get(action.action_index) || { status: 'not_recorded', http_status: null, error_summary: null }) });
-      return json({ success: true, run: { id: run.id, status: run.status, workflow_name: workflow.name, trigger_type: event.event_type, attempt_count: run.attempt_count, started_at: run.started_at, completed_at: run.completed_at, created_at: run.created_at, branch_taken, error_summary: run.error_summary, result_summary: run.result_summary, actions } });
+      const isTest = event?.source === 'meta_test' || Boolean((event?.payload as any)?.test_event);
+      const pageName = (event?.payload as any)?.page_name;
+      return json({ success: true, run: { id: run.id, status: run.status, workflow_name: workflow.name, trigger_type: event.event_type, attempt_count: run.attempt_count, started_at: run.started_at, completed_at: run.completed_at, created_at: run.created_at, branch_taken, error_summary: run.error_summary, result_summary: run.result_summary, actions, is_test: isTest, page_name: pageName } });
+    }
+    if (body.operation === 'testTrigger') {
+      await requireMembership(admin, user.id, organizationId);
+      await requireWorkflowAccess(admin, user.id, organizationId);
+
+      const workflowId = String(body.workflowId || '');
+      if (!workflowId) return json({ success: false, error: 'workflowId is required.' }, 400);
+
+      const { data: workflow, error: wfError } = await admin
+        .from('automation_workflows')
+        .select('*')
+        .eq('id', workflowId)
+        .eq('organization_id', organizationId)
+        .maybeSingle();
+
+      if (wfError || !workflow) return json({ success: false, error: 'Workflow not found.' }, 404);
+
+      if (!workflow.enabled) {
+        return json({ success: false, error: 'Workflow must be enabled to run a test.' }, 400);
+      }
+
+      const triggerType = workflow.execution_plan?.trigger?.type || workflow.trigger_type;
+      if (triggerType !== 'facebook.page.comment.created') {
+        return json({ success: false, error: 'Testing is currently supported for Facebook New Page Comment triggers.' }, 400);
+      }
+
+      const triggerConfig = (workflow.execution_plan?.trigger?.config || workflow.trigger_config || {}) as Record<string, unknown>;
+      const connectionId = String(triggerConfig.connection_id || '');
+      const resourceId = String(triggerConfig.resource_id || '');
+
+      if (!connectionId || !resourceId) {
+        return json({ success: false, error: 'Trigger configuration is missing Meta connection or Facebook Page.' }, 400);
+      }
+
+      const { data: connection, error: connErr } = await admin
+        .from('integration_connections')
+        .select('id, provider, status')
+        .eq('id', connectionId)
+        .eq('organization_id', organizationId)
+        .eq('provider', 'meta')
+        .maybeSingle();
+
+      if (connErr || !connection || (connection.status !== 'active' && connection.status !== 'degraded')) {
+        return json({ success: false, error: 'Selected Meta connection is not active.' }, 400);
+      }
+
+      const { data: resource, error: resErr } = await admin
+        .from('integration_connection_resources')
+        .select('id, external_resource_id, display_name, selected')
+        .eq('organization_id', organizationId)
+        .eq('connection_id', connectionId)
+        .eq('provider', 'meta')
+        .eq('resource_type', 'facebook_page')
+        .eq('external_resource_id', resourceId)
+        .maybeSingle();
+
+      if (resErr || !resource) {
+        return json({ success: false, error: 'Selected Facebook Page is not authorized on this connection.' }, 400);
+      }
+
+      if (!resource.selected) {
+        return json({ success: false, error: 'Selected Facebook Page is not active or selected.' }, 400);
+      }
+
+      const now = new Date().toISOString();
+      const commentId = `test_comment_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
+      const postId = triggerConfig.exact_post_id
+        ? String(triggerConfig.exact_post_id)
+        : (typeof body.postId === 'string' && body.postId.trim() ? body.postId.trim() : `test_post_${Date.now()}`);
+      const isReply = Boolean(body.isReply);
+      const parentCommentId = isReply ? `test_parent_${Date.now()}` : undefined;
+      const message = typeof body.message === 'string' && body.message.trim()
+        ? body.message.trim()
+        : (triggerConfig.contains_text ? `NextAura Facebook test with ${triggerConfig.contains_text}` : 'NextAura Facebook automation test comment');
+
+      const dedupeKey = `meta_test:comment:${connectionId}:${commentId}`;
+
+      const payload: Record<string, unknown> = {
+        connection_id: connectionId,
+        page_id: resource.external_resource_id,
+        page_name: resource.display_name,
+        post_id: postId,
+        comment_id: commentId,
+        parent_comment_id: parentCommentId,
+        message,
+        author_id: 'test_user',
+        author_name: 'NextAura Test User',
+        created_time: Math.floor(Date.now() / 1000),
+        test_event: true,
+      };
+
+      const { data: insertedEvent, error: insertError } = await admin
+        .from('automation_events')
+        .insert({
+          organization_id: organizationId,
+          event_type: 'facebook.page.comment.created',
+          entity_type: 'facebook_comment',
+          entity_id: null,
+          payload,
+          source: 'meta_test',
+          dedupe_key: dedupeKey,
+          occurred_at: now,
+        })
+        .select('id')
+        .single();
+
+      if (insertError) throw insertError;
+
+      const { error: enqueueErr } = await admin.rpc('enqueue_automation_runs', { p_event_batch_size: 25 });
+      if (enqueueErr) throw enqueueErr;
+
+      const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+      const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+      if (supabaseUrl && serviceRoleKey) {
+        try {
+          await fetch(`${supabaseUrl}/functions/v1/automation-worker`, {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json',
+              'authorization': `Bearer ${serviceRoleKey}`,
+              'apikey': serviceRoleKey,
+            },
+            body: JSON.stringify({ batchSize: 25 }),
+          });
+        } catch (workerErr) {
+          console.error('Failed to trigger worker immediately:', workerErr);
+        }
+      }
+
+      const { data: runRecord } = await admin
+        .from('automation_runs')
+        .select('id, status, error_summary, result_summary, started_at, completed_at, created_at')
+        .eq('workflow_id', workflowId)
+        .eq('event_id', insertedEvent.id)
+        .maybeSingle();
+
+      await audit(admin, organizationId, user.id, 'automation.trigger.tested', workflowId, {
+        trigger_type: 'facebook.page.comment.created',
+        page_id: resource.external_resource_id,
+        page_name: resource.display_name,
+        event_id: insertedEvent.id,
+        run_id: runRecord?.id,
+      });
+
+      return json({
+        success: true,
+        eventId: insertedEvent.id,
+        runId: runRecord?.id,
+        run: runRecord,
+        pageName: resource.display_name,
+        pageId: resource.external_resource_id,
+      });
     }
     await requireWorkflowAccess(admin, user.id, organizationId);
 

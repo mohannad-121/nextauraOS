@@ -1,4 +1,4 @@
-﻿import test from "node:test";
+import test from "node:test";
 import assert from "node:assert/strict";
 import {
   validateWorkflowGraph,
@@ -39,7 +39,7 @@ const facebookTriggerDef: AutomationNodeDefinition = {
   },
 };
 
-const notificationActionDef: AutomationNodeDefinition = {
+const _notificationActionDef: AutomationNodeDefinition = {
   type: "create_notification",
   title: "Create Notification",
   category: "Action",
