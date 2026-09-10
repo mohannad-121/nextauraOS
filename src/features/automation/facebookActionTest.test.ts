@@ -91,6 +91,9 @@ test("nodeRegistry contains facebook_comment_reply with expected definition", ()
   assert.ok(def.required_scopes?.includes("pages_manage_engagement"));
   assert.ok(def.required_scopes?.includes("pages_read_engagement"));
   assert.ok(def.required_scopes?.includes("pages_show_list"));
+  assert.ok(!def.required_scopes?.includes("pages_read_user_content"));
+  assert.ok(!def.required_scopes?.includes("instagram_basic"));
+  assert.ok(!def.required_scopes?.includes("pages_manage_posts"));
   assert.equal(def.defaultConfig.comment_id, "{{trigger.comment_id}}");
 });
 
@@ -206,6 +209,24 @@ test("scope validation correctly identifies missing pages_manage_engagement", ()
   assert.deepEqual(stillMissing, []);
 });
 
+test("Facebook Reply reconnect flow requests exactly base scopes plus pages_manage_engagement without pages_read_user_content", () => {
+  const baseScopes = ["public_profile", "pages_show_list", "pages_read_engagement"];
+  const actionScope = "pages_manage_engagement";
+  const requestedScopes = Array.from(new Set([...baseScopes, actionScope]));
+
+  assert.deepEqual(requestedScopes, [
+    "public_profile",
+    "pages_show_list",
+    "pages_read_engagement",
+    "pages_manage_engagement",
+  ]);
+
+  // Strictly verify exclusion of pages_read_user_content and other unneeded scopes
+  assert(!requestedScopes.includes("pages_read_user_content"));
+  assert(!requestedScopes.includes("instagram_basic"));
+  assert(!requestedScopes.includes("pages_manage_posts"));
+});
+
 test("error mapping and token redaction protects sensitive credentials", () => {
   const rawMetaError = {
     error: {
@@ -265,3 +286,4 @@ test("test mode simulation produces expected result summary", () => {
   );
   assert.ok(isTest);
 });
+

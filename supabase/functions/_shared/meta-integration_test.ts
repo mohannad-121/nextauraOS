@@ -8,6 +8,9 @@ import {
   mapMetaPermissionStatuses,
   META_DISCOVERY_SCOPES,
   FACEBOOK_PAGE_BASE_SCOPES,
+  FACEBOOK_ACTION_SCOPES,
+  DISALLOWED_FACEBOOK_SCOPES,
+  ALLOWED_FACEBOOK_RECONNECT_SCOPES,
   MetaIntegrationError,
   normalizeMetaWebhookPayload,
   parseMetaPages,
@@ -48,6 +51,72 @@ Deno.test("Meta OAuth URL binds state and requests discovery scopes only", () =>
   assert(FACEBOOK_PAGE_BASE_SCOPES.every((scope) => scopes.has(scope)));
   assert(!scopes.has("pages_manage_posts"));
   assert(!scopes.has("instagram_manage_messages"));
+  assert(!scopes.has("pages_read_user_content"));
+});
+
+Deno.test("Meta OAuth URL reconnect for Facebook reply requests only base scopes plus pages_manage_engagement", () => {
+  const url = new URL(
+    buildMetaAuthorizationUrl("opaque-state", true, ["pages_manage_engagement"]),
+  );
+  assert(url.searchParams.get("auth_type") === "rerequest");
+  const scopeParam = url.searchParams.get("scope") || "";
+  const scopes = scopeParam.split(",");
+
+  // Exactly the allowed Facebook reconnect set: base + pages_manage_engagement
+  assert(scopes.length === 4);
+  assert(scopes.includes("public_profile"));
+  assert(scopes.includes("pages_show_list"));
+  assert(scopes.includes("pages_read_engagement"));
+  assert(scopes.includes("pages_manage_engagement"));
+
+  // Strictly must not include pages_read_user_content or other unneeded scopes
+  assert(!scopes.includes("pages_read_user_content"));
+  assert(!scopes.includes("instagram_basic"));
+  assert(!scopes.includes("pages_manage_posts"));
+});
+
+Deno.test("Meta OAuth URL strictly rejects pages_read_user_content and other disallowed scopes", () => {
+  const url = new URL(
+    buildMetaAuthorizationUrl("opaque-state", true, [
+      "pages_read_user_content",
+      "instagram_basic",
+      "pages_manage_posts",
+      "unauthorized_scope_xyz",
+    ]),
+  );
+  const scopeParam = url.searchParams.get("scope") || "";
+  const scopes = scopeParam.split(",");
+
+  // Only the base scopes remain, invalid scopes are filtered out
+  assert(scopes.length === 3);
+  assert(scopes.includes("public_profile"));
+  assert(scopes.includes("pages_show_list"));
+  assert(scopes.includes("pages_read_engagement"));
+  assert(!scopes.includes("pages_read_user_content"));
+  assert(!scopes.includes("instagram_basic"));
+  assert(!scopes.includes("pages_manage_posts"));
+  assert(!scopes.includes("unauthorized_scope_xyz"));
+});
+
+Deno.test("Meta scope constants enforce strict separation and exclusions", () => {
+  assert(
+    (FACEBOOK_PAGE_BASE_SCOPES as readonly string[]).includes("public_profile"),
+  );
+  assert(
+    (FACEBOOK_ACTION_SCOPES as readonly string[]).includes("pages_manage_engagement"),
+  );
+  assert(
+    (DISALLOWED_FACEBOOK_SCOPES as readonly string[]).includes("pages_read_user_content"),
+  );
+  assert(
+    !(FACEBOOK_PAGE_BASE_SCOPES as readonly string[]).includes("pages_read_user_content"),
+  );
+  assert(
+    !(FACEBOOK_ACTION_SCOPES as readonly string[]).includes("pages_read_user_content"),
+  );
+  assert(
+    !(ALLOWED_FACEBOOK_RECONNECT_SCOPES as readonly string[]).includes("pages_read_user_content"),
+  );
 });
 
 Deno.test("Meta credential encryption roundtrip never changes token material", async () => {
@@ -146,7 +215,6 @@ Deno.test("Meta health distinguishes valid, expired, missing-permission, and rev
   const selected = new Set(["facebook_page:100"]);
   const healthy = assessMetaDiscoveryHealth(
     [...META_DISCOVERY_SCOPES],
-    [...FACEBOOK_PAGE_BASE_SCOPES],
     selected,
     new Set(["facebook_page:100"]),
   );
@@ -162,7 +230,6 @@ Deno.test("Meta health distinguishes valid, expired, missing-permission, and rev
 
   const revoked = assessMetaDiscoveryHealth(
     [...META_DISCOVERY_SCOPES],
-    [...FACEBOOK_PAGE_BASE_SCOPES],
     selected,
     new Set(),
   );

@@ -15,10 +15,27 @@ export const FACEBOOK_PAGE_BASE_SCOPES = [
   "pages_read_engagement",
 ] as const;
 
+export const FACEBOOK_ACTION_SCOPES = [
+  "pages_manage_engagement",
+] as const;
+
 export const META_DISCOVERY_SCOPES = [...FACEBOOK_PAGE_BASE_SCOPES] as const;
 
 export const INSTAGRAM_BUSINESS_SCOPES = [
   "instagram_basic",
+] as const;
+
+export const INSTAGRAM_SCOPES = [...INSTAGRAM_BUSINESS_SCOPES] as const;
+
+export const DISALLOWED_FACEBOOK_SCOPES = [
+  "pages_read_user_content",
+  "instagram_basic",
+  "pages_manage_posts",
+] as const;
+
+export const ALLOWED_FACEBOOK_RECONNECT_SCOPES = [
+  ...FACEBOOK_PAGE_BASE_SCOPES,
+  ...FACEBOOK_ACTION_SCOPES,
 ] as const;
 
 export const META_PERMISSION_CATALOG = [
@@ -33,6 +50,13 @@ export const META_PERMISSION_CATALOG = [
     name: "pages_read_engagement",
     purpose:
       "Read Page identity and linked professional Instagram account metadata.",
+    available_in_development: true,
+    available_in_production: false,
+    requires_app_review: true,
+  },
+  {
+    name: "pages_manage_engagement",
+    purpose: "Reply to comments and manage engagement on Facebook Pages.",
     available_in_development: true,
     available_in_production: false,
     requires_app_review: true,
@@ -173,8 +197,16 @@ export function buildMetaAuthorizationUrl(
   url.searchParams.set("redirect_uri", client.redirectUri);
   url.searchParams.set("response_type", "code");
   url.searchParams.set("state", state);
+
+  // Strictly allow only verified Facebook action scopes and reject disallowed/unapproved scopes
+  const allowedExtra = extraScopes.filter(
+    (scope) =>
+      (FACEBOOK_ACTION_SCOPES as readonly string[]).includes(scope) &&
+      !(DISALLOWED_FACEBOOK_SCOPES as readonly string[]).includes(scope),
+  );
+
   const combinedScopes = Array.from(
-    new Set([...FACEBOOK_PAGE_BASE_SCOPES, ...extraScopes]),
+    new Set([...FACEBOOK_PAGE_BASE_SCOPES, ...allowedExtra]),
   );
   url.searchParams.set("scope", combinedScopes.join(","));
   if (reconnect) url.searchParams.set("auth_type", "rerequest");

@@ -19,6 +19,8 @@ import {
   buildMetaAuthorizationUrl,
   checkMetaConnectionHealth,
   disconnectMetaConnection,
+  DISALLOWED_FACEBOOK_SCOPES,
+  FACEBOOK_ACTION_SCOPES,
   MetaIntegrationError,
 } from "../_shared/meta-integration.ts";
 import { assertPublicWebhookTarget } from "../_shared/webhook-security.ts";
@@ -271,9 +273,14 @@ export const integrationConnectionsHandler = async (req: Request) => {
           : "integration.meta.initiated",
         connectionId || "pending",
       );
-      const additionalScopes = Array.isArray(body.additionalScopes)
+      const rawAdditionalScopes = Array.isArray(body.additionalScopes)
         ? body.additionalScopes.filter((s: unknown): s is string => typeof s === "string")
         : [];
+      const additionalScopes = rawAdditionalScopes.filter(
+        (scope: string) =>
+          (FACEBOOK_ACTION_SCOPES as readonly string[]).includes(scope) &&
+          !(DISALLOWED_FACEBOOK_SCOPES as readonly string[]).includes(scope),
+      );
       return json({
         success: true,
         authorizationUrl: buildMetaAuthorizationUrl(
