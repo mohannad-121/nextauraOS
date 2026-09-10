@@ -92,7 +92,6 @@ export const metaOAuthCallbackHandler = async (request: Request) => {
       ? Math.min(expiresAtMs, inspection.dataAccessExpiresAt)
       : expiresAtMs;
     const expiresAt = new Date(effectiveExpiresAt).toISOString();
-    const missingPermissions = META_DISCOVERY_SCOPES.filter((scope) =>
     const missingPermissions = FACEBOOK_PAGE_BASE_SCOPES.filter((scope) =>
       !discovery.grantedScopes.includes(scope)
     );

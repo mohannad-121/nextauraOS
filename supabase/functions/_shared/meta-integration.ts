@@ -9,12 +9,13 @@ const encoder = new TextEncoder();
 const sensitiveKey =
   /^(access[_-]?token|authorization|cookie|client[_-]?secret|app[_-]?secret)$/i;
 
-export const META_DISCOVERY_SCOPES = [
 export const FACEBOOK_PAGE_BASE_SCOPES = [
   "public_profile",
   "pages_show_list",
   "pages_read_engagement",
 ] as const;
+
+export const META_DISCOVERY_SCOPES = [...FACEBOOK_PAGE_BASE_SCOPES] as const;
 
 export const INSTAGRAM_BUSINESS_SCOPES = [
   "instagram_basic",
@@ -534,7 +535,6 @@ export function assessMetaDiscoveryHealth(
   discoveredKeys: ReadonlySet<string>,
 ) {
   const missingPermissions = META_DISCOVERY_SCOPES.filter((scope) =>
-  const missingPermissions = FACEBOOK_PAGE_BASE_SCOPES.filter((scope) =>
     !grantedScopes.includes(scope)
   );
   const unavailableSelectedResources = [...selectedKeys].filter((key) =>
