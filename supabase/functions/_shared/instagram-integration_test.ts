@@ -53,6 +53,7 @@ Deno.test("Instagram scope constants contain NO Facebook page scopes", () => {
     "public_profile",
   ];
   for (const s of forbidden) {
+    assert(!allScopes.includes(s), `Found forbidden scope: ${s}`);
     assert(!(allScopes as readonly string[]).includes(s), `Found forbidden scope: ${s}`);
     assert(!(allScopes as string[]).includes(s), `Found forbidden scope: ${s}`);
   }

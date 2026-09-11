@@ -256,6 +256,7 @@ export function ConnectionsPanel() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
+    const callbacks = ["github", "google", "meta"] as const;
     const callbacks = ["github", "google", "meta", "instagram"] as const;
     const provider = callbacks.find((key) => params.has(key));
     if (!provider) return;
