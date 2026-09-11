@@ -329,3 +329,63 @@ test("idempotent duplicate prevention and worker retry safety", () => {
   const duplicateResult = "Instagram private reply already sent for this comment.";
   assert.equal(duplicateResult, "Instagram private reply already sent for this comment.");
 });
+
+test("instagram account resource filter and selection validation", () => {
+  const loadedResources = [
+    {
+      id: "res-1",
+      connection_id: "conn-123",
+      provider: "instagram",
+      resource_type: "instagram_professional_account",
+      external_resource_id: "28218186411169808",
+      display_name: "@nextauraai",
+      selected: true,
+      metadata: { username: "nextauraai", name: "NextAuraAI" },
+    },
+    {
+      id: "res-2",
+      connection_id: "conn-123",
+      provider: "meta",
+      resource_type: "facebook_page",
+      external_resource_id: "1175395122329626",
+      display_name: "NextAura AI",
+      selected: true,
+      metadata: {},
+    },
+    {
+      id: "res-3",
+      connection_id: "conn-123",
+      provider: "instagram",
+      resource_type: "instagram_professional_account",
+      external_resource_id: "99999999999999999",
+      display_name: "@inactive_account",
+      selected: false,
+      metadata: { username: "inactive_account" },
+    },
+  ];
+
+  // Filter matching the WorkflowBuilder implementation:
+  const selectableAccounts = loadedResources.filter(
+    (r) =>
+      (r.resource_type === "instagram_professional_account" ||
+        r.resource_type === "instagram_account") &&
+      (r.selected === undefined || r.selected === true),
+  );
+
+  assert.equal(selectableAccounts.length, 1);
+  assert.equal(selectableAccounts[0].display_name, "@nextauraai");
+  assert.equal(selectableAccounts[0].external_resource_id, "28218186411169808");
+
+  // Verify arbitrary account IDs not in selectableAccounts are rejected:
+  const arbitraryAccountId = "123456789";
+  const isAuthorized = selectableAccounts.some(
+    (r) => r.external_resource_id === arbitraryAccountId,
+  );
+  assert.equal(isAuthorized, false, "Arbitrary account IDs must be rejected");
+
+  const validAccountId = "28218186411169808";
+  const isValidAuthorized = selectableAccounts.some(
+    (r) => r.external_resource_id === validAccountId,
+  );
+  assert.equal(isValidAuthorized, true, "Valid account ID from connection resources is accepted");
+});

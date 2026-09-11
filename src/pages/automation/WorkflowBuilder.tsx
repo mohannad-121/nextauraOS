@@ -518,20 +518,25 @@ function TestFacebookCommentModal({
   useEffect(() => {
     const connId = String(triggerConfig.connection_id || "");
     if (connId && (!resources || resources.length === 0)) {
-      integrationConnectionService
-        .getMetaDetails(organizationId, connId)
+      const isInstagram = triggerNode.type === "instagram_comment_created";
+      const loader = isInstagram
+        ? integrationConnectionService.getInstagramDetails(organizationId, connId)
+        : integrationConnectionService.getMetaDetails(organizationId, connId);
+      loader
         .then((res) => setResources(res.resources || []))
         .catch(() => setResources([]));
     }
-  }, [triggerConfig.connection_id, organizationId]);
+  }, [triggerConfig.connection_id, organizationId, triggerNode.type]);
 
   const selectedResource = resources.find(
     (r) => String(r.external_resource_id) === resourceId,
   );
-  const pageName = selectedResource?.display_name || resourceId || "NextAura AI";
+  const pageName = selectedResource?.display_name || resourceId || (triggerNode.type === "instagram_comment_created" ? "@nextauraai" : "NextAura AI");
 
   const defaultMsg = triggerConfig.contains_text
     ? `NextAura test comment with ${triggerConfig.contains_text}`
+    : triggerNode.type === "instagram_comment_created"
+    ? "NextAura Instagram automation test comment"
     : "NextAura Facebook automation test comment";
 
   const [message, setMessage] = useState(defaultMsg);
@@ -937,7 +942,20 @@ function ConfigPanel({
     } else if (info?.provider === "instagram" && connectionId) {
       setLoadingResources(true);
       integrationConnectionService.getInstagramDetails(organizationId, String(connectionId))
-        .then(res => setMetaResources(res.resources || []))
+        .then(res => {
+          const list = res.resources || [];
+          setMetaResources(list);
+          const valid = list.filter(r => (r.resource_type === "instagram_professional_account" || r.resource_type === "instagram_account") && (r.selected === undefined || r.selected === true));
+          if (valid.length === 1 && !node?.data?.config?.resource_id) {
+            const single = valid[0];
+            update({
+              ...(node?.data?.config || {}),
+              resource_id: String(single.external_resource_id),
+              account_id: String(single.external_resource_id),
+              account_username: single.metadata?.username || single.display_name?.replace(/^@/, '') || '',
+            });
+          }
+        })
         .catch(() => setMetaResources([]))
         .finally(() => setLoadingResources(false));
     } else {
@@ -1036,12 +1054,21 @@ function ConfigPanel({
             Instagram Account
             <select
               value={String(config.resource_id || "")}
-              onChange={(event) => field("resource_id", event.target.value)}
+              onChange={(event) => {
+                const val = event.target.value;
+                const matched = metaResources.find(r => String(r.external_resource_id) === val);
+                update({
+                  ...config,
+                  resource_id: val,
+                  account_id: val,
+                  account_username: matched?.metadata?.username || matched?.display_name?.replace(/^@/, '') || '',
+                });
+              }}
               disabled={loadingResources}
               className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/70 disabled:opacity-60"
             >
               <option value="">{loadingResources ? "Loading accounts..." : "Select an Instagram Account"}</option>
-              {metaResources.filter(r => (r.resource_type === "instagram_professional_account" || r.resource_type === "instagram_account") && r.selected).map(r => (
+              {metaResources.filter(r => (r.resource_type === "instagram_professional_account" || r.resource_type === "instagram_account") && (r.selected === undefined || r.selected === true)).map(r => (
                 <option key={r.id} value={r.external_resource_id}>{r.display_name}</option>
               ))}
             </select>

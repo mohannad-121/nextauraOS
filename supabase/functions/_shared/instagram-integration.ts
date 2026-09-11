@@ -376,6 +376,7 @@ export async function checkInstagramConnectionHealth(
         missing_optional_scopes: health.missingOptionalScopes,
       },
     },
+    updated_at: now,
   }).eq("id", connectionId).eq("organization_id", organizationId);
 
   return {
@@ -502,6 +503,7 @@ export async function disconnectInstagramConnection(
 export { randomOAuthState, sha256 };
 
 // ---------------------------------------------------------------------------
+// Private reply helper (stub — not wired to automation nodes yet)
 // Private reply helper
 // ---------------------------------------------------------------------------
 

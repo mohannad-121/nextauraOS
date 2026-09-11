@@ -454,13 +454,59 @@ export const integrationConnectionsHandler = async (req: Request) => {
           404,
         );
       }
-      const { data: resources, error } = await admin.from(
+      let { data: resources, error } = await admin.from(
         "integration_connection_resources",
       ).select(
         "id,resource_type,external_resource_id,display_name,selected,metadata,updated_at",
       ).eq("organization_id", organizationId).eq("connection_id", connectionId)
         .order("resource_type").order("display_name");
       if (error) throw error;
+
+      if (!resources || resources.length === 0) {
+        const metadata = (connection.provider_metadata || {}) as Record<string, any>;
+        const igUserId = metadata.ig_user_id;
+        const username = metadata.username || connection.account_label?.replace(/^@/, "");
+        const displayName = connection.account_label || (username ? `@${username}` : connection.name);
+        if (igUserId) {
+          const { data: inserted, error: insertError } = await admin.from(
+            "integration_connection_resources",
+          ).insert({
+            organization_id: organizationId,
+            connection_id: connectionId,
+            provider: "instagram",
+            resource_type: "instagram_professional_account",
+            external_resource_id: String(igUserId),
+            display_name: displayName,
+            selected: true,
+            metadata: {
+              username,
+              name: metadata.display_name || connection.name,
+              account_type: metadata.account_type || "BUSINESS",
+            },
+          }).select(
+            "id,resource_type,external_resource_id,display_name,selected,metadata,updated_at",
+          ).single();
+
+          if (!insertError && inserted) {
+            resources = [inserted];
+          } else {
+            resources = [{
+              id: connectionId,
+              resource_type: "instagram_professional_account",
+              external_resource_id: String(igUserId),
+              display_name: displayName,
+              selected: true,
+              metadata: {
+                username,
+                name: metadata.display_name || connection.name,
+                account_type: metadata.account_type || "BUSINESS",
+              },
+              updated_at: new Date().toISOString(),
+            }];
+          }
+        }
+      }
+
       return json({
         success: true,
         connection: safeConnection(connection),

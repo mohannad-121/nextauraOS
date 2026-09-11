@@ -1,4 +1,4 @@
-﻿import { adminClient, requireBillingAdmin } from "../_shared/billing.ts";
+import { adminClient, requireBillingAdmin } from "../_shared/billing.ts";
 import { canonicalAppUrl } from "../_shared/canonical-app-origin.ts";
 import { getOrganizationEntitlements } from "../_shared/entitlements.ts";
 import { encryptIntegrationCredential } from "../_shared/google-oauth.ts";
@@ -163,7 +163,7 @@ export const instagramOAuthCallbackHandler = async (request: Request) => {
       .eq("organization_id", oauthState.organization_id)
       .eq("connection_id", connectionId);
 
-    await admin.from("integration_connection_resources").insert({
+    const { error: resourceError } = await admin.from("integration_connection_resources").insert({
       organization_id: oauthState.organization_id,
       connection_id: connectionId,
       provider: "instagram",
@@ -180,6 +180,7 @@ export const instagramOAuthCallbackHandler = async (request: Request) => {
         profile_picture_url: discovery.account.profile_picture_url,
       },
     });
+    if (resourceError) throw resourceError;
 
     // Update connection to final state
     const providerMetadata = {

@@ -198,7 +198,6 @@ function safeRunActions(workflow: Record<string, unknown>, branch: 'true' | 'fal
     const all = [...plan.true_actions, ...plan.false_actions];
     const indexes = new Map<string, number>();
     for (const [index, action] of all.entries()) if (isObject(action) && typeof action.node_id === 'string') indexes.set(action.node_id, index);
-    const selected = branch === 'false' ? plan.false_actions : plan.true_actions;
     return selected.flatMap((action) => { if (!isObject(action) || typeof action.node_id !== 'string' || (action.type !== 'create_notification' && action.type !== 'outgoing_webhook' && action.type !== 'gmail_send_email' && action.type !== 'facebook_comment_reply' && action.type !== 'instagram_private_reply')) return []; const action_index = indexes.get(action.node_id); return action_index === undefined ? [] : [{ action_index, type: action.type }]; });
   }
   return Array.isArray(workflow.actions) ? workflow.actions.flatMap((action, action_index) => isObject(action) && (action.type === 'create_notification' || action.type === 'outgoing_webhook' || action.type === 'gmail_send_email' || action.type === 'facebook_comment_reply' || action.type === 'instagram_private_reply') ? [{ action_index, type: action.type }] : []) : [];
