@@ -656,6 +656,7 @@ export const integrationConnectionsHandler = async (req: Request) => {
       if (connection.provider === "meta") {
         await disconnectMetaConnection(admin, connectionId, organizationId);
       }
+      const status = connection.provider === "meta"
       if (connection.provider === "instagram") {
         await disconnectInstagramConnection(admin, connectionId, organizationId);
       }

@@ -150,6 +150,7 @@ export function MetaConnectionDialog({
   const instagram = resources.filter((item) =>
     item.resource_type === "instagram_account"
   );
+  const permissions = current.provider_metadata?.permission_statuses || [];
   const metaMeta = current.provider_metadata as MetaProviderMetadata;
   const permissions = metaMeta?.permission_statuses || [];
   const toggle = (id: string) => {
@@ -314,6 +315,7 @@ export function MetaConnectionDialog({
                 <section>
                   <h3 className="font-semibold text-slate-900">Permissions</h3>
                   <div className="mt-3 space-y-2">
+                    {permissions.map((permission) => {
                     {permissions.map((permission: MetaPermissionStatus) => {
                       const granted = permission.status === "granted";
                       return (

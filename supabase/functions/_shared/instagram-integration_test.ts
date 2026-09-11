@@ -53,6 +53,7 @@ Deno.test("Instagram scope constants contain NO Facebook page scopes", () => {
     "public_profile",
   ];
   for (const s of forbidden) {
+    assert(!(allScopes as readonly string[]).includes(s), `Found forbidden scope: ${s}`);
     assert(!(allScopes as string[]).includes(s), `Found forbidden scope: ${s}`);
   }
 });
@@ -83,6 +84,28 @@ Deno.test("buildInstagramAuthorizationUrl targets instagram.com OAuth endpoint",
       "https://test.supabase.co/functions/v1/instagram-oauth-callback",
     );
   });
+});
+
+Deno.test("Instagram OAuth - exact production redirect URI matches generated query param", () => {
+  Deno.env.set("INSTAGRAM_APP_ID", "1061228336618492");
+  Deno.env.set("INSTAGRAM_APP_SECRET", "test-secret");
+  Deno.env.set(
+    "INSTAGRAM_OAUTH_REDIRECT_URI",
+    "https://vsivakmwvdyqhrrusgmp.supabase.co/functions/v1/instagram-oauth-callback",
+  );
+  try {
+    const url = new URL(buildInstagramAuthorizationUrl("test-state"));
+    assertEquals(url.origin + url.pathname, "https://www.instagram.com/oauth/authorize");
+    assertEquals(url.searchParams.get("client_id"), "1061228336618492");
+    assertEquals(
+      url.searchParams.get("redirect_uri"),
+      "https://vsivakmwvdyqhrrusgmp.supabase.co/functions/v1/instagram-oauth-callback"
+    );
+  } finally {
+    Deno.env.delete("INSTAGRAM_APP_ID");
+    Deno.env.delete("INSTAGRAM_APP_SECRET");
+    Deno.env.delete("INSTAGRAM_OAUTH_REDIRECT_URI");
+  }
 });
 
 Deno.test("buildInstagramAuthorizationUrl includes all three Instagram business scopes", () => {

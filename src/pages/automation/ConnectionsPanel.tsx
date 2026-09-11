@@ -606,6 +606,7 @@ export function ConnectionsPanel() {
                       >
                         <Pencil className="h-4 w-4" />
                       </IconAction>
+                      {connection.provider !== "meta" && (
                       {connection.provider !== "meta" &&
                         connection.provider !== "instagram" && (
                         <IconAction
@@ -622,6 +623,7 @@ export function ConnectionsPanel() {
                         </IconAction>
                       )}
                       {connection.status === "active" &&
+                        connection.provider !== "meta" && (
                         connection.provider !== "meta" &&
                         connection.provider !== "instagram" && (
                         <IconAction
@@ -670,6 +672,7 @@ export function ConnectionsPanel() {
                 No connections yet
               </p>
               <p className="mt-1 text-sm text-slate-500">
+                Connect Google, GitHub, Meta, or a Generic API.
                 Connect Google, GitHub, Meta, Instagram, or a Generic API.
               </p>
               {canManage && (

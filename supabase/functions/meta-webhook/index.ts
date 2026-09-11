@@ -153,6 +153,7 @@ export const metaWebhookHandler = async (request: Request) => {
     const isFacebookVerify = timingSafeEqual(verifyToken, requiredVerifyToken());
     if (
       mode === "subscribe" && challenge && challenge.length <= 1024 &&
+      timingSafeEqual(verifyToken, requiredVerifyToken())
       (isInstagramVerify || isFacebookVerify)
     ) {
       return new Response(challenge, {
@@ -193,6 +194,12 @@ export const metaWebhookHandler = async (request: Request) => {
     }
 
     const signature = request.headers.get("x-hub-signature-256") || "";
+    if (!await verifyMetaWebhookSignature(rawBody, signature)) {
+      throw new MetaIntegrationError(
+        "META_WEBHOOK_SIGNATURE_INVALID",
+        "Meta webhook signature is invalid.",
+        401,
+      );
     const isInstagramPayload = payloadObject === "instagram";
 
     if (isInstagramPayload) {
