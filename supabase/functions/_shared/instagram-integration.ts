@@ -661,9 +661,11 @@ export async function sendInstagramPrivateReply(
     }
 
     throw new InstagramIntegrationError(
-      "INSTAGRAM_PRIVATE_REPLY_FAILED",
-      rawMsg || "Instagram private reply failed.",
-      response.status >= 500 ? 502 : 400,
+      response.status === 401
+        ? "INSTAGRAM_TOKEN_EXPIRED"
+        : "INSTAGRAM_PRIVATE_REPLY_FAILED",
+      rawMsg || body?.error?.message || "Instagram private reply failed.",
+      response.status >= 500 ? 502 : response.status,
     );
   }
 

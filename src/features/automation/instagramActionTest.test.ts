@@ -26,7 +26,8 @@ export function validateInstagramReplyConfig(config: Record<string, unknown>): {
   if (!config.connection_id || typeof config.connection_id !== "string" || !config.connection_id.trim()) {
     return { valid: false, errorCode: "INSTAGRAM_CONNECTION_REQUIRED", error: "Instagram connection is required." };
   }
-  if (!config.resource_id || typeof config.resource_id !== "string" || !config.resource_id.trim()) {
+  const accountId = config.account_id || config.resource_id;
+  if (!accountId || typeof accountId !== "string" || !accountId.trim()) {
     return { valid: false, errorCode: "INSTAGRAM_ACCOUNT_REQUIRED", error: "Instagram account is required." };
   }
   if (!config.comment_id || typeof config.comment_id !== "string" || !config.comment_id.trim()) {
@@ -170,36 +171,64 @@ test("workflow graph validator accepts instagram_private_reply as an action node
   assert.equal(result.actions[0].config.comment_id, "{{trigger.comment_id}}");
 });
 
-test("configuration validation enforces required fields", () => {
-  // Valid configuration
-  const validConfig = {
+test("configuration validation enforces required fields and supports canonical account_id", () => {
+  // Valid configuration with legacy resource_id
+  const legacyConfig = {
     connection_id: "conn-123",
     resource_id: "17841400",
     comment_id: "{{trigger.comment_id}}",
     message: "Welcome!",
   };
-  assert.equal(validateInstagramReplyConfig(validConfig).valid, true);
+  assert.equal(validateInstagramReplyConfig(legacyConfig).valid, true);
+
+  // Valid configuration with canonical account_id and account_username
+  const canonicalConfig = {
+    connection_id: "conn-123",
+    account_id: "28218186411169808",
+    account_username: "nextauraai",
+    comment_id: "{{trigger.comment_id}}",
+    message: "Welcome!",
+  };
+  assert.equal(validateInstagramReplyConfig(canonicalConfig).valid, true);
+
+  // Valid configuration with both canonical account_id and resource_id
+  const fullConfig = {
+    connection_id: "conn-123",
+    account_id: "28218186411169808",
+    account_username: "nextauraai",
+    resource_id: "28218186411169808",
+    comment_id: "{{trigger.comment_id}}",
+    message: "Welcome!",
+  };
+  assert.equal(validateInstagramReplyConfig(fullConfig).valid, true);
+
+  // nodeRegistry validator supports both canonical and legacy
+  const def = nodeByType.instagram_private_reply;
+  assert.equal(def.validate(canonicalConfig), true);
+  assert.equal(def.validate(legacyConfig), true);
+  assert.equal(def.validate(fullConfig), true);
+  assert.equal(def.validate({ ...canonicalConfig, account_id: "" }), false);
 
   // Missing connection
-  const noConn = { ...validConfig, connection_id: "" };
+  const noConn = { ...canonicalConfig, connection_id: "" };
   const resNoConn = validateInstagramReplyConfig(noConn);
   assert.equal(resNoConn.valid, false);
   assert.equal(resNoConn.errorCode, "INSTAGRAM_CONNECTION_REQUIRED");
 
   // Missing account
-  const noAccount = { ...validConfig, resource_id: "" };
+  const noAccount = { connection_id: "conn-123", comment_id: "{{trigger.comment_id}}", message: "Hi" };
   const resNoAccount = validateInstagramReplyConfig(noAccount);
   assert.equal(resNoAccount.valid, false);
   assert.equal(resNoAccount.errorCode, "INSTAGRAM_ACCOUNT_REQUIRED");
 
   // Missing comment ID
-  const noComment = { ...validConfig, comment_id: "" };
+  const noComment = { ...canonicalConfig, comment_id: "" };
   const resNoComment = validateInstagramReplyConfig(noComment);
   assert.equal(resNoComment.valid, false);
   assert.equal(resNoComment.errorCode, "INSTAGRAM_COMMENT_ID_REQUIRED");
 
   // Missing message
-  const noMsg = { ...validConfig, message: "   " };
+  const noMsg = { ...canonicalConfig, message: "   " };
   const resNoMsg = validateInstagramReplyConfig(noMsg);
   assert.equal(resNoMsg.valid, false);
   assert.equal(resNoMsg.errorCode, "INSTAGRAM_MESSAGE_REQUIRED");

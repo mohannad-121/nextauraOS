@@ -165,6 +165,8 @@ const defaults: Record<string, Record<string, unknown>> = {
   },
   instagram_private_reply: {
     connection_id: "",
+    account_id: "",
+    account_username: "",
     resource_id: "",
     comment_id: "{{trigger.comment_id}}",
     message: "شوف موقعنا وسجّل عنا:\nhttps://www.next-aura-ai.com/start-project",
@@ -946,7 +948,7 @@ function ConfigPanel({
           const list = res.resources || [];
           setMetaResources(list);
           const valid = list.filter(r => (r.resource_type === "instagram_professional_account" || r.resource_type === "instagram_account") && (r.selected === undefined || r.selected === true));
-          if (valid.length === 1 && !node?.data?.config?.resource_id) {
+          if (valid.length === 1 && !node?.data?.config?.account_id && !node?.data?.config?.resource_id) {
             const single = valid[0];
             update({
               ...(node?.data?.config || {}),
@@ -1053,7 +1055,7 @@ function ConfigPanel({
           <label className="block text-xs font-medium text-slate-300">
             Instagram Account
             <select
-              value={String(config.resource_id || "")}
+              value={String(config.account_id || config.resource_id || "")}
               onChange={(event) => {
                 const val = event.target.value;
                 const matched = metaResources.find(r => String(r.external_resource_id) === val);

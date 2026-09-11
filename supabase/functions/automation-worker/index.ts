@@ -472,7 +472,8 @@ function instagramReplyConfig(action: unknown) {
   if (!config.connection_id) {
     throw new InstagramActionError('Instagram connection is required.', false, 400, 'INSTAGRAM_CONNECTION_REQUIRED');
   }
-  if (!config.resource_id) {
+  const accountId = String(config.account_id || config.resource_id || '').trim();
+  if (!accountId) {
     throw new InstagramActionError('Instagram account is required.', false, 400, 'INSTAGRAM_ACCOUNT_REQUIRED');
   }
   if (!config.comment_id) {
@@ -481,7 +482,11 @@ function instagramReplyConfig(action: unknown) {
   if (!config.message) {
     throw new InstagramActionError('Instagram reply message is required.', false, 400, 'INSTAGRAM_MESSAGE_REQUIRED');
   }
-  return config as Record<string, string>;
+  return {
+    ...config,
+    account_id: accountId,
+    resource_id: accountId,
+  } as Record<string, string>;
 }
 
 async function acquireInstagramReplyDelivery(

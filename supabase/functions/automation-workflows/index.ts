@@ -121,7 +121,17 @@ function validateActions(actions: unknown) {
     }
     if (action.type === 'instagram_private_reply') {
       const config = action.config as Record<string, unknown>;
-      if (!hasOnlyKeys(config, ['connection_id', 'resource_id', 'comment_id', 'message']) || !stringValue(config.connection_id, 36) || !UUID.test(String(config.connection_id)) || !stringValue(config.resource_id, 120) || !stringValue(config.comment_id, 500) || !stringValue(config.message, 5000)) throw new Error('instagram_private_reply requires a valid Instagram connection, Account, comment ID, and message.');
+      const accountId = config.account_id || config.resource_id;
+      if (
+        !hasOnlyKeys(config, ['connection_id', 'account_id', 'account_username', 'resource_id', 'comment_id', 'message']) ||
+        !stringValue(config.connection_id, 36) ||
+        !UUID.test(String(config.connection_id)) ||
+        !stringValue(accountId, 120) ||
+        !stringValue(config.comment_id, 500) ||
+        !stringValue(config.message, 5000)
+      ) {
+        throw new Error('instagram_private_reply requires a valid Instagram connection, Account, comment ID, and message.');
+      }
       continue;
     }
     validateOutgoingWebhookAction(action);
@@ -198,6 +208,7 @@ function safeRunActions(workflow: Record<string, unknown>, branch: 'true' | 'fal
     const all = [...plan.true_actions, ...plan.false_actions];
     const indexes = new Map<string, number>();
     for (const [index, action] of all.entries()) if (isObject(action) && typeof action.node_id === 'string') indexes.set(action.node_id, index);
+    const selected = branch === 'false' ? plan.false_actions : plan.true_actions;
     return selected.flatMap((action) => { if (!isObject(action) || typeof action.node_id !== 'string' || (action.type !== 'create_notification' && action.type !== 'outgoing_webhook' && action.type !== 'gmail_send_email' && action.type !== 'facebook_comment_reply' && action.type !== 'instagram_private_reply')) return []; const action_index = indexes.get(action.node_id); return action_index === undefined ? [] : [{ action_index, type: action.type }]; });
   }
   return Array.isArray(workflow.actions) ? workflow.actions.flatMap((action, action_index) => isObject(action) && (action.type === 'create_notification' || action.type === 'outgoing_webhook' || action.type === 'gmail_send_email' || action.type === 'facebook_comment_reply' || action.type === 'instagram_private_reply') ? [{ action_index, type: action.type }] : []) : [];

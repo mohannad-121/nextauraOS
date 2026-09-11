@@ -459,6 +459,8 @@ const definitions: AutomationNodeDefinition[] = [
     ],
     defaultConfig: {
       connection_id: "",
+      account_id: "",
+      account_username: "",
       resource_id: "",
       comment_id: "{{trigger.comment_id}}",
       message: "شوف موقعنا وسجّل عنا:\nhttps://www.next-aura-ai.com/start-project",
@@ -466,7 +468,7 @@ const definitions: AutomationNodeDefinition[] = [
     validate: (config: any) =>
       Boolean(
         config.connection_id &&
-          config.resource_id &&
+          (config.account_id || config.resource_id) &&
           config.comment_id &&
           config.message,
       ),
