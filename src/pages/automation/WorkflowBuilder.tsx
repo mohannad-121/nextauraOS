@@ -1219,7 +1219,7 @@ function ConfigPanel({
       <div className="mt-6 border-t border-white/10 pt-4 space-y-2">
         {triggerMap[node.type || ""] ? (
           <>
-            {node.type === "facebook_page_comment_created" && onTestTrigger && (
+            {(node.type === "facebook_page_comment_created" || node.type === "instagram_comment_created") && onTestTrigger && (
               <button
                 type="button"
                 onClick={onTestTrigger}
@@ -2095,7 +2095,7 @@ export function WorkflowBuilder({
                 organizationId={organizationId}
                 onDeleteNode={deleteSelected}
                 onReplaceTrigger={selected && triggerMap[selected.type || ""] ? () => openTriggerPicker(selected.id) : undefined}
-                onTestTrigger={selected?.type === "facebook_page_comment_created" ? () => handleOpenTest(selected.id) : undefined}
+                onTestTrigger={(selected?.type === "facebook_page_comment_created" || selected?.type === "instagram_comment_created") ? () => handleOpenTest(selected.id) : undefined}
               />
             </div>
           )}

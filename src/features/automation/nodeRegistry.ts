@@ -320,6 +320,51 @@ const definitions: AutomationNodeDefinition[] = [
     adapterKey: "facebook.page.comment.created",
   },
   {
+    type: "instagram_comment_created",
+    title: "Instagram · New Comment",
+    category: "Trigger",
+    description: "Runs when a new comment is posted on an Instagram Professional Account",
+    icon: Bot,
+    accent: "emerald",
+    available: true,
+    kind: "trigger",
+    inputs: [],
+    outputs: ["default"],
+    fields: [
+      {
+        key: "resource_id",
+        label: "Instagram Account",
+        type: "select",
+        options: [],
+        description: "Select the specific Instagram account in the workflow UI."
+      },
+      {
+        key: "contains_text",
+        label: "Message contains (optional)",
+        type: "text",
+        placeholder: "e.g. refund"
+      },
+      {
+        key: "exact_media_id",
+        label: "Exact Media ID (optional)",
+        type: "text",
+        placeholder: "Limit to one specific post/media"
+      },
+      {
+        key: "include_replies",
+        label: "Include replies to comments",
+        type: "boolean"
+      }
+    ],
+    defaultConfig: { connection_id: "", resource_id: "", contains_text: "", exact_media_id: "", include_replies: false },
+    validate: (config: any) => Boolean(config.connection_id && config.resource_id),
+    provider: "instagram",
+    requires_connection: true,
+    connection_type: "oauth",
+    required_scopes: ["instagram_business_manage_comments"],
+    adapterKey: "instagram.comment.created",
+  },
+  {
     type: "facebook_comment_reply",
     title: "Facebook · Reply to Comment",
     category: "Integration",

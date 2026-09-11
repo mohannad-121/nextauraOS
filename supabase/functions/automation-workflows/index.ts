@@ -3,7 +3,7 @@ import { getOrganizationEntitlements } from '../_shared/entitlements.ts';
 import { validateOutgoingWebhookAction } from '../_shared/webhook-security.ts';
 import { createIncomingWebhookToken, hashIncomingWebhookToken } from '../_shared/incoming-webhook.ts';
 
-const TRIGGER_TYPES = new Set(['employee.created', 'contact.created', 'expense.status_changed', 'incoming_webhook', 'website.form_submitted', 'schedule', 'facebook.page.comment.created']);
+const TRIGGER_TYPES = new Set(['employee.created', 'contact.created', 'expense.status_changed', 'incoming_webhook', 'website.form_submitted', 'schedule', 'facebook.page.comment.created', 'instagram.comment.created']);
 const CONDITION_OPERATORS = new Set(['equals', 'not_equals', 'contains', 'greater_than', 'less_than', 'is_empty', 'is_not_empty', 'changed_from', 'changed_to']);
 const ACTION_TYPES = new Set(['create_notification', 'outgoing_webhook', 'gmail_send_email', 'facebook_comment_reply']);
 const MAX_WORKFLOWS = 50;
@@ -15,8 +15,8 @@ const hasOnlyKeys = (value: Record<string, unknown>, keys: string[]) => Object.k
 const stringValue = (value: unknown, maximum: number) => typeof value === 'string' && value.trim().length > 0 && value.length <= maximum;
 const simpleValue = (value: unknown) => value === null || ['string', 'number', 'boolean'].includes(typeof value);
 const publicWorkflow = (workflow: Record<string, unknown>) => { const { incoming_webhook_token_hash: _hash, ...safe } = workflow; return safe; };
-const GRAPH_TYPES = new Set(['employee_created','contact_created','expense_status_changed','incoming_webhook','website_form_submitted','facebook_page_comment_created','if','create_notification','outgoing_webhook','gmail_send_email','facebook_comment_reply']);
-const GRAPH_TRIGGER_TYPES = new Map([['employee_created', 'employee.created'], ['contact_created', 'contact.created'], ['expense_status_changed', 'expense.status_changed'], ['incoming_webhook', 'incoming_webhook'], ['website_form_submitted', 'website.form_submitted'], ['facebook_page_comment_created', 'facebook.page.comment.created']]);
+const GRAPH_TYPES = new Set(['employee_created','contact_created','expense_status_changed','incoming_webhook','website_form_submitted','facebook_page_comment_created','instagram_comment_created','if','create_notification','outgoing_webhook','gmail_send_email','facebook_comment_reply']);
+const GRAPH_TRIGGER_TYPES = new Map([['employee_created', 'employee.created'], ['contact_created', 'contact.created'], ['expense_status_changed', 'expense.status_changed'], ['incoming_webhook', 'incoming_webhook'], ['website_form_submitted', 'website.form_submitted'], ['facebook_page_comment_created', 'facebook.page.comment.created'], ['instagram_comment_created', 'instagram.comment.created']]);
 const CONNECTION_NODE_REQUIREMENTS: Record<string, { provider: string; authType: string; scopes: string[] }> = {
   gmail: { provider: 'google', authType: 'oauth', scopes: [] },
   google_sheets: { provider: 'google', authType: 'oauth', scopes: [] },
@@ -24,6 +24,7 @@ const CONNECTION_NODE_REQUIREMENTS: Record<string, { provider: string; authType:
   slack: { provider: 'slack', authType: 'oauth', scopes: [] },
   whatsapp: { provider: 'meta', authType: 'oauth', scopes: [] },
   facebook_page_comment_created: { provider: 'meta', authType: 'oauth', scopes: [] },
+  instagram_comment_created: { provider: 'instagram', authType: 'oauth', scopes: [] },
   facebook_comment_reply: { provider: 'meta', authType: 'oauth', scopes: [] },
   gmail_send_email: { provider: 'google', authType: 'oauth', scopes: ['https://www.googleapis.com/auth/gmail.send'] },
 };
@@ -68,6 +69,12 @@ function validateTrigger(triggerType: unknown, triggerConfig: unknown) {
     if (!isObject(triggerConfig)) throw new Error('facebook.page.comment.created requires a valid configuration.');
     if (!stringValue(triggerConfig.connection_id, 36) || !UUID.test(String(triggerConfig.connection_id))) throw new Error('facebook.page.comment.created requires a valid Meta connection.');
     if (!stringValue(triggerConfig.resource_id, 120)) throw new Error('facebook.page.comment.created requires a valid Facebook Page.');
+    return;
+  }
+  if (triggerType === 'instagram.comment.created') {
+    if (!isObject(triggerConfig)) throw new Error('instagram.comment.created requires a valid configuration.');
+    if (!stringValue(triggerConfig.connection_id, 36) || !UUID.test(String(triggerConfig.connection_id))) throw new Error('instagram.comment.created requires a valid Instagram connection.');
+    if (!stringValue(triggerConfig.resource_id, 120)) throw new Error('instagram.comment.created requires a valid Instagram Account.');
     return;
   }
   if (triggerType === 'expense.status_changed') {
@@ -265,8 +272,8 @@ Deno.serve(async (req) => {
       }
 
       const triggerType = workflow.execution_plan?.trigger?.type || workflow.trigger_type;
-      if (triggerType !== 'facebook.page.comment.created') {
-        return json({ success: false, error: 'Testing is currently supported for Facebook New Page Comment triggers.' }, 400);
+      if (triggerType !== 'facebook.page.comment.created' && triggerType !== 'instagram.comment.created') {
+        return json({ success: false, error: 'Testing is currently supported for Facebook and Instagram New Comment triggers.' }, 400);
       }
 
       const triggerConfig = (workflow.execution_plan?.trigger?.config || workflow.trigger_config || {}) as Record<string, unknown>;
@@ -274,19 +281,21 @@ Deno.serve(async (req) => {
       const resourceId = String(triggerConfig.resource_id || '');
 
       if (!connectionId || !resourceId) {
-        return json({ success: false, error: 'Trigger configuration is missing Meta connection or Facebook Page.' }, 400);
+        return json({ success: false, error: 'Trigger configuration is missing Meta connection or Account/Page.' }, 400);
       }
+
+      const isInstagram = triggerType === 'instagram.comment.created';
 
       const { data: connection, error: connErr } = await admin
         .from('integration_connections')
         .select('id, provider, status')
         .eq('id', connectionId)
         .eq('organization_id', organizationId)
-        .eq('provider', 'meta')
+        .eq('provider', isInstagram ? 'instagram' : 'meta')
         .maybeSingle();
 
       if (connErr || !connection || (connection.status !== 'active' && connection.status !== 'degraded')) {
-        return json({ success: false, error: 'Selected Meta connection is not active.' }, 400);
+        return json({ success: false, error: 'Selected connection is not active.' }, 400);
       }
 
       const { data: resource, error: resErr } = await admin
@@ -294,21 +303,22 @@ Deno.serve(async (req) => {
         .select('id, external_resource_id, display_name, selected')
         .eq('organization_id', organizationId)
         .eq('connection_id', connectionId)
-        .eq('provider', 'meta')
-        .eq('resource_type', 'facebook_page')
+        .eq('provider', isInstagram ? 'instagram' : 'meta')
+        .eq('resource_type', isInstagram ? 'instagram_professional_account' : 'facebook_page')
         .eq('external_resource_id', resourceId)
         .maybeSingle();
 
       if (resErr || !resource) {
-        return json({ success: false, error: 'Selected Facebook Page is not authorized on this connection.' }, 400);
+        return json({ success: false, error: 'Selected Account/Page is not authorized on this connection.' }, 400);
       }
 
       if (!resource.selected) {
-        return json({ success: false, error: 'Selected Facebook Page is not active or selected.' }, 400);
+        return json({ success: false, error: 'Selected Account/Page is not active or selected.' }, 400);
       }
 
       const now = new Date().toISOString();
       const commentId = `test_comment_${Date.now()}_${crypto.randomUUID().slice(0, 8)}`;
+      const mediaId = triggerConfig.exact_media_id ? String(triggerConfig.exact_media_id) : `test_media_${Date.now()}`;
       const postId = triggerConfig.exact_post_id
         ? String(triggerConfig.exact_post_id)
         : (typeof body.postId === 'string' && body.postId.trim() ? body.postId.trim() : `test_post_${Date.now()}`);
@@ -316,33 +326,48 @@ Deno.serve(async (req) => {
       const parentCommentId = isReply ? `test_parent_${Date.now()}` : undefined;
       const message = typeof body.message === 'string' && body.message.trim()
         ? body.message.trim()
-        : (triggerConfig.contains_text ? `NextAura Facebook test with ${triggerConfig.contains_text}` : 'NextAura Facebook automation test comment');
+        : (triggerConfig.contains_text ? `NextAura test with ${triggerConfig.contains_text}` : 'NextAura automation test comment');
 
-      const dedupeKey = `meta_test:comment:${connectionId}:${commentId}`;
+      const dedupeKey = isInstagram 
+        ? `instagram_webhook:comment:${connectionId}:${commentId}`
+        : `meta_test:comment:${connectionId}:${commentId}`;
 
-      const payload: Record<string, unknown> = {
-        connection_id: connectionId,
-        page_id: resource.external_resource_id,
-        page_name: resource.display_name,
-        post_id: postId,
-        comment_id: commentId,
-        parent_comment_id: parentCommentId,
-        message,
-        author_id: 'test_user',
-        author_name: 'NextAura Test User',
-        created_time: Math.floor(Date.now() / 1000),
-        test_event: true,
-      };
+      const payload: Record<string, unknown> = isInstagram 
+        ? {
+            connection_id: connectionId,
+            instagram_account_id: resource.external_resource_id,
+            media_id: mediaId,
+            comment_id: commentId,
+            parent_comment_id: parentCommentId,
+            comment_text: message,
+            commenter_id: 'test_user',
+            commenter_username: 'nextaura_test_user',
+            created_time: now,
+            test_event: true,
+          }
+        : {
+            connection_id: connectionId,
+            page_id: resource.external_resource_id,
+            page_name: resource.display_name,
+            post_id: postId,
+            comment_id: commentId,
+            parent_comment_id: parentCommentId,
+            message,
+            author_id: 'test_user',
+            author_name: 'NextAura Test User',
+            created_time: Math.floor(Date.now() / 1000),
+            test_event: true,
+          };
 
       const { data: insertedEvent, error: insertError } = await admin
         .from('automation_events')
         .insert({
           organization_id: organizationId,
-          event_type: 'facebook.page.comment.created',
-          entity_type: 'facebook_comment',
+          event_type: triggerType,
+          entity_type: isInstagram ? 'instagram_comment' : 'facebook_comment',
           entity_id: null,
           payload,
-          source: 'meta_test',
+          source: isInstagram ? 'instagram_webhook' : 'meta_test',
           dedupe_key: dedupeKey,
           occurred_at: now,
         })
@@ -380,7 +405,7 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
       await audit(admin, organizationId, user.id, 'automation.trigger.tested', workflowId, {
-        trigger_type: 'facebook.page.comment.created',
+        trigger_type: triggerType,
         page_id: resource.external_resource_id,
         page_name: resource.display_name,
         event_id: insertedEvent.id,

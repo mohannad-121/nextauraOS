@@ -256,7 +256,6 @@ export function ConnectionsPanel() {
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const callbacks = ["github", "google", "meta"] as const;
     const callbacks = ["github", "google", "meta", "instagram"] as const;
     const provider = callbacks.find((key) => params.has(key));
     if (!provider) return;
@@ -607,9 +606,7 @@ export function ConnectionsPanel() {
                       >
                         <Pencil className="h-4 w-4" />
                       </IconAction>
-                      {connection.provider !== "meta" && (
-                      {connection.provider !== "meta" &&
-                        connection.provider !== "instagram" && (
+                      {connection.provider !== "meta" && connection.provider !== "instagram" && (
                         <IconAction
                           title="Test"
                           disabled={busy || connection.status !== "active"}
@@ -624,7 +621,6 @@ export function ConnectionsPanel() {
                         </IconAction>
                       )}
                       {connection.status === "active" &&
-                        connection.provider !== "meta" && (
                         connection.provider !== "meta" &&
                         connection.provider !== "instagram" && (
                         <IconAction
@@ -643,7 +639,7 @@ export function ConnectionsPanel() {
                           <RotateCcw className="h-4 w-4" />
                         </IconAction>
                       )}
-                      {connection.provider !== "meta" && (
+                      {connection.provider !== "meta" && connection.provider !== "instagram" && (
                         <IconAction
                           title="Delete"
                           destructive

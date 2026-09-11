@@ -9,6 +9,7 @@ export const triggerMap: Record<string, string> = {
   expense_status_changed: "expense.status_changed",
   incoming_webhook: "incoming_webhook",
   facebook_page_comment_created: "facebook.page.comment.created",
+  instagram_comment_created: "instagram.comment.created",
 };
 
 export interface WorkflowCompatibilityDefinition {

@@ -282,3 +282,34 @@ test("enabling with 1 trigger and 1 action is accepted", () => {
   assert.equal(result.triggerConfig.connection_id, "conn-1");
   assert.equal(result.actions.length, 1);
 });
+
+test("enabling with instagram trigger and 1 action is accepted", () => {
+  const trigger: WorkflowNode = {
+    id: "trigger-1",
+    type: "instagram_comment_created",
+    position: { x: 100, y: 200 },
+    data: {
+      nodeType: "instagram_comment_created",
+      config: { connection_id: "conn-1", resource_id: "account-1" },
+    },
+  };
+  const action: WorkflowNode = {
+    id: "action-1",
+    type: "create_notification",
+    position: { x: 100, y: 400 },
+    data: {
+      nodeType: "create_notification",
+      config: { message: "hi" },
+    },
+  };
+
+  const result = validateWorkflowGraph({
+    nodes: [trigger, action],
+    edges: [{ id: "e1", source: "trigger-1", target: "action-1", sourceHandle: "default" }],
+    enabled: true,
+  });
+
+  assert.equal(result.triggerType, "instagram.comment.created");
+  assert.equal(result.triggerConfig.connection_id, "conn-1");
+  assert.equal(result.actions.length, 1);
+});

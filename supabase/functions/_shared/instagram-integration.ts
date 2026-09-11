@@ -376,6 +376,7 @@ export async function checkInstagramConnectionHealth(
         missing_optional_scopes: health.missingOptionalScopes,
       },
     },
+    updated_at: now,
   }).eq("id", connectionId).eq("organization_id", organizationId);
 
   return {

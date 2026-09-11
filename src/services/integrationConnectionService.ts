@@ -3,7 +3,6 @@ import { supabase } from './supabaseClient';
 export type IntegrationConnection = {
   id: string;
   organization_id: string;
-  provider: 'google' | 'github' | 'slack' | 'meta' | 'generic_api';
   provider: 'google' | 'github' | 'slack' | 'meta' | 'generic_api' | 'instagram';
   name: string;
   status: 'active' | 'degraded' | 'reconnect_required' | 'disconnected' | 'expired' | 'revoked' | 'error';
@@ -13,7 +12,6 @@ export type IntegrationConnection = {
   expires_at: string | null;
   last_verified_at: string | null;
   revoked_at: string | null;
-  provider_metadata: MetaProviderMetadata;
   provider_metadata: MetaProviderMetadata | InstagramProviderMetadata | Record<string, unknown>;
   created_at: string;
   updated_at: string;
@@ -58,7 +56,6 @@ export type InstagramProviderMetadata = {
 
 export type MetaConnectionResource = {
   id: string;
-  resource_type: 'facebook_page' | 'instagram_account';
   resource_type: 'facebook_page' | 'instagram_account' | 'instagram_professional_account';
   external_resource_id: string;
   display_name: string;

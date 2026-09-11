@@ -44,103 +44,7 @@ async function verifyInstagramWebhookSignature(
   return timingSafeEqual(signature, expected);
 }
 
-async function handleInstagramWebhookPayload(payload: unknown): Promise<void> {
-  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return;
-  const p = payload as Record<string, any>;
-  const entries: Array<Record<string, unknown>> = [];
-  for (const entry of (Array.isArray(p.entry) ? p.entry : []).slice(0, 100)) {
-    if (!entry || typeof entry !== "object") continue;
-    const igUserId = String(entry.id || "");
-    if (!igUserId || !/^\d+$/.test(igUserId)) continue;
-    for (
-      const change of (Array.isArray(entry.changes) ? entry.changes : [])
-        .slice(0, 50)
-    ) {
-      if (!change || typeof change !== "object") continue;
-      const field = String(change.field || "");
-      const value = change.value || {};
-      if (field === "comments" || field === "live_comments") {
-        const commentId = String(value.id || "");
-        const parentCommentId = value.parent_id &&
-            value.parent_id !== value.media_id
-          ? String(value.parent_id)
-          : undefined;
-        if (!commentId) continue;
-        entries.push({
-          event_type: "instagram.comment.created",
-          entity_type: "instagram_comment",
-          entity_id: null,
-          source: "instagram_webhook",
-          dedupe_key: `instagram_webhook:comment:${igUserId}:${commentId}`,
-          occurred_at: new Date().toISOString(),
-          payload: {
-            ig_user_id: igUserId,
-            comment_id: commentId,
-            parent_comment_id: parentCommentId,
-            media_id: value.media_id ? String(value.media_id) : undefined,
-            text: typeof value.text === "string"
-              ? value.text.slice(0, 2048)
-              : undefined,
-            from: value.from
-              ? {
-                id: String(value.from?.id || ""),
-                username: value.from?.username || null,
-              }
-              : undefined,
-          },
-        });
-      }
-      // messages / messaging_postbacks — store raw for future trigger nodes
-      if (field === "messages" || field === "messaging_postbacks") {
-        const messaging = Array.isArray(value.messaging)
-          ? value.messaging
-          : [value];
-        for (const msg of messaging.slice(0, 10)) {
-          const mid = String(
-            msg?.message?.mid || msg?.postback?.mid || msg?.mid || "",
-          );
-          if (!mid) continue;
-          entries.push({
-            event_type: "instagram.comment.created", // placeholder until message trigger node added
-            entity_type: "instagram_comment",
-            entity_id: null,
-            source: "instagram_webhook",
-            dedupe_key: `instagram_webhook:message:${igUserId}:${mid}`,
-            occurred_at: new Date().toISOString(),
-            payload: {
-              ig_user_id: igUserId,
-              field,
-              raw: msg,
-            },
-          });
-        }
-      }
-    }
-  }
-  if (!entries.length) return;
-  const admin = adminClient();
-  // Note: instagram webhook events are stored for future trigger nodes.
-  // We intentionally do NOT fan out to automation_events yet (no trigger node registered).
-  // This stores raw events for auditing and future use.
-  try {
-    await admin.from("meta_webhook_events").upsert(
-      entries.map((e) => ({
-        organization_id: "00000000-0000-0000-0000-000000000000", // placeholder — no page binding for Instagram Login
-        connection_id: "00000000-0000-0000-0000-000000000000",
-        resource_id: "00000000-0000-0000-0000-000000000000",
-        product: "instagram",
-        event_type: e.event_type,
-        external_event_id: String(e.dedupe_key || ""),
-        external_resource_id: String((e.payload as any)?.ig_user_id || ""),
-        occurred_at: e.occurred_at,
-        payload: e.payload,
-      })),
-      { onConflict: "connection_id,external_event_id", ignoreDuplicates: true },
-    );
-  } catch {
-    // Best-effort — do not fail webhook acknowledgement for storage errors
-  }
-}
+
 
 export const metaWebhookHandler = async (request: Request) => {
   if (request.method === "GET") {
@@ -153,7 +57,6 @@ export const metaWebhookHandler = async (request: Request) => {
     const isFacebookVerify = timingSafeEqual(verifyToken, requiredVerifyToken());
     if (
       mode === "subscribe" && challenge && challenge.length <= 1024 &&
-      timingSafeEqual(verifyToken, requiredVerifyToken())
       (isInstagramVerify || isFacebookVerify)
     ) {
       return new Response(challenge, {
@@ -194,12 +97,6 @@ export const metaWebhookHandler = async (request: Request) => {
     }
 
     const signature = request.headers.get("x-hub-signature-256") || "";
-    if (!await verifyMetaWebhookSignature(rawBody, signature)) {
-      throw new MetaIntegrationError(
-        "META_WEBHOOK_SIGNATURE_INVALID",
-        "Meta webhook signature is invalid.",
-        401,
-      );
     const isInstagramPayload = payloadObject === "instagram";
 
     if (isInstagramPayload) {
@@ -225,12 +122,6 @@ export const metaWebhookHandler = async (request: Request) => {
       payload = JSON.parse(rawBody);
     } catch {
       return new Response("Invalid JSON", { status: 400 });
-    }
-
-    // Route Instagram payloads to dedicated handler
-    if (isInstagramPayload) {
-      await handleInstagramWebhookPayload(payload);
-      return new Response("EVENT_RECEIVED", { status: 200 });
     }
 
     const events = await normalizeMetaWebhookPayload(payload);
@@ -266,7 +157,7 @@ export const metaWebhookHandler = async (request: Request) => {
         activeConnections.has(resource.connection_id) &&
         (event.product === "facebook"
           ? resource.resource_type === "facebook_page"
-          : resource.resource_type === "instagram_account")
+          : resource.resource_type === "instagram_professional_account")
       ).map((resource: any) => ({
         organization_id: resource.organization_id,
         connection_id: resource.connection_id,
@@ -286,31 +177,68 @@ export const metaWebhookHandler = async (request: Request) => {
       });
       if (error) throw error;
 
-      const automationEvents = rows.filter((row: any) => 
-        row.product === 'facebook' && 
-        row.event_type === 'change.feed' &&
-        row.payload?.item === 'comment' &&
-        row.payload?.verb === 'add'
-      ).map((row: any) => ({
-        organization_id: row.organization_id,
-        event_type: 'facebook.page.comment.created',
-        entity_type: 'facebook_comment',
-        entity_id: null,
-        payload: {
-          connection_id: row.connection_id,
-          page_id: row.external_resource_id,
-          post_id: row.payload.post_id,
-          comment_id: row.payload.comment_id,
-          parent_comment_id: row.payload.parent_id !== row.payload.post_id ? row.payload.parent_id : undefined,
-          message: row.payload.message,
-          author_id: row.payload.sender_id,
-          author_name: row.payload.sender_name,
-          created_time: row.payload.created_time,
-        },
-        source: 'meta_webhook',
-        dedupe_key: `meta_webhook:comment:${row.connection_id}:${row.external_event_id}`,
-        occurred_at: row.occurred_at,
-      }));
+      const facebookAutomationEvents = rows.filter((row: any) => {
+        const val = row.payload?.event?.value || {};
+        return row.product === 'facebook' && 
+          row.event_type === 'change.feed' &&
+          val.item === 'comment' &&
+          val.verb === 'add';
+      }).map((row: any) => {
+        const val = row.payload?.event?.value || {};
+        return {
+          organization_id: row.organization_id,
+          event_type: 'facebook.page.comment.created',
+          entity_type: 'facebook_comment',
+          entity_id: null,
+          payload: {
+            connection_id: row.connection_id,
+            page_id: row.external_resource_id,
+            post_id: val.post_id,
+            comment_id: val.comment_id,
+            parent_comment_id: val.parent_id && val.parent_id !== val.post_id ? val.parent_id : undefined,
+            message: val.message,
+            author_id: val.sender_id,
+            author_name: val.sender_name,
+            created_time: val.created_time || row.occurred_at,
+          },
+          source: 'meta_webhook',
+          dedupe_key: `meta_webhook:comment:${row.connection_id}:${row.external_event_id}`,
+          occurred_at: row.occurred_at,
+        };
+      });
+
+      const instagramAutomationEvents = rows.filter((row: any) => {
+        const val = row.payload?.event?.value || {};
+        return row.product === 'instagram' && 
+          (row.event_type === 'change.comments' || row.event_type === 'change.live_comments');
+      }).map((row: any) => {
+        const val = row.payload?.event?.value || {};
+        return {
+          organization_id: row.organization_id,
+          event_type: 'instagram.comment.created',
+          entity_type: 'instagram_comment',
+          entity_id: null,
+          payload: {
+            connection_id: row.connection_id,
+            instagram_account_id: row.external_resource_id,
+            media_id: val.media_id ? String(val.media_id) : undefined,
+            comment_id: val.id ? String(val.id) : undefined,
+            parent_comment_id: val.parent_id && val.parent_id !== val.media_id ? String(val.parent_id) : undefined,
+            comment_text: val.text,
+            commenter_id: val.from?.id ? String(val.from.id) : undefined,
+            commenter_username: val.from?.username,
+            created_time: row.occurred_at,
+          },
+          source: 'instagram_webhook',
+          dedupe_key: `instagram_webhook:comment:${row.connection_id}:${row.external_event_id}`,
+          occurred_at: row.occurred_at,
+        };
+      });
+
+      const automationEvents = [
+        ...facebookAutomationEvents,
+        ...instagramAutomationEvents
+      ];
 
       if (automationEvents.length) {
         const { error: autoError } = await admin.from("automation_events").upsert(automationEvents, {

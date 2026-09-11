@@ -499,6 +499,14 @@ async function executeActions(admin: any, run: AutomationRun) {
       if (config.exact_post_id && config.exact_post_id !== payload.post_id) throw new TriggerMismatchError('Event does not match exact post ID.');
       if (config.include_replies === false && payload.parent_comment_id) throw new TriggerMismatchError('Replies are ignored by trigger configuration.');
     }
+    if (event.event_type === 'instagram.comment.created') {
+      const payload = event.payload as Record<string, unknown>;
+      if (config.connection_id && config.connection_id !== payload.connection_id) throw new TriggerMismatchError('Event does not match trigger connection.');
+      if (config.resource_id && config.resource_id !== payload.instagram_account_id) throw new TriggerMismatchError('Event does not match trigger Instagram account.');
+      if (config.contains_text && typeof payload.comment_text === 'string' && !payload.comment_text.toLowerCase().includes(String(config.contains_text).toLowerCase())) throw new TriggerMismatchError('Message does not contain required text.');
+      if (config.exact_media_id && config.exact_media_id !== payload.media_id) throw new TriggerMismatchError('Event does not match exact media ID.');
+      if (config.include_replies === false && payload.parent_comment_id) throw new TriggerMismatchError('Replies are ignored by trigger configuration.');
+    }
   }
 
   const { actions, selectedBranch } = resolveWorkflowActions(workflow, event);
