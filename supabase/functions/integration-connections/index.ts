@@ -23,6 +23,13 @@ import {
   FACEBOOK_ACTION_SCOPES,
   MetaIntegrationError,
 } from "../_shared/meta-integration.ts";
+import {
+  buildInstagramAuthorizationUrl,
+  checkInstagramConnectionHealth,
+  disconnectInstagramConnection,
+  InstagramIntegrationError,
+  refreshInstagramToken,
+} from "../_shared/instagram-integration.ts";
 import { assertPublicWebhookTarget } from "../_shared/webhook-security.ts";
 
 const safeConnection = (row: Record<string, unknown>) => {
@@ -291,6 +298,50 @@ export const integrationConnectionsHandler = async (req: Request) => {
       });
     }
 
+    if (body.operation === "startInstagramOAuth") {
+      const connectionId = body.connectionId ? String(body.connectionId) : null;
+      if (connectionId) {
+        const { data: connection } = await admin.from("integration_connections")
+          .select("id").eq("id", connectionId)
+          .eq("organization_id", organizationId).eq("provider", "instagram")
+          .maybeSingle();
+        if (!connection) {
+          throw new InstagramIntegrationError(
+            "INSTAGRAM_CONNECTION_NOT_FOUND",
+            "Instagram connection not found.",
+            404,
+          );
+        }
+      }
+      const state = randomOAuthState();
+      const { error } = await admin.from("integration_oauth_states").insert({
+        state_hash: await sha256(state),
+        provider: "instagram",
+        organization_id: organizationId,
+        user_id: user.id,
+        connection_id: connectionId,
+        redirect_path: "/automations?tab=connections",
+        expires_at: new Date(Date.now() + 10 * 60_000).toISOString(),
+      });
+      if (error) throw error;
+      await audit(
+        admin,
+        organizationId,
+        user.id,
+        connectionId
+          ? "integration.instagram.reconnect_initiated"
+          : "integration.instagram.initiated",
+        connectionId || "pending",
+      );
+      return json({
+        success: true,
+        authorizationUrl: buildInstagramAuthorizationUrl(
+          state,
+          Boolean(connectionId),
+        ),
+      });
+    }
+
     if (body.operation === "createGenericApi") {
       const name = String(body.name || "").trim();
       const baseUrl = String(body.baseUrl || "").trim();
@@ -506,6 +557,57 @@ export const integrationConnectionsHandler = async (req: Request) => {
       return json({ success: true, health });
     }
 
+    if (body.operation === "checkInstagramConnection") {
+      if (connection.provider !== "instagram") {
+        throw new InstagramIntegrationError(
+          "INSTAGRAM_CONNECTION_REQUIRED",
+          "Instagram connection not found.",
+          404,
+        );
+      }
+      const health = await checkInstagramConnectionHealth(
+        admin,
+        connectionId,
+        organizationId,
+      );
+      await audit(
+        admin,
+        organizationId,
+        user.id,
+        "integration.instagram.health_checked",
+        connectionId,
+        { status: health.status, code: health.code },
+      );
+      return json({ success: true, health });
+    }
+
+    if (body.operation === "refreshInstagramToken") {
+      if (connection.provider !== "instagram") {
+        throw new InstagramIntegrationError(
+          "INSTAGRAM_CONNECTION_REQUIRED",
+          "Instagram connection not found.",
+          404,
+        );
+      }
+      const { expiresAt } = await refreshInstagramToken(
+        connectionId,
+        organizationId,
+        admin,
+      );
+      await audit(
+        admin,
+        organizationId,
+        user.id,
+        "integration.instagram.token_refreshed",
+        connectionId,
+        { expires_at: new Date(expiresAt).toISOString() },
+      );
+      return json({
+        success: true,
+        expiresAt: new Date(expiresAt).toISOString(),
+      });
+    }
+
     if (body.operation === "rename") {
       const name = String(body.name || "").trim();
       if (!name || name.length > 120) {
@@ -554,7 +656,11 @@ export const integrationConnectionsHandler = async (req: Request) => {
       if (connection.provider === "meta") {
         await disconnectMetaConnection(admin, connectionId, organizationId);
       }
-      const status = connection.provider === "meta"
+      if (connection.provider === "instagram") {
+        await disconnectInstagramConnection(admin, connectionId, organizationId);
+      }
+      const status = (connection.provider === "meta" ||
+          connection.provider === "instagram")
         ? "disconnected"
         : "revoked";
       const { error } = await admin.from("integration_connections").update({
@@ -569,6 +675,8 @@ export const integrationConnectionsHandler = async (req: Request) => {
         user.id,
         connection.provider === "meta"
           ? "integration.meta.disconnected"
+          : connection.provider === "instagram"
+          ? "integration.instagram.disconnected"
           : body.operation === "delete"
           ? "integration.connection.deleted"
           : "integration.connection.revoked",
@@ -580,6 +688,14 @@ export const integrationConnectionsHandler = async (req: Request) => {
     if (body.operation === "test") {
       if (connection.provider === "meta") {
         const health = await checkMetaConnectionHealth(
+          admin,
+          connectionId,
+          organizationId,
+        );
+        return json({ success: true, status: health.status, health });
+      }
+      if (connection.provider === "instagram") {
+        const health = await checkInstagramConnectionHealth(
           admin,
           connectionId,
           organizationId,

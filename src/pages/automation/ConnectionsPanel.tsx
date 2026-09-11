@@ -28,6 +28,7 @@ const providerLabel: Record<IntegrationConnection["provider"], string> = {
   github: "GitHub",
   slack: "Slack",
   meta: "Meta",
+  instagram: "Instagram",
 };
 const statusStyle: Record<IntegrationConnection["status"], string> = {
   active: "bg-emerald-50 text-emerald-700",
@@ -74,6 +75,21 @@ function GithubMark({ className = "h-5 w-5" }: { className?: string }) {
       aria-hidden="true"
     >
       <path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.86c-2.78.6-3.37-1.18-3.37-1.18-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.61.07-.61 1 .07 1.53 1.03 1.53 1.03.9 1.53 2.35 1.09 2.92.83.09-.65.35-1.09.64-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02A9.57 9.57 0 0 1 12 6.83c.85 0 1.71.11 2.51.34 1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.86v2.75c0 .27.18.58.69.48A10 10 0 0 0 12 2Z" />
+    </svg>
+  );
+}
+
+function InstagramMark({ className = "h-5 w-5" }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 24 24"
+      fill="none"
+      aria-hidden="true"
+    >
+      <rect x="2" y="2" width="20" height="20" rx="5" ry="5" stroke="currentColor" strokeWidth="2" fill="none" />
+      <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="2" fill="none" />
+      <circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" />
     </svg>
   );
 }
@@ -220,10 +236,27 @@ export function ConnectionsPanel() {
       setBusy(false);
     }
   };
+  const connectInstagram = async (connectionId?: string) => {
+    try {
+      setBusy(true);
+      const result = await integrationConnectionService.startInstagramOAuth(
+        currentOrg.id,
+        connectionId,
+      );
+      window.location.assign(result.authorizationUrl);
+    } catch (reason) {
+      setError(
+        reason instanceof Error
+          ? reason.message
+          : "Unable to start Instagram connection.",
+      );
+      setBusy(false);
+    }
+  };
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    const callbacks = ["github", "google", "meta"] as const;
+    const callbacks = ["github", "google", "meta", "instagram"] as const;
     const provider = callbacks.find((key) => params.has(key));
     if (!provider) return;
     const result = params.get(provider);
@@ -363,6 +396,13 @@ export function ConnectionsPanel() {
                   icon={<MetaMark />}
                 />
                 <ConnectionChoice
+                  title="Connect Instagram"
+                  description="Connect an Instagram Business or Creator account directly."
+                  disabled={busy}
+                  onClick={() => void connectInstagram()}
+                  icon={<InstagramMark />}
+                />
+                <ConnectionChoice
                   title="Generic API"
                   description="Store an API base URL and token securely."
                   disabled={busy}
@@ -437,6 +477,8 @@ export function ConnectionsPanel() {
                   <span className="rounded-xl bg-blue-50 p-2 text-blue-700">
                     {connection.provider === "meta"
                       ? <MetaMark className="h-4 w-5" />
+                      : connection.provider === "instagram"
+                      ? <InstagramMark className="h-4 w-4" />
                       : connection.provider === "github"
                       ? <GithubMark className="h-4 w-4" />
                       : <Link2 className="h-4 w-4" aria-hidden="true" />}
@@ -457,6 +499,12 @@ export function ConnectionsPanel() {
                     {meta && (
                       <p className="mt-1 text-xs text-slate-500">
                         {meta.summary}
+                      </p>
+                    )}
+                    {connection.provider === "instagram" &&
+                      connection.scopes.length > 0 && (
+                      <p className="mt-1 text-xs text-slate-400">
+                        {connection.scopes.join(", ")}
                       </p>
                     )}
                   </div>
@@ -507,6 +555,33 @@ export function ConnectionsPanel() {
                           Reconnect
                         </button>
                       )}
+                      {connection.provider === "instagram" && (
+                        <>
+                          <IconAction
+                            title="Refresh token"
+                            disabled={busy}
+                            onClick={() =>
+                              void mutate(
+                                () =>
+                                  integrationConnectionService
+                                    .refreshInstagramToken(
+                                      currentOrg.id,
+                                      connection.id,
+                                    ),
+                                "Instagram token refreshed.",
+                              )}
+                          >
+                            <CheckCircle2 className="h-4 w-4" />
+                          </IconAction>
+                          <IconAction
+                            title="Reconnect Instagram"
+                            disabled={busy}
+                            onClick={() => void connectInstagram(connection.id)}
+                          >
+                            <Link2 className="h-4 w-4" />
+                          </IconAction>
+                        </>
+                      )}
                       <IconAction
                         title="Rename"
                         disabled={busy}
@@ -531,7 +606,8 @@ export function ConnectionsPanel() {
                       >
                         <Pencil className="h-4 w-4" />
                       </IconAction>
-                      {connection.provider !== "meta" && (
+                      {connection.provider !== "meta" &&
+                        connection.provider !== "instagram" && (
                         <IconAction
                           title="Test"
                           disabled={busy || connection.status !== "active"}
@@ -546,7 +622,8 @@ export function ConnectionsPanel() {
                         </IconAction>
                       )}
                       {connection.status === "active" &&
-                        connection.provider !== "meta" && (
+                        connection.provider !== "meta" &&
+                        connection.provider !== "instagram" && (
                         <IconAction
                           title="Revoke"
                           disabled={busy}
@@ -593,7 +670,7 @@ export function ConnectionsPanel() {
                 No connections yet
               </p>
               <p className="mt-1 text-sm text-slate-500">
-                Connect Google, GitHub, Meta, or a Generic API.
+                Connect Google, GitHub, Meta, Instagram, or a Generic API.
               </p>
               {canManage && (
                 <button

@@ -14,15 +14,146 @@ const requiredVerifyToken = () => {
   return value;
 };
 
+const instagramVerifyToken = () =>
+  Deno.env.get("INSTAGRAM_WEBHOOK_VERIFY_TOKEN") || "";
+
+// Verify HMAC-SHA256 signature using the Instagram app secret
+async function verifyInstagramWebhookSignature(
+  body: string,
+  signature: string,
+): Promise<boolean> {
+  const secret = Deno.env.get("INSTAGRAM_APP_SECRET") || "";
+  if (!secret) return false;
+  // Instagram uses the same X-Hub-Signature-256 mechanism as Meta
+  const key = await crypto.subtle.importKey(
+    "raw",
+    new TextEncoder().encode(secret),
+    { name: "HMAC", hash: "SHA-256" },
+    false,
+    ["sign"],
+  );
+  const mac = await crypto.subtle.sign(
+    "HMAC",
+    key,
+    new TextEncoder().encode(body),
+  );
+  const expected = "sha256=" +
+    [...new Uint8Array(mac)].map((b) => b.toString(16).padStart(2, "0")).join(
+      "",
+    );
+  return timingSafeEqual(signature, expected);
+}
+
+async function handleInstagramWebhookPayload(payload: unknown): Promise<void> {
+  if (!payload || typeof payload !== "object" || Array.isArray(payload)) return;
+  const p = payload as Record<string, any>;
+  const entries: Array<Record<string, unknown>> = [];
+  for (const entry of (Array.isArray(p.entry) ? p.entry : []).slice(0, 100)) {
+    if (!entry || typeof entry !== "object") continue;
+    const igUserId = String(entry.id || "");
+    if (!igUserId || !/^\d+$/.test(igUserId)) continue;
+    for (
+      const change of (Array.isArray(entry.changes) ? entry.changes : [])
+        .slice(0, 50)
+    ) {
+      if (!change || typeof change !== "object") continue;
+      const field = String(change.field || "");
+      const value = change.value || {};
+      if (field === "comments" || field === "live_comments") {
+        const commentId = String(value.id || "");
+        const parentCommentId = value.parent_id &&
+            value.parent_id !== value.media_id
+          ? String(value.parent_id)
+          : undefined;
+        if (!commentId) continue;
+        entries.push({
+          event_type: "instagram.comment.created",
+          entity_type: "instagram_comment",
+          entity_id: null,
+          source: "instagram_webhook",
+          dedupe_key: `instagram_webhook:comment:${igUserId}:${commentId}`,
+          occurred_at: new Date().toISOString(),
+          payload: {
+            ig_user_id: igUserId,
+            comment_id: commentId,
+            parent_comment_id: parentCommentId,
+            media_id: value.media_id ? String(value.media_id) : undefined,
+            text: typeof value.text === "string"
+              ? value.text.slice(0, 2048)
+              : undefined,
+            from: value.from
+              ? {
+                id: String(value.from?.id || ""),
+                username: value.from?.username || null,
+              }
+              : undefined,
+          },
+        });
+      }
+      // messages / messaging_postbacks — store raw for future trigger nodes
+      if (field === "messages" || field === "messaging_postbacks") {
+        const messaging = Array.isArray(value.messaging)
+          ? value.messaging
+          : [value];
+        for (const msg of messaging.slice(0, 10)) {
+          const mid = String(
+            msg?.message?.mid || msg?.postback?.mid || msg?.mid || "",
+          );
+          if (!mid) continue;
+          entries.push({
+            event_type: "instagram.comment.created", // placeholder until message trigger node added
+            entity_type: "instagram_comment",
+            entity_id: null,
+            source: "instagram_webhook",
+            dedupe_key: `instagram_webhook:message:${igUserId}:${mid}`,
+            occurred_at: new Date().toISOString(),
+            payload: {
+              ig_user_id: igUserId,
+              field,
+              raw: msg,
+            },
+          });
+        }
+      }
+    }
+  }
+  if (!entries.length) return;
+  const admin = adminClient();
+  // Note: instagram webhook events are stored for future trigger nodes.
+  // We intentionally do NOT fan out to automation_events yet (no trigger node registered).
+  // This stores raw events for auditing and future use.
+  try {
+    await admin.from("meta_webhook_events").upsert(
+      entries.map((e) => ({
+        organization_id: "00000000-0000-0000-0000-000000000000", // placeholder — no page binding for Instagram Login
+        connection_id: "00000000-0000-0000-0000-000000000000",
+        resource_id: "00000000-0000-0000-0000-000000000000",
+        product: "instagram",
+        event_type: e.event_type,
+        external_event_id: String(e.dedupe_key || ""),
+        external_resource_id: String((e.payload as any)?.ig_user_id || ""),
+        occurred_at: e.occurred_at,
+        payload: e.payload,
+      })),
+      { onConflict: "connection_id,external_event_id", ignoreDuplicates: true },
+    );
+  } catch {
+    // Best-effort — do not fail webhook acknowledgement for storage errors
+  }
+}
+
 export const metaWebhookHandler = async (request: Request) => {
   if (request.method === "GET") {
     const url = new URL(request.url);
     const mode = url.searchParams.get("hub.mode") || "";
     const verifyToken = url.searchParams.get("hub.verify_token") || "";
     const challenge = url.searchParams.get("hub.challenge") || "";
+    const igToken = instagramVerifyToken();
+    const isInstagramVerify = igToken && timingSafeEqual(verifyToken, igToken);
+    const isFacebookVerify = timingSafeEqual(verifyToken, requiredVerifyToken());
     if (
       mode === "subscribe" && challenge && challenge.length <= 1024 &&
-      timingSafeEqual(verifyToken, requiredVerifyToken())
+      (isInstagramVerify || isFacebookVerify)
     ) {
       return new Response(challenge, {
         status: 200,
@@ -52,20 +183,49 @@ export const metaWebhookHandler = async (request: Request) => {
     ) {
       return new Response("Payload too large", { status: 413 });
     }
-    const signature = request.headers.get("x-hub-signature-256") || "";
-    if (!await verifyMetaWebhookSignature(rawBody, signature)) {
-      throw new MetaIntegrationError(
-        "META_WEBHOOK_SIGNATURE_INVALID",
-        "Meta webhook signature is invalid.",
-        401,
-      );
+
+    // Determine payload source: peek at object field to route signature validation
+    let payloadObject = "";
+    try {
+      payloadObject = (JSON.parse(rawBody) as any)?.object || "";
+    } catch {
+      return new Response("Invalid JSON", { status: 400 });
     }
+
+    const signature = request.headers.get("x-hub-signature-256") || "";
+    const isInstagramPayload = payloadObject === "instagram";
+
+    if (isInstagramPayload) {
+      if (!await verifyInstagramWebhookSignature(rawBody, signature)) {
+        throw new MetaIntegrationError(
+          "INSTAGRAM_WEBHOOK_SIGNATURE_INVALID",
+          "Instagram webhook signature is invalid.",
+          401,
+        );
+      }
+    } else {
+      if (!await verifyMetaWebhookSignature(rawBody, signature)) {
+        throw new MetaIntegrationError(
+          "META_WEBHOOK_SIGNATURE_INVALID",
+          "Meta webhook signature is invalid.",
+          401,
+        );
+      }
+    }
+
     let payload: unknown;
     try {
       payload = JSON.parse(rawBody);
     } catch {
       return new Response("Invalid JSON", { status: 400 });
     }
+
+    // Route Instagram payloads to dedicated handler
+    if (isInstagramPayload) {
+      await handleInstagramWebhookPayload(payload);
+      return new Response("EVENT_RECEIVED", { status: 200 });
+    }
+
     const events = await normalizeMetaWebhookPayload(payload);
     if (!events.length) return new Response("EVENT_RECEIVED", { status: 200 });
 

@@ -3,7 +3,7 @@ import { supabase } from './supabaseClient';
 export type IntegrationConnection = {
   id: string;
   organization_id: string;
-  provider: 'google' | 'github' | 'slack' | 'meta' | 'generic_api';
+  provider: 'google' | 'github' | 'slack' | 'meta' | 'generic_api' | 'instagram';
   name: string;
   status: 'active' | 'degraded' | 'reconnect_required' | 'disconnected' | 'expired' | 'revoked' | 'error';
   auth_type: 'api_key' | 'oauth';
@@ -12,7 +12,7 @@ export type IntegrationConnection = {
   expires_at: string | null;
   last_verified_at: string | null;
   revoked_at: string | null;
-  provider_metadata: MetaProviderMetadata;
+  provider_metadata: MetaProviderMetadata | InstagramProviderMetadata | Record<string, unknown>;
   created_at: string;
   updated_at: string;
 };
@@ -41,9 +41,22 @@ export type MetaProviderMetadata = {
   };
 };
 
+export type InstagramProviderMetadata = {
+  ig_user_id?: string;
+  username?: string | null;
+  display_name?: string;
+  account_type?: 'BUSINESS' | 'CREATOR' | 'PERSONAL';
+  connected_at?: string;
+  health?: {
+    checked_at?: string;
+    missing_base_scopes?: string[];
+    missing_optional_scopes?: string[];
+  };
+};
+
 export type MetaConnectionResource = {
   id: string;
-  resource_type: 'facebook_page' | 'instagram_account';
+  resource_type: 'facebook_page' | 'instagram_account' | 'instagram_professional_account';
   external_resource_id: string;
   display_name: string;
   selected: boolean;
@@ -55,6 +68,7 @@ export type MetaConnectionResource = {
     name?: string | null;
     profile_picture_url?: string | null;
     page_id?: string;
+    account_type?: string;
   };
   updated_at: string;
 };
@@ -88,12 +102,18 @@ export const integrationConnectionService = {
     call({ operation: 'startGithubOAuth', organizationId, ...(connectionId ? { connectionId } : {}) }),
   startMetaOAuth: (organizationId: string, connectionId?: string, additionalScopes?: string[]) =>
     call({ operation: 'startMetaOAuth', organizationId, ...(connectionId ? { connectionId } : {}), ...(additionalScopes?.length ? { additionalScopes } : {}) }),
+  startInstagramOAuth: (organizationId: string, connectionId?: string) =>
+    call({ operation: 'startInstagramOAuth', organizationId, ...(connectionId ? { connectionId } : {}) }),
   getMetaDetails: (organizationId: string, connectionId: string) =>
     call({ operation: 'getMetaDetails', organizationId, connectionId }) as Promise<{ success: true; connection: IntegrationConnection; resources: MetaConnectionResource[] }>,
   updateMetaResources: (organizationId: string, connectionId: string, pageIds: string[], instagramIds: string[]) =>
     call({ operation: 'updateMetaResources', organizationId, connectionId, pageIds, instagramIds }),
   checkMetaConnection: (organizationId: string, connectionId: string) =>
     call({ operation: 'checkMetaConnection', organizationId, connectionId }),
+  checkInstagramConnection: (organizationId: string, connectionId: string) =>
+    call({ operation: 'checkInstagramConnection', organizationId, connectionId }),
+  refreshInstagramToken: (organizationId: string, connectionId: string) =>
+    call({ operation: 'refreshInstagramToken', organizationId, connectionId }),
   rename: (organizationId: string, connectionId: string, name: string) =>
     call({ operation: 'rename', organizationId, connectionId, name }),
   test: (organizationId: string, connectionId: string) =>
