@@ -163,6 +163,12 @@ const defaults: Record<string, Record<string, unknown>> = {
     comment_id: "{{trigger.comment_id}}",
     message: "",
   },
+  instagram_private_reply: {
+    connection_id: "",
+    resource_id: "",
+    comment_id: "{{trigger.comment_id}}",
+    message: "شوف موقعنا وسجّل عنا:\nhttps://www.next-aura-ai.com/start-project",
+  },
 };
 
 function restoreGraph(workflow: any) {
@@ -928,6 +934,12 @@ function ConfigPanel({
         .then(res => setMetaResources(res.resources || []))
         .catch(() => setMetaResources([]))
         .finally(() => setLoadingResources(false));
+    } else if (info?.provider === "instagram" && connectionId) {
+      setLoadingResources(true);
+      integrationConnectionService.getInstagramDetails(organizationId, String(connectionId))
+        .then(res => setMetaResources(res.resources || []))
+        .catch(() => setMetaResources([]))
+        .finally(() => setLoadingResources(false));
     } else {
       setMetaResources([]);
     }
@@ -1018,6 +1030,37 @@ function ConfigPanel({
               ))}
             </select>
           </label>
+        )}
+        {info?.provider === "instagram" && config.connection_id && (
+          <label className="block text-xs font-medium text-slate-300">
+            Instagram Account
+            <select
+              value={String(config.resource_id || "")}
+              onChange={(event) => field("resource_id", event.target.value)}
+              disabled={loadingResources}
+              className="mt-1.5 w-full rounded-xl border border-white/10 bg-slate-900 px-3 py-2 text-sm text-white outline-none focus:border-cyan-400/70 disabled:opacity-60"
+            >
+              <option value="">{loadingResources ? "Loading accounts..." : "Select an Instagram Account"}</option>
+              {metaResources.filter(r => (r.resource_type === "instagram_professional_account" || r.resource_type === "instagram_account") && r.selected).map(r => (
+                <option key={r.id} value={r.external_resource_id}>{r.display_name}</option>
+              ))}
+            </select>
+          </label>
+        )}
+        {node.type === "instagram_comment_created" && (
+          <>
+            {input("Comment contains (optional)", "contains_text", "e.g. موقع")}
+            {input("Exact Media ID (optional)", "exact_media_id", "Limit to one specific post or reel")}
+            <label className="flex items-center gap-2 text-xs font-medium text-slate-300">
+              <input
+                type="checkbox"
+                checked={Boolean(config.include_replies)}
+                onChange={(event) => field("include_replies", event.target.checked)}
+                className="rounded border-white/10 bg-slate-900 text-cyan-400 focus:ring-cyan-400"
+              />
+              Include replies to comments
+            </label>
+          </>
         )}
         {node.type === "facebook_page_comment_created" && (
           <>
@@ -1206,6 +1249,57 @@ function ConfigPanel({
                   )}
                 </div>
               )}
+          </>
+        )}
+        {node.type === "instagram_private_reply" && (
+          <>
+            <p className="rounded-xl border border-purple-400/20 bg-purple-400/10 p-3 text-xs text-purple-100">
+              Send a private Instagram message to the person who posted the triggering comment.
+            </p>
+            {input("Comment ID", "comment_id", "{{trigger.comment_id}}")}
+            <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+              <span className="text-[10px] text-slate-400">Dynamic tag:</span>
+              {["{{trigger.comment_id}}"].map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => field("comment_id", tag)}
+                  className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] font-mono text-cyan-300 hover:bg-white/10"
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
+            <label className="block text-xs font-medium text-slate-300">
+              Message
+              <textarea
+                value={String(config.message || "")}
+                onChange={(event) => field("message", event.target.value)}
+                placeholder={"شوف موقعنا وسجّل عنا:\nhttps://www.next-aura-ai.com/start-project"}
+                className="mt-1.5 h-28 w-full resize-none rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-600 focus:border-cyan-400/70"
+              />
+            </label>
+            <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+              <span className="text-[10px] text-slate-400">Insert tag:</span>
+              {[
+                "{{trigger.comment_id}}",
+                "{{trigger.comment_text}}",
+                "{{trigger.commenter_username}}",
+                "{{trigger.media_id}}",
+              ].map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  onClick={() => {
+                    const current = String(config.message || "");
+                    field("message", current ? `${current} ${tag}` : tag);
+                  }}
+                  className="rounded bg-white/5 px-1.5 py-0.5 text-[10px] font-mono text-cyan-300 hover:bg-white/10"
+                >
+                  {tag}
+                </button>
+              ))}
+            </div>
           </>
         )}
         {["employee_created", "contact_created", "incoming_webhook"].includes(
@@ -1725,7 +1819,8 @@ export function WorkflowBuilder({
           n.type === "create_notification" ||
           n.type === "outgoing_webhook" ||
           n.type === "gmail_send_email" ||
-          n.type === "facebook_comment_reply",
+          n.type === "facebook_comment_reply" ||
+          n.type === "instagram_private_reply",
       );
       if (actions.length === 0) {
         setError("Add at least one action node before enabling.");

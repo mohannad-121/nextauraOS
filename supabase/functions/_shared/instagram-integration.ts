@@ -376,7 +376,6 @@ export async function checkInstagramConnectionHealth(
         missing_optional_scopes: health.missingOptionalScopes,
       },
     },
-    updated_at: now,
   }).eq("id", connectionId).eq("organization_id", organizationId);
 
   return {
@@ -503,17 +502,178 @@ export async function disconnectInstagramConnection(
 export { randomOAuthState, sha256 };
 
 // ---------------------------------------------------------------------------
-// Private reply helper (stub — not wired to automation nodes yet)
+// Private reply helper
 // ---------------------------------------------------------------------------
 
+export interface SendInstagramPrivateReplyParams {
+  accountId: string;
+  commentId: string;
+  message: string;
+  accessToken: string;
+  apiVersion?: string;
+  requester?: typeof fetch;
+}
+
+export interface SendInstagramPrivateReplyResult {
+  message_id: string;
+  recipient_id?: string;
+}
+
 /**
- * Send an Instagram private reply to a comment.
- * Uses graph.instagram.com (Instagram Login API).
+ * Send an Instagram private reply to a comment using the official Send API.
+ * POST https://graph.instagram.com/{API_VERSION}/{IG_USER_ID}/messages
+ * Authorization: Bearer <INSTAGRAM_ACCESS_TOKEN>
  *
- * @param igUserId - The authenticated Instagram user (page) ID
- * @param commentId - The comment to reply to privately
- * @param text - The message text
- * @param accessToken - Long-lived Instagram user access token
+ * @param params - Configuration including account ID, comment ID, message text, and access token
+ */
+export async function sendInstagramPrivateReply(
+  params: SendInstagramPrivateReplyParams,
+): Promise<SendInstagramPrivateReplyResult> {
+  const {
+    accountId,
+    commentId,
+    message,
+    accessToken,
+    apiVersion = Deno.env.get("INSTAGRAM_GRAPH_API_VERSION") ||
+      Deno.env.get("META_GRAPH_API_VERSION") || "v26.0",
+    requester = fetch,
+  } = params;
+
+  if (!accountId || !/^\d+$/.test(String(accountId).trim())) {
+    throw new InstagramIntegrationError(
+      "INSTAGRAM_ACCOUNT_REQUIRED",
+      "Instagram account ID is required and must be a numeric ID.",
+      400,
+    );
+  }
+
+  const cleanCommentId = typeof commentId === "string" ? commentId.trim() : "";
+  if (!cleanCommentId || cleanCommentId.length > 256) {
+    throw new InstagramIntegrationError(
+      "INSTAGRAM_COMMENT_ID_REQUIRED",
+      "Instagram comment ID is required and must be valid.",
+      400,
+    );
+  }
+
+  const cleanMessage = typeof message === "string" ? message.trim() : "";
+  if (!cleanMessage) {
+    throw new InstagramIntegrationError(
+      "INSTAGRAM_MESSAGE_REQUIRED",
+      "Instagram reply message is required.",
+      400,
+    );
+  }
+
+  if (cleanMessage.length > 1000) {
+    throw new InstagramIntegrationError(
+      "INSTAGRAM_MESSAGE_REQUIRED",
+      "Instagram reply message must be 1000 characters or fewer.",
+      400,
+    );
+  }
+
+  if (!accessToken || typeof accessToken !== "string" || !accessToken.trim()) {
+    throw new InstagramIntegrationError(
+      "INSTAGRAM_RECONNECT_REQUIRED",
+      "Instagram access token is missing or expired. Reconnect to continue.",
+      401,
+    );
+  }
+
+  const cleanVersion = apiVersion.startsWith("v") ? apiVersion : `v${apiVersion}`;
+  const url = new URL(`https://graph.instagram.com/${cleanVersion}/${accountId.trim()}/messages`);
+
+  const response = await requester(url, {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${accessToken.trim()}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      recipient: { comment_id: cleanCommentId },
+      message: { text: cleanMessage },
+    }),
+  });
+
+  if (!response.ok) {
+    const body = await response.json().catch(() => ({}));
+    const error = body?.error;
+    const rawMsg = String(error?.message || "");
+    const lowerMsg = rawMsg.toLowerCase();
+    const code = Number(error?.code);
+    const subcode = Number(error?.error_subcode);
+
+    if (response.status === 401 || code === 190) {
+      throw new InstagramIntegrationError(
+        "INSTAGRAM_RECONNECT_REQUIRED",
+        "Instagram connection authorization expired. Please reconnect.",
+        401,
+      );
+    }
+
+    if (code === 200 || code === 298 || lowerMsg.includes("permission")) {
+      throw new InstagramIntegrationError(
+        "INSTAGRAM_PERMISSION_MISSING",
+        "Additional Instagram permissions required: instagram_business_manage_messages and instagram_business_manage_comments.",
+        403,
+      );
+    }
+
+    if (
+      subcode === 2018001 ||
+      lowerMsg.includes("window") ||
+      lowerMsg.includes("7 days") ||
+      lowerMsg.includes("expired")
+    ) {
+      throw new InstagramIntegrationError(
+        "INSTAGRAM_PRIVATE_REPLY_WINDOW_EXPIRED",
+        "Instagram private reply window has expired for this comment.",
+        400,
+      );
+    }
+
+    if (
+      lowerMsg.includes("already replied") ||
+      lowerMsg.includes("already sent") ||
+      lowerMsg.includes("only one private reply")
+    ) {
+      throw new InstagramIntegrationError(
+        "INSTAGRAM_PRIVATE_REPLY_ALREADY_SENT",
+        "Instagram private reply already sent for this comment.",
+        400,
+      );
+    }
+
+    if (
+      code === 100 &&
+      (lowerMsg.includes("does not exist") ||
+        lowerMsg.includes("not found") ||
+        lowerMsg.includes("cannot find"))
+    ) {
+      throw new InstagramIntegrationError(
+        "INSTAGRAM_COMMENT_NOT_FOUND",
+        "Instagram comment was not found or has been deleted.",
+        404,
+      );
+    }
+
+    throw new InstagramIntegrationError(
+      "INSTAGRAM_PRIVATE_REPLY_FAILED",
+      rawMsg || "Instagram private reply failed.",
+      response.status >= 500 ? 502 : 400,
+    );
+  }
+
+  const result = await response.json();
+  return {
+    message_id: String(result.message_id || result.id || ""),
+    recipient_id: result.recipient_id ? String(result.recipient_id) : undefined,
+  };
+}
+
+/**
+ * Backward compatibility alias for replyToInstagramComment
  */
 export async function replyToInstagramComment(
   igUserId: string,
@@ -521,46 +681,12 @@ export async function replyToInstagramComment(
   text: string,
   accessToken: string,
   requester: typeof fetch = fetch,
-): Promise<{ message_id: string }> {
-  if (!igUserId || !/^\d+$/.test(igUserId)) {
-    throw new InstagramIntegrationError(
-      "INSTAGRAM_INVALID_USER_ID",
-      "Invalid Instagram user ID.",
-    );
-  }
-  if (!commentId || typeof commentId !== "string" || commentId.length > 256) {
-    throw new InstagramIntegrationError(
-      "INSTAGRAM_INVALID_COMMENT_ID",
-      "Invalid Instagram comment ID.",
-    );
-  }
-  if (!text || typeof text !== "string" || text.length > 1000) {
-    throw new InstagramIntegrationError(
-      "INSTAGRAM_INVALID_MESSAGE",
-      "Reply text is required and must be 1000 characters or fewer.",
-    );
-  }
-
-  const url = new URL(`https://graph.instagram.com/${igUserId}/messages`);
-  url.searchParams.set("access_token", accessToken);
-  const response = await requester(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      recipient: { comment_id: commentId },
-      message: { text },
-    }),
+): Promise<{ message_id: string; recipient_id?: string }> {
+  return sendInstagramPrivateReply({
+    accountId: igUserId,
+    commentId,
+    message: text,
+    accessToken,
+    requester,
   });
-  if (!response.ok) {
-    const body = await response.json().catch(() => ({}));
-    throw new InstagramIntegrationError(
-      response.status === 401
-        ? "INSTAGRAM_TOKEN_EXPIRED"
-        : "INSTAGRAM_REPLY_ERROR",
-      body?.error?.message || "Instagram private reply failed.",
-      response.status >= 500 ? 502 : response.status,
-    );
-  }
-  const result = await response.json();
-  return { message_id: String(result.message_id || result.id || "") };
 }

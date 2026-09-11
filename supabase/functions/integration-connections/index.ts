@@ -446,6 +446,28 @@ export const integrationConnectionsHandler = async (req: Request) => {
       });
     }
 
+    if (body.operation === "getInstagramDetails") {
+      if (connection.provider !== "instagram") {
+        throw new InstagramIntegrationError(
+          "INSTAGRAM_CONNECTION_REQUIRED",
+          "Instagram connection not found.",
+          404,
+        );
+      }
+      const { data: resources, error } = await admin.from(
+        "integration_connection_resources",
+      ).select(
+        "id,resource_type,external_resource_id,display_name,selected,metadata,updated_at",
+      ).eq("organization_id", organizationId).eq("connection_id", connectionId)
+        .order("resource_type").order("display_name");
+      if (error) throw error;
+      return json({
+        success: true,
+        connection: safeConnection(connection),
+        resources: resources || [],
+      });
+    }
+
     if (body.operation === "updateMetaResources") {
       if (connection.provider !== "meta") {
         throw new MetaIntegrationError(
@@ -656,7 +678,6 @@ export const integrationConnectionsHandler = async (req: Request) => {
       if (connection.provider === "meta") {
         await disconnectMetaConnection(admin, connectionId, organizationId);
       }
-      const status = connection.provider === "meta"
       if (connection.provider === "instagram") {
         await disconnectInstagramConnection(admin, connectionId, organizationId);
       }

@@ -424,6 +424,63 @@ const definitions: AutomationNodeDefinition[] = [
     entitlement: "automation_access",
   },
   {
+    type: "instagram_private_reply",
+    title: "Instagram · Private Reply",
+    category: "Integration",
+    description: "Send a private Instagram message to the person who posted the triggering comment.",
+    icon: MessageSquare,
+    accent: "purple",
+    available: true,
+    kind: "integration",
+    inputs: ["default"],
+    outputs: ["default"],
+    fields: [
+      {
+        key: "resource_id",
+        label: "Instagram Account",
+        type: "select",
+        options: [],
+        description: "Select the specific Instagram account in the workflow UI.",
+      },
+      {
+        key: "comment_id",
+        label: "Comment ID",
+        type: "text",
+        placeholder: "{{trigger.comment_id}}",
+        description: "ID of the comment to reply to.",
+      },
+      {
+        key: "message",
+        label: "Message",
+        type: "textarea",
+        placeholder: "شوف موقعنا وسجّل عنا:\nhttps://www.next-aura-ai.com/start-project",
+        description: "Message content to send as a private reply.",
+      },
+    ],
+    defaultConfig: {
+      connection_id: "",
+      resource_id: "",
+      comment_id: "{{trigger.comment_id}}",
+      message: "شوف موقعنا وسجّل عنا:\nhttps://www.next-aura-ai.com/start-project",
+    },
+    validate: (config: any) =>
+      Boolean(
+        config.connection_id &&
+          config.resource_id &&
+          config.comment_id &&
+          config.message,
+      ),
+    provider: "instagram",
+    requires_connection: true,
+    connection_type: "oauth",
+    required_scopes: [
+      "instagram_business_manage_messages",
+      "instagram_business_manage_comments",
+    ],
+    adapterKey: "instagram.private.reply",
+    entitlement: "automation_access",
+  },
+  {
     type: "ai_agent",
 
     title: "AI Agent",

@@ -6,6 +6,7 @@ import {
   INSTAGRAM_LOGIN_SCOPES,
   InstagramIntegrationError,
   replyToInstagramComment,
+  sendInstagramPrivateReply,
 } from "./instagram-integration.ts";
 
 // ---------------------------------------------------------------------------
@@ -53,8 +54,6 @@ Deno.test("Instagram scope constants contain NO Facebook page scopes", () => {
     "public_profile",
   ];
   for (const s of forbidden) {
-    assert(!allScopes.includes(s), `Found forbidden scope: ${s}`);
-    assert(!(allScopes as readonly string[]).includes(s), `Found forbidden scope: ${s}`);
     assert(!(allScopes as string[]).includes(s), `Found forbidden scope: ${s}`);
   }
 });
@@ -218,7 +217,7 @@ Deno.test("replyToInstagramComment rejects invalid igUserId", async () => {
   } catch (e) {
     threw = true;
     assert(e instanceof InstagramIntegrationError);
-    assertEquals(e.code, "INSTAGRAM_INVALID_USER_ID");
+    assertEquals(e.code, "INSTAGRAM_ACCOUNT_REQUIRED");
   }
   assert(threw, "Expected InstagramIntegrationError for invalid user ID");
 });
@@ -230,7 +229,7 @@ Deno.test("replyToInstagramComment rejects empty text", async () => {
   } catch (e) {
     threw = true;
     assert(e instanceof InstagramIntegrationError);
-    assertEquals(e.code, "INSTAGRAM_INVALID_MESSAGE");
+    assertEquals(e.code, "INSTAGRAM_MESSAGE_REQUIRED");
   }
   assert(threw, "Expected InstagramIntegrationError for empty text");
 });
@@ -242,7 +241,7 @@ Deno.test("replyToInstagramComment rejects text over 1000 chars", async () => {
   } catch (e) {
     threw = true;
     assert(e instanceof InstagramIntegrationError);
-    assertEquals(e.code, "INSTAGRAM_INVALID_MESSAGE");
+    assertEquals(e.code, "INSTAGRAM_MESSAGE_REQUIRED");
   }
   assert(threw, "Expected InstagramIntegrationError for text too long");
 });
@@ -268,7 +267,7 @@ Deno.test("replyToInstagramComment sends POST to graph.instagram.com with correc
   assertEquals(result.message_id, "msg-001");
   assertEquals(captured.length, 1);
   assert(
-    captured[0].url.startsWith("https://graph.instagram.com/111222333/messages"),
+    captured[0].url.includes("graph.instagram.com") && captured[0].url.includes("/111222333/messages"),
   );
   const body = JSON.parse(captured[0].init.body as string);
   assertEquals(body.recipient.comment_id, "444555666");
@@ -294,10 +293,113 @@ Deno.test("replyToInstagramComment throws InstagramIntegrationError on 401", asy
   } catch (e) {
     threw = true;
     assert(e instanceof InstagramIntegrationError);
-    assertEquals(e.code, "INSTAGRAM_TOKEN_EXPIRED");
+    assertEquals(e.code, "INSTAGRAM_RECONNECT_REQUIRED");
   }
   assert(threw, "Expected InstagramIntegrationError for 401");
 });
+
+Deno.test("sendInstagramPrivateReply validates required fields", async () => {
+  // Missing account
+  await assertThrowsAsync(
+    () => sendInstagramPrivateReply({ accountId: "", commentId: "c1", message: "m", accessToken: "t" }),
+    "INSTAGRAM_ACCOUNT_REQUIRED",
+  );
+  // Non-numeric account
+  await assertThrowsAsync(
+    () => sendInstagramPrivateReply({ accountId: "abc", commentId: "c1", message: "m", accessToken: "t" }),
+    "INSTAGRAM_ACCOUNT_REQUIRED",
+  );
+  // Missing commentId
+  await assertThrowsAsync(
+    () => sendInstagramPrivateReply({ accountId: "123", commentId: "", message: "m", accessToken: "t" }),
+    "INSTAGRAM_COMMENT_ID_REQUIRED",
+  );
+  // Missing message
+  await assertThrowsAsync(
+    () => sendInstagramPrivateReply({ accountId: "123", commentId: "c1", message: "   ", accessToken: "t" }),
+    "INSTAGRAM_MESSAGE_REQUIRED",
+  );
+  // Too long message (>1000)
+  await assertThrowsAsync(
+    () => sendInstagramPrivateReply({ accountId: "123", commentId: "c1", message: "a".repeat(1001), accessToken: "t" }),
+    "INSTAGRAM_MESSAGE_REQUIRED",
+  );
+  // Missing access token
+  await assertThrowsAsync(
+    () => sendInstagramPrivateReply({ accountId: "123", commentId: "c1", message: "m", accessToken: "" }),
+    "INSTAGRAM_RECONNECT_REQUIRED",
+  );
+});
+
+Deno.test("sendInstagramPrivateReply sends Authorization Bearer header and Arabic message", async () => {
+  let capturedHeaders: Record<string, string> = {};
+  let capturedBody: any = null;
+  const mockFetch = async (_url: unknown, init: any) => {
+    capturedHeaders = init.headers;
+    capturedBody = JSON.parse(init.body);
+    return new Response(JSON.stringify({ message_id: "mid.12345", recipient_id: "rec.67890" }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  };
+
+  const arabicText = "شوف موقعنا وسجّل عنا:\nhttps://www.next-aura-ai.com/start-project";
+  const result = await sendInstagramPrivateReply({
+    accountId: "17841400123456789",
+    commentId: "17900112233445566",
+    message: arabicText,
+    accessToken: "test_secret_access_token",
+    requester: mockFetch as typeof fetch,
+  });
+
+  assertEquals(result.message_id, "mid.12345");
+  assertEquals(result.recipient_id, "rec.67890");
+  assertEquals(capturedHeaders["Authorization"], "Bearer test_secret_access_token");
+  assertEquals(capturedBody.recipient.comment_id, "17900112233445566");
+  assertEquals(capturedBody.message.text, arabicText);
+});
+
+Deno.test("sendInstagramPrivateReply maps Meta API errors correctly", async () => {
+  // Permission missing (code 200)
+  const mockPerm = async () => new Response(JSON.stringify({ error: { code: 200, message: "(#200) Permissions error" } }), { status: 403, headers: { "Content-Type": "application/json" } });
+  await assertThrowsAsync(
+    () => sendInstagramPrivateReply({ accountId: "123", commentId: "c1", message: "m", accessToken: "t", requester: mockPerm as any }),
+    "INSTAGRAM_PERMISSION_MISSING",
+  );
+
+  // Window expired (subcode 2018001)
+  const mockWindow = async () => new Response(JSON.stringify({ error: { code: 10, error_subcode: 2018001, message: "The message is outside the allowed window" } }), { status: 400, headers: { "Content-Type": "application/json" } });
+  await assertThrowsAsync(
+    () => sendInstagramPrivateReply({ accountId: "123", commentId: "c1", message: "m", accessToken: "t", requester: mockWindow as any }),
+    "INSTAGRAM_PRIVATE_REPLY_WINDOW_EXPIRED",
+  );
+
+  // Already sent
+  const mockAlreadySent = async () => new Response(JSON.stringify({ error: { code: 10, message: "Only one private reply is allowed per comment" } }), { status: 400, headers: { "Content-Type": "application/json" } });
+  await assertThrowsAsync(
+    () => sendInstagramPrivateReply({ accountId: "123", commentId: "c1", message: "m", accessToken: "t", requester: mockAlreadySent as any }),
+    "INSTAGRAM_PRIVATE_REPLY_ALREADY_SENT",
+  );
+
+  // Comment not found (code 100)
+  const mockNotFound = async () => new Response(JSON.stringify({ error: { code: 100, message: "Object with ID does not exist" } }), { status: 404, headers: { "Content-Type": "application/json" } });
+  await assertThrowsAsync(
+    () => sendInstagramPrivateReply({ accountId: "123", commentId: "c1", message: "m", accessToken: "t", requester: mockNotFound as any }),
+    "INSTAGRAM_COMMENT_NOT_FOUND",
+  );
+});
+
+async function assertThrowsAsync(fn: () => Promise<unknown>, expectedCode: string) {
+  let threw = false;
+  try {
+    await fn();
+  } catch (err) {
+    threw = true;
+    assert(err instanceof InstagramIntegrationError, `Expected InstagramIntegrationError, got ${err}`);
+    assertEquals(err.code, expectedCode);
+  }
+  assert(threw, `Expected error ${expectedCode} was not thrown`);
+}
 
 // ---------------------------------------------------------------------------
 // Tenant isolation contract

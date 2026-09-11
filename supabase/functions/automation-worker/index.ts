@@ -2,8 +2,9 @@ import { adminClient } from '../_shared/billing.ts';
 import { getOrganizationEntitlements } from '../_shared/entitlements.ts';
 import { assertPublicWebhookTarget, discardBoundedResponse, isRetryableWebhookStatus, validateOutgoingWebhookAction, WebhookActionError } from '../_shared/webhook-security.ts';
 import { AutomationConditionError, evaluateAutomationCondition } from '../_shared/automation-condition.ts';
-import { getValidGoogleAccessToken } from '../_shared/google-oauth.ts';
+import { decryptIntegrationCredential, getValidGoogleAccessToken } from '../_shared/google-oauth.ts';
 import { getMetaConnection, postFacebookCommentReply, MetaIntegrationError } from '../_shared/meta-integration.ts';
+import { sendInstagramPrivateReply, InstagramIntegrationError, type InstagramCredential } from '../_shared/instagram-integration.ts';
 
 const DEFAULT_BATCH_SIZE = 25;
 const LEASE_SECONDS = 120;
@@ -450,6 +451,400 @@ async function executeFacebookCommentReply(
   }
 }
 
+class InstagramActionError extends WebhookActionError {
+  constructor(
+    message: string,
+    retryable = false,
+    public readonly httpStatus: number | null = null,
+    public readonly providerErrorCode: string | null = null,
+    public readonly providerErrorReason: string | null = null,
+  ) {
+    super(message, retryable);
+    this.name = 'InstagramActionError';
+  }
+}
+
+function instagramReplyConfig(action: unknown) {
+  const config = (action as any)?.config;
+  if (!config || typeof config !== 'object' || (action as any).type !== 'instagram_private_reply') {
+    throw new InstagramActionError('Instagram private reply configuration is invalid.', false);
+  }
+  if (!config.connection_id) {
+    throw new InstagramActionError('Instagram connection is required.', false, 400, 'INSTAGRAM_CONNECTION_REQUIRED');
+  }
+  if (!config.resource_id) {
+    throw new InstagramActionError('Instagram account is required.', false, 400, 'INSTAGRAM_ACCOUNT_REQUIRED');
+  }
+  if (!config.comment_id) {
+    throw new InstagramActionError('Instagram comment ID is required.', false, 400, 'INSTAGRAM_COMMENT_ID_REQUIRED');
+  }
+  if (!config.message) {
+    throw new InstagramActionError('Instagram reply message is required.', false, 400, 'INSTAGRAM_MESSAGE_REQUIRED');
+  }
+  return config as Record<string, string>;
+}
+
+async function acquireInstagramReplyDelivery(
+  admin: any,
+  organizationId: string,
+  runId: string,
+  actionIndex: number,
+  idempotencyKey?: string,
+) {
+  const { data: existing, error: existingError } = await admin
+    .from('automation_action_deliveries')
+    .select('id,status,attempt_count')
+    .eq('organization_id', organizationId)
+    .eq('run_id', runId)
+    .eq('action_index', actionIndex)
+    .maybeSingle();
+
+  if (existingError) throw new Error('Unable to load Instagram private reply delivery.');
+  if (existing?.status === 'succeeded') return { id: String(existing.id), succeeded: true };
+
+  const now = new Date().toISOString();
+  if (existing) {
+    const { data, error } = await admin
+      .from('automation_action_deliveries')
+      .update({
+        status: 'running',
+        attempt_count: Number(existing.attempt_count || 0) + 1,
+        http_status: null,
+        error_summary: null,
+        provider_error_code: null,
+        provider_error_reason: null,
+        started_at: now,
+        completed_at: null,
+        ...(idempotencyKey ? { idempotency_key: idempotencyKey } : {}),
+      })
+      .eq('id', existing.id)
+      .eq('organization_id', organizationId)
+      .select('id')
+      .single();
+
+    if (error || !data) throw new Error('Unable to claim Instagram private reply delivery.');
+    return { id: String(data.id), succeeded: false };
+  }
+
+  const { data, error } = await admin
+    .from('automation_action_deliveries')
+    .insert({
+      organization_id: organizationId,
+      run_id: runId,
+      action_index: actionIndex,
+      action_type: 'instagram_private_reply',
+      status: 'running',
+      attempt_count: 1,
+      started_at: now,
+      ...(idempotencyKey ? { idempotency_key: idempotencyKey } : {}),
+    })
+    .select('id')
+    .single();
+
+  if (error || !data) throw new Error('Unable to create Instagram private reply delivery.');
+  return { id: String(data.id), succeeded: false };
+}
+
+async function executeInstagramPrivateReply(
+  admin: any,
+  run: AutomationRun,
+  event: AutomationEvent,
+  action: unknown,
+  actionIndex: number,
+): Promise<{ testMode: boolean; alreadySent: boolean }> {
+  const organizationId = String(run.organization_id);
+  const runId = String(run.id);
+  const workflowId = String(run.workflow_id || '');
+  const config = instagramReplyConfig(action);
+
+  const resolvedCommentId = interpolateVariables(config.comment_id, event.payload).trim();
+  const resolvedMessage = interpolateVariables(config.message, event.payload).trim();
+
+  const isTest = Boolean((event.payload as any)?.test_event) ||
+    event.source === 'instagram_test' ||
+    event.source === 'meta_test' ||
+    Boolean(event.payload && (event.payload as any).source === 'instagram_test');
+
+  const nodeId = String((action as any)?.node_id || actionIndex);
+  const idempotencyKey = `ig_private_reply:${organizationId}:${workflowId}:${nodeId}:${config.resource_id}:${resolvedCommentId}`;
+
+  const delivery = await acquireInstagramReplyDelivery(admin, organizationId, runId, actionIndex, idempotencyKey);
+  if (delivery.succeeded) {
+    return { testMode: isTest, alreadySent: false };
+  }
+
+  if (!resolvedCommentId) {
+    const err = new InstagramActionError('Instagram comment ID is required.', false, 400, 'INSTAGRAM_COMMENT_ID_REQUIRED');
+    await admin.from('automation_action_deliveries').update({
+      status: 'failed',
+      http_status: 400,
+      error_summary: err.message,
+      provider_error_code: err.providerErrorCode,
+      completed_at: new Date().toISOString(),
+    }).eq('id', delivery.id);
+    throw err;
+  }
+
+  if (!resolvedMessage) {
+    const err = new InstagramActionError('Instagram reply message is required.', false, 400, 'INSTAGRAM_MESSAGE_REQUIRED');
+    await admin.from('automation_action_deliveries').update({
+      status: 'failed',
+      http_status: 400,
+      error_summary: err.message,
+      provider_error_code: err.providerErrorCode,
+      completed_at: new Date().toISOString(),
+    }).eq('id', delivery.id);
+    throw err;
+  }
+
+  // Idempotency check: Has this comment already received a private reply successfully?
+  const { data: priorDelivery } = await admin
+    .from('automation_action_deliveries')
+    .select('id')
+    .eq('organization_id', organizationId)
+    .eq('idempotency_key', idempotencyKey)
+    .eq('status', 'succeeded')
+    .neq('id', delivery.id)
+    .maybeSingle();
+
+  if (priorDelivery) {
+    await admin.from('automation_action_deliveries').update({
+      status: 'succeeded',
+      http_status: 200,
+      provider_error_reason: 'already_sent',
+      error_summary: 'Instagram private reply already sent for this comment.',
+      completed_at: new Date().toISOString(),
+    }).eq('id', delivery.id);
+
+    return { testMode: isTest, alreadySent: true };
+  }
+
+  if (isTest) {
+    try {
+      const { data: connection, error: connError } = await admin
+        .from('integration_connections')
+        .select('id,provider,status')
+        .eq('id', config.connection_id)
+        .eq('organization_id', organizationId)
+        .maybeSingle();
+
+      if (connError || !connection || connection.provider !== 'instagram' || !['active', 'degraded'].includes(connection.status)) {
+        throw new InstagramActionError(
+          'Active Instagram connection is required.',
+          false,
+          404,
+          'INSTAGRAM_CONNECTION_REQUIRED',
+        );
+      }
+
+      const { data: resource, error: resError } = await admin
+        .from('integration_connection_resources')
+        .select('id,external_resource_id,selected')
+        .eq('connection_id', config.connection_id)
+        .eq('organization_id', organizationId)
+        .eq('resource_type', 'instagram_professional_account')
+        .eq('external_resource_id', config.resource_id)
+        .eq('selected', true)
+        .maybeSingle();
+
+      if (resError || !resource) {
+        throw new InstagramActionError(
+          'Selected Instagram account is not authorized for this connection.',
+          false,
+          403,
+          'INSTAGRAM_ACCOUNT_NOT_AUTHORIZED',
+        );
+      }
+
+      await admin.from('automation_action_deliveries').update({
+        status: 'succeeded',
+        http_status: 200,
+        provider_error_code: null,
+        provider_error_reason: 'test_mode',
+        error_summary: null,
+        completed_at: new Date().toISOString(),
+      }).eq('id', delivery.id);
+
+      await recordWebhookAudit(admin, organizationId, 'automation.instagram.private_reply.simulated', {
+        workflow_id: workflowId,
+        run_id: runId,
+        action_index: actionIndex,
+        test_mode: true,
+        account_id: config.resource_id,
+        comment_id: resolvedCommentId,
+      });
+
+      return { testMode: true, alreadySent: false };
+    } catch (error) {
+      const err = error instanceof InstagramActionError ? error : new InstagramActionError(
+        (error as any)?.message || 'Test mode validation failed.',
+        false,
+      );
+      await admin.from('automation_action_deliveries').update({
+        status: 'failed',
+        http_status: err.httpStatus,
+        error_summary: err.message.slice(0, 1000),
+        provider_error_code: err.providerErrorCode,
+        provider_error_reason: err.providerErrorReason,
+        completed_at: new Date().toISOString(),
+      }).eq('id', delivery.id);
+      throw err;
+    }
+  }
+
+  // Live execution
+  try {
+    const { data: connection, error: connError } = await admin
+      .from('integration_connections')
+      .select('id,provider,status,scopes')
+      .eq('id', config.connection_id)
+      .eq('organization_id', organizationId)
+      .maybeSingle();
+
+    if (connError || !connection || connection.provider !== 'instagram' || !['active', 'degraded'].includes(connection.status)) {
+      throw new InstagramActionError(
+        'Active Instagram connection is required.',
+        false,
+        404,
+        'INSTAGRAM_CONNECTION_REQUIRED',
+      );
+    }
+
+    const grantedScopes = Array.isArray(connection.scopes) ? connection.scopes : [];
+    const requiredScopes = ['instagram_business_manage_messages', 'instagram_business_manage_comments'];
+    const missingScopes = requiredScopes.filter((s) => !grantedScopes.includes(s));
+    if (missingScopes.length) {
+      throw new InstagramActionError(
+        `Additional Instagram permissions required: ${missingScopes.join(', ')}.`,
+        false,
+        403,
+        'INSTAGRAM_PERMISSION_MISSING',
+        'permission_missing',
+      );
+    }
+
+    const { data: resource, error: resError } = await admin
+      .from('integration_connection_resources')
+      .select('id,external_resource_id,display_name,selected')
+      .eq('connection_id', config.connection_id)
+      .eq('organization_id', organizationId)
+      .eq('resource_type', 'instagram_professional_account')
+      .eq('external_resource_id', config.resource_id)
+      .eq('selected', true)
+      .maybeSingle();
+
+    if (resError || !resource) {
+      throw new InstagramActionError(
+        'Selected Instagram account is not authorized for this connection.',
+        false,
+        403,
+        'INSTAGRAM_ACCOUNT_NOT_AUTHORIZED',
+        'account_not_authorized',
+      );
+    }
+
+    const { data: credRow, error: credError } = await admin
+      .from('integration_connection_credentials')
+      .select('ciphertext,iv')
+      .eq('connection_id', config.connection_id)
+      .maybeSingle();
+
+    if (credError || !credRow) {
+      throw new InstagramActionError(
+        'Instagram credentials are missing. Reconnect to continue.',
+        false,
+        401,
+        'INSTAGRAM_RECONNECT_REQUIRED',
+        'credential_missing',
+      );
+    }
+
+    let credential: InstagramCredential;
+    try {
+      credential = await decryptIntegrationCredential(credRow);
+    } catch {
+      throw new InstagramActionError(
+        'Instagram credentials could not be decrypted. Reconnect to continue.',
+        false,
+        401,
+        'INSTAGRAM_RECONNECT_REQUIRED',
+        'credential_invalid',
+      );
+    }
+
+    if (!credential.access_token || (credential.expires_at && credential.expires_at <= Date.now() + 30_000)) {
+      throw new InstagramActionError(
+        'Instagram connection authorization expired. Please reconnect.',
+        false,
+        401,
+        'INSTAGRAM_RECONNECT_REQUIRED',
+        'token_expired',
+      );
+    }
+
+    const replyResult = await sendInstagramPrivateReply({
+      accountId: config.resource_id,
+      commentId: resolvedCommentId,
+      message: resolvedMessage,
+      accessToken: credential.access_token,
+    });
+
+    await admin.from('automation_action_deliveries').update({
+      status: 'succeeded',
+      http_status: 200,
+      completed_at: new Date().toISOString(),
+      error_summary: null,
+      provider_error_code: null,
+      provider_error_reason: null,
+      idempotency_key: idempotencyKey,
+    }).eq('id', delivery.id);
+
+    await recordWebhookAudit(admin, organizationId, 'automation.instagram.private_reply.succeeded', {
+      workflow_id: workflowId,
+      run_id: runId,
+      action_index: actionIndex,
+      account_id: config.resource_id,
+      comment_id: resolvedCommentId,
+      recipient_id: replyResult.recipient_id,
+      message_id: replyResult.message_id,
+    });
+
+    return { testMode: false, alreadySent: false };
+  } catch (error) {
+    let e: InstagramActionError;
+    if (error instanceof InstagramActionError) {
+      e = error;
+    } else if (error instanceof InstagramIntegrationError) {
+      const retryable = error.status >= 500 || error.status === 429;
+      e = new InstagramActionError(error.message, retryable, error.status, error.code, error.code);
+    } else if (error instanceof WebhookActionError) {
+      e = new InstagramActionError(error.message, error.retryable);
+    } else {
+      e = new InstagramActionError('Instagram private reply could not be completed.', true);
+    }
+
+    await admin.from('automation_action_deliveries').update({
+      status: 'failed',
+      http_status: e.httpStatus,
+      error_summary: e.message.slice(0, 1000),
+      provider_error_code: e.providerErrorCode,
+      provider_error_reason: e.providerErrorReason,
+      completed_at: new Date().toISOString(),
+    }).eq('id', delivery.id);
+
+    await recordWebhookAudit(admin, organizationId, 'automation.instagram.private_reply.failed', {
+      workflow_id: workflowId,
+      run_id: runId,
+      action_index: actionIndex,
+      http_status: e.httpStatus,
+      error_code: e.providerErrorCode,
+      error_message: e.message.slice(0, 500),
+    });
+
+    throw e;
+  }
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> { return Boolean(value) && typeof value === 'object' && !Array.isArray(value); }
 
 function resolveWorkflowActions(workflow: Record<string, unknown>, event: AutomationEvent): { actions: ResolvedAction[]; selectedBranch: 'true' | 'false' | 'linear' } {
@@ -515,6 +910,9 @@ async function executeActions(admin: any, run: AutomationRun) {
   let gmailActions = 0;
   let facebookActions = 0;
   let lastFacebookTestMode = false;
+  let instagramActions = 0;
+  let lastInstagramTestMode = false;
+  let lastInstagramAlreadySent = false;
   for (const { action, actionIndex } of actions) {
     if (!action || typeof action !== 'object' || Array.isArray(action)) throw new WebhookActionError('Automation action is invalid.', false);
     const actionType = (action as Record<string, unknown>).type;
@@ -527,9 +925,24 @@ async function executeActions(admin: any, run: AutomationRun) {
       lastFacebookTestMode = res.testMode;
       continue;
     }
+    if (actionType === 'instagram_private_reply') {
+      const res = await executeInstagramPrivateReply(admin, run, event, action, actionIndex);
+      instagramActions += 1;
+      lastInstagramTestMode = res.testMode;
+      lastInstagramAlreadySent = res.alreadySent;
+      continue;
+    }
     throw new WebhookActionError('Automation action is not supported.', false);
   }
   const branchSuffix = ` (${selectedBranch} branch)`;
+  if (instagramActions) {
+    if (lastInstagramAlreadySent) {
+      return 'Instagram private reply already sent for this comment.' + branchSuffix;
+    }
+    return (lastInstagramTestMode
+      ? 'Test mode — Instagram private reply validated, no external message sent.'
+      : 'Instagram private reply action completed.') + branchSuffix;
+  }
   if (facebookActions) {
     return (lastFacebookTestMode
       ? 'Test mode — Facebook reply validated, no external reply sent.'

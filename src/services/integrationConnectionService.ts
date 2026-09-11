@@ -106,6 +106,8 @@ export const integrationConnectionService = {
     call({ operation: 'startInstagramOAuth', organizationId, ...(connectionId ? { connectionId } : {}) }),
   getMetaDetails: (organizationId: string, connectionId: string) =>
     call({ operation: 'getMetaDetails', organizationId, connectionId }) as Promise<{ success: true; connection: IntegrationConnection; resources: MetaConnectionResource[] }>,
+  getInstagramDetails: (organizationId: string, connectionId: string) =>
+    call({ operation: 'getInstagramDetails', organizationId, connectionId }) as Promise<{ success: true; connection: IntegrationConnection; resources: MetaConnectionResource[] }>,
   updateMetaResources: (organizationId: string, connectionId: string, pageIds: string[], instagramIds: string[]) =>
     call({ operation: 'updateMetaResources', organizationId, connectionId, pageIds, instagramIds }),
   checkMetaConnection: (organizationId: string, connectionId: string) =>

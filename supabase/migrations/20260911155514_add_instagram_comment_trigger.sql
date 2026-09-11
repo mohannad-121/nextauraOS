@@ -9,3 +9,4 @@ ALTER TABLE public.automation_events ADD CONSTRAINT automation_events_source_che
 
 ALTER TABLE public.automation_workflows DROP CONSTRAINT automation_workflows_trigger_type_check;
 ALTER TABLE public.automation_workflows ADD CONSTRAINT automation_workflows_trigger_type_check CHECK (trigger_type IN ('employee.created', 'contact.created', 'expense.status_changed', 'incoming_webhook', 'schedule', 'facebook.page.comment.created', 'instagram.comment.created'));
+
