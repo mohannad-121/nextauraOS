@@ -199,8 +199,8 @@ export const Sidebar: React.FC = () => {
             onClick={() => navigate('launchpad')}
             className="flex items-center gap-3 cursor-pointer group"
           >
-            <div className="w-9 h-9 rounded-xl bg-blue-700 text-white flex items-center justify-center font-semibold text-sm shadow-sm group-hover:bg-blue-800 transition-colors">
-              NA
+            <div className="w-9 h-9 rounded-xl bg-blue-700 flex items-center justify-center shadow-sm group-hover:bg-blue-800 transition-colors overflow-hidden p-0.5">
+              <img src="/logo.png" alt="NextAura" className="w-full h-full object-contain" />
             </div>
             {!isSidebarCollapsed && (
               <div>
