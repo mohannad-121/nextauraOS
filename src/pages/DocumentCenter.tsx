@@ -75,23 +75,23 @@ export const DocumentCenter: React.FC = () => {
           }
         />
       ) : (
-        <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
-          <div className="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+        <div className="rounded-2xl bg-white dark:bg-[#161B30] border border-slate-200/80 dark:border-[#1F253D] shadow-sm overflow-hidden">
+          <div className="divide-y divide-slate-100 dark:divide-[#1F253D] text-xs">
             {documents.map((doc) => (
-              <div key={doc.id} className="p-4 flex items-center justify-between hover:bg-slate-50/60 dark:hover:bg-slate-800/40 transition-colors">
+              <div key={doc.id} className="p-4 flex items-center justify-between hover:bg-slate-50/60 dark:hover:bg-[#1A2035]/50 transition-colors">
                 <div className="flex items-center gap-3">
-                  <div className="p-2.5 rounded-xl bg-cyan-50 dark:bg-cyan-950/40 text-cyan-600 dark:text-cyan-400 border border-cyan-200/60 dark:border-cyan-800/50">
+                  <div className="p-2.5 rounded-xl bg-[#7568E8]/10 text-[#7568E8] dark:text-[#867AF0] border border-[#7568E8]/20">
                     <FileText className="w-5 h-5" />
                   </div>
                   <div>
-                    <div className="font-semibold text-slate-900 dark:text-slate-100">{doc.name}</div>
-                    <div className="text-[11px] text-slate-500 dark:text-slate-400">{doc.category} • {doc.date} • {doc.size}</div>
+                    <div className="font-semibold text-slate-900 dark:text-[#F4F6FF]">{doc.name}</div>
+                    <div className="text-[11px] text-slate-500 dark:text-[#A3ABC5]">{doc.category} • {doc.date} • {doc.size}</div>
                   </div>
                 </div>
 
                 <button
                   onClick={() => alert(`Downloading document: ${doc.name}`)}
-                  className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors"
+                  className="p-2 rounded-xl bg-slate-100 dark:bg-[#101426] border border-slate-200 dark:border-[#2A3048] hover:bg-slate-200 dark:hover:bg-[#1A2035] text-slate-600 dark:text-[#A3ABC5] hover:text-slate-900 dark:hover:text-[#F4F6FF] transition-colors"
                   title="Download"
                 >
                   <Download className="w-4 h-4" />
@@ -113,22 +113,22 @@ export const DocumentCenter: React.FC = () => {
         >
           <div className="space-y-4 text-xs text-slate-700 dark:text-slate-300">
             <div>
-              <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">Document Title</label>
+              <label className="block text-slate-600 dark:text-[#A3ABC5] font-medium mb-1">Document Title</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Master Services Agreement 2026"
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#101426] border border-slate-200 dark:border-[#2A3048] text-slate-900 dark:text-[#F4F6FF] placeholder-slate-400 dark:placeholder-slate-600 focus:outline-none focus:ring-2 focus:ring-[#7568E8]/20 focus:border-[#7568E8] transition-all"
               />
             </div>
 
             <div>
-              <label className="block text-slate-600 dark:text-slate-400 font-medium mb-1">Category</label>
+              <label className="block text-slate-600 dark:text-[#A3ABC5] font-medium mb-1">Category</label>
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-[#101426] border border-slate-200 dark:border-[#2A3048] text-slate-900 dark:text-[#F4F6FF] focus:outline-none focus:ring-2 focus:ring-[#7568E8]/20 focus:border-[#7568E8] transition-all"
               >
                 <option value="Legal Agreements">Legal Agreements</option>
                 <option value="Audit & Compliance">Audit & Compliance</option>
@@ -138,7 +138,7 @@ export const DocumentCenter: React.FC = () => {
               </select>
             </div>
 
-            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex justify-end gap-3 pt-4 border-t border-slate-100 dark:border-[#1F253D]">
               <Button
                 variant="outline"
                 onClick={() => setIsModalOpen(false)}

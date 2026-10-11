@@ -95,41 +95,41 @@ export const FleetApp: React.FC = () => {
         }
       />
 
-      <div className="flex flex-wrap items-center gap-x-7 gap-y-3 rounded-2xl border border-slate-200/80 bg-white px-5 py-4 text-xs dark:border-slate-800 dark:bg-slate-900 sm:px-6">
-        <span className="font-medium text-slate-500">Fleet register</span>
-        <span><span className="text-slate-500">Vehicles</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-white">{vehicles.length}</strong></span>
-        <span><span className="text-slate-500">Active or assigned</span> <strong className="ms-1 font-semibold text-emerald-700 dark:text-emerald-300">{activeCount}</strong></span>
-        <span><span className="text-slate-500">Monthly cost</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-white">${totalFleetCost.toLocaleString()}</strong></span>
+      <div className="flex flex-wrap items-center gap-x-7 gap-y-3 rounded-2xl border border-slate-200/80 bg-white px-5 py-4 text-xs dark:border-[#1F253D] dark:bg-[#161B30] sm:px-6">
+        <span className="font-medium text-slate-500 dark:text-[#A3ABC5]">Fleet register</span>
+        <span><span className="text-slate-500 dark:text-[#6B7694]">Vehicles</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-[#F4F6FF]">{vehicles.length}</strong></span>
+        <span><span className="text-slate-500 dark:text-[#6B7694]">Active or assigned</span> <strong className="ms-1 font-semibold text-emerald-600 dark:text-[#23C99C]">{activeCount}</strong></span>
+        <span><span className="text-slate-500 dark:text-[#6B7694]">Monthly cost</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-[#F4F6FF]">${totalFleetCost.toLocaleString()}</strong></span>
       </div>
 
       {/* Vehicle Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {vehicles.map((v) => (
-          <div key={v.id} className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
+          <div key={v.id} className="p-6 rounded-2xl bg-white dark:bg-[#161B30] border border-slate-200/80 dark:border-[#1F253D] shadow-sm space-y-4">
             <div className="flex justify-between items-start">
-              <div className="p-3 rounded-xl bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 border border-blue-200/60 dark:border-blue-800">
+              <div className="p-3 rounded-xl bg-[#7568E8]/10 text-[#7568E8] dark:bg-[#7568E8]/15 dark:text-[#7568E8] border border-[#7568E8]/20">
                 <Car className="w-5 h-5" />
               </div>
               <StatusBadge status={v.status} />
             </div>
 
             <div>
-              <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100">{v.name}</h3>
-              <div className="text-xs text-slate-500">{v.make} {v.model} ({v.year})</div>
+              <h3 className="text-base font-semibold text-slate-900 dark:text-[#F4F6FF]">{v.name}</h3>
+              <div className="text-xs text-slate-500 dark:text-[#A3ABC5]">{v.make} {v.model} ({v.year})</div>
             </div>
 
-            <div className="p-3.5 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 space-y-2 text-xs">
+            <div className="p-3.5 rounded-xl bg-slate-50/50 dark:bg-[#101426] border border-slate-200/60 dark:border-[#1F253D] space-y-2 text-xs">
               <div className="flex justify-between">
-                <span className="text-slate-400">License Plate</span>
-                <span className="font-mono font-semibold text-slate-900 dark:text-slate-100">{v.licensePlate}</span>
+                <span className="text-slate-400 dark:text-[#6B7694]">License Plate</span>
+                <span className="font-mono font-semibold text-slate-900 dark:text-[#F4F6FF]">{v.licensePlate}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400">Assigned Driver</span>
-                <span className="font-semibold text-blue-600 dark:text-blue-400">{v.assignedEmployeeName || 'Unassigned'}</span>
+                <span className="text-slate-400 dark:text-[#6B7694]">Assigned Driver</span>
+                <span className="font-semibold text-[#7568E8]">{v.assignedEmployeeName || 'Unassigned'}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-400">Odometer</span>
-                <span className="font-mono font-semibold text-slate-900 dark:text-slate-100">{v.odometerKm.toLocaleString()} km</span>
+                <span className="text-slate-400 dark:text-[#6B7694]">Odometer</span>
+                <span className="font-mono font-semibold text-slate-900 dark:text-[#F4F6FF]">{v.odometerKm.toLocaleString()} km</span>
               </div>
             </div>
           </div>
@@ -137,23 +137,23 @@ export const FleetApp: React.FC = () => {
       </div>
 
       {/* Maintenance Logs & Accounting Connection */}
-      <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm p-6 space-y-4">
-        <div className="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3">
-          <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Maintenance & Service Records</h4>
-          <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-mono font-semibold">AUTOMATIC ACCOUNTING EXPENSE LINKED</span>
+      <div className="rounded-2xl bg-white dark:bg-[#161B30] border border-slate-200/80 dark:border-[#1F253D] shadow-sm p-6 space-y-4">
+        <div className="flex items-center justify-between border-b border-slate-100 dark:border-[#1F253D] pb-3">
+          <h4 className="text-sm font-semibold text-slate-900 dark:text-[#F4F6FF]">Maintenance & Service Records</h4>
+          <span className="text-[10px] text-emerald-600 dark:text-[#23C99C] font-mono font-semibold">AUTOMATIC ACCOUNTING EXPENSE LINKED</span>
         </div>
 
         <div className="space-y-3">
           {vehicleMaintenance.map((m) => (
-            <div key={m.id} className="p-4 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
+            <div key={m.id} className="p-4 rounded-xl bg-slate-50/50 dark:bg-[#101426] border border-slate-200/60 dark:border-[#1F253D] flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
               <div>
-                <div className="font-semibold text-slate-900 dark:text-slate-100">{m.vehicleName} — {m.type}</div>
-                <div className="text-[11px] text-slate-500">{m.vendor} • Date: {m.date}</div>
+                <div className="font-semibold text-slate-900 dark:text-[#F4F6FF]">{m.vehicleName} — {m.type}</div>
+                <div className="text-[11px] text-slate-500 dark:text-[#A3ABC5]">{m.vendor} • Date: {m.date}</div>
               </div>
 
               <div className="flex items-center gap-4">
-                <span className="font-mono font-bold text-slate-900 dark:text-slate-100 text-sm">${m.cost.toLocaleString()}</span>
-                <span className="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-medium text-[11px]">
+                <span className="font-mono font-bold text-slate-900 dark:text-[#F4F6FF] text-sm">${m.cost.toLocaleString()}</span>
+                <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-[#23C99C] border border-emerald-500/20 font-medium text-[11px]">
                   Posted to Expenses
                 </span>
               </div>
@@ -171,29 +171,29 @@ export const FleetApp: React.FC = () => {
           subtitle="Register company vehicle asset and assign primary driver."
           maxWidth="md"
         >
-          <div className="space-y-4 text-xs text-slate-600 dark:text-slate-300">
+          <div className="space-y-4 text-xs text-slate-600 dark:text-[#A3ABC5]">
             <div>
-              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Vehicle Name / Label</label>
-              <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Executive Tesla Model Y" className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-xs" />
+              <label className="block text-slate-700 dark:text-[#A3ABC5] font-medium mb-1 text-[11px]">Vehicle Name / Label</label>
+              <input type="text" value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Executive Tesla Model Y" className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-[#101426] border border-slate-200 dark:border-[#2A3048] text-slate-900 dark:text-[#F4F6FF] text-xs focus:ring-2 focus:ring-[#7568E8]/20 focus:border-[#7568E8] outline-none" />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Make & Model</label>
-                <input type="text" value={`${make} ${model}`} onChange={(e) => setModel(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-xs" />
+                <label className="block text-slate-700 dark:text-[#A3ABC5] font-medium mb-1 text-[11px]">Make & Model</label>
+                <input type="text" value={`${make} ${model}`} onChange={(e) => setModel(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-[#101426] border border-slate-200 dark:border-[#2A3048] text-slate-900 dark:text-[#F4F6FF] text-xs focus:ring-2 focus:ring-[#7568E8]/20 focus:border-[#7568E8] outline-none" />
               </div>
               <div>
-                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">License Plate</label>
-                <input type="text" value={licensePlate} onChange={(e) => setLicensePlate(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-blue-600 dark:text-blue-400 font-bold text-xs" />
+                <label className="block text-slate-700 dark:text-[#A3ABC5] font-medium mb-1 text-[11px]">License Plate</label>
+                <input type="text" value={licensePlate} onChange={(e) => setLicensePlate(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-[#101426] border border-slate-200 dark:border-[#2A3048] text-[#7568E8] font-bold text-xs focus:ring-2 focus:ring-[#7568E8]/20 focus:border-[#7568E8] outline-none" />
               </div>
             </div>
 
             <div>
-              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Assigned Driver Name</label>
-              <input type="text" value={assignedEmployeeName} onChange={(e) => setAssignedEmployeeName(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-xs" />
+              <label className="block text-slate-700 dark:text-[#A3ABC5] font-medium mb-1 text-[11px]">Assigned Driver Name</label>
+              <input type="text" value={assignedEmployeeName} onChange={(e) => setAssignedEmployeeName(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-[#101426] border border-slate-200 dark:border-[#2A3048] text-slate-900 dark:text-[#F4F6FF] text-xs focus:ring-2 focus:ring-[#7568E8]/20 focus:border-[#7568E8] outline-none" />
             </div>
 
-            <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-200/80 dark:border-slate-800">
+            <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-200/80 dark:border-[#1F253D]">
               <Button onClick={() => setModalOpen(false)} variant="ghost" size="sm">Cancel</Button>
               <Button onClick={handleCreate} variant="primary" size="sm">Register Vehicle</Button>
             </div>
@@ -210,10 +210,10 @@ export const FleetApp: React.FC = () => {
           subtitle="Records maintenance & automatically posts expense to Accounting."
           maxWidth="md"
         >
-          <div className="space-y-4 text-xs text-slate-600 dark:text-slate-300">
+          <div className="space-y-4 text-xs text-slate-600 dark:text-[#A3ABC5]">
             <div>
-              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Select Fleet Vehicle</label>
-              <select value={maintVehicleId} onChange={(e) => setMaintVehicleId(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-medium text-xs">
+              <label className="block text-slate-700 dark:text-[#A3ABC5] font-medium mb-1 text-[11px]">Select Fleet Vehicle</label>
+              <select value={maintVehicleId} onChange={(e) => setMaintVehicleId(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-[#101426] border border-slate-200 dark:border-[#2A3048] text-slate-900 dark:text-[#F4F6FF] font-medium text-xs focus:ring-2 focus:ring-[#7568E8]/20 focus:border-[#7568E8] outline-none">
                 {vehicles.map((v) => (
                   <option key={v.id} value={v.id}>{v.name} ({v.licensePlate})</option>
                 ))}
@@ -222,8 +222,8 @@ export const FleetApp: React.FC = () => {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Service Type</label>
-                <select value={maintType} onChange={(e) => setMaintType(e.target.value as any)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-xs">
+                <label className="block text-slate-700 dark:text-[#A3ABC5] font-medium mb-1 text-[11px]">Service Type</label>
+                <select value={maintType} onChange={(e) => setMaintType(e.target.value as any)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-[#101426] border border-slate-200 dark:border-[#2A3048] text-slate-900 dark:text-[#F4F6FF] text-xs focus:ring-2 focus:ring-[#7568E8]/20 focus:border-[#7568E8] outline-none">
                   <option value="Oil Change">Oil Change</option>
                   <option value="Tires">Tires</option>
                   <option value="Inspection">Inspection</option>
@@ -231,23 +231,23 @@ export const FleetApp: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Service Cost ($)</label>
-                <input type="number" value={maintCost} onChange={(e) => setMaintCost(Number(e.target.value))} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 font-mono font-bold text-xs" />
+                <label className="block text-slate-700 dark:text-[#A3ABC5] font-medium mb-1 text-[11px]">Service Cost ($)</label>
+                <input type="number" value={maintCost} onChange={(e) => setMaintCost(Number(e.target.value))} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-[#101426] border border-slate-200 dark:border-[#2A3048] text-emerald-600 dark:text-[#23C99C] font-mono font-bold text-xs focus:ring-2 focus:ring-[#7568E8]/20 focus:border-[#7568E8] outline-none" />
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Vendor Name</label>
-                <input type="text" value={maintVendor} onChange={(e) => setMaintVendor(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-xs" />
+                <label className="block text-slate-700 dark:text-[#A3ABC5] font-medium mb-1 text-[11px]">Vendor Name</label>
+                <input type="text" value={maintVendor} onChange={(e) => setMaintVendor(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-[#101426] border border-slate-200 dark:border-[#2A3048] text-slate-900 dark:text-[#F4F6FF] text-xs focus:ring-2 focus:ring-[#7568E8]/20 focus:border-[#7568E8] outline-none" />
               </div>
               <div>
-                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Current Odometer (km)</label>
-                <input type="number" value={maintOdometer} onChange={(e) => setMaintOdometer(Number(e.target.value))} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-mono text-xs" />
+                <label className="block text-slate-700 dark:text-[#A3ABC5] font-medium mb-1 text-[11px]">Current Odometer (km)</label>
+                <input type="number" value={maintOdometer} onChange={(e) => setMaintOdometer(Number(e.target.value))} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-[#101426] border border-slate-200 dark:border-[#2A3048] text-slate-900 dark:text-[#F4F6FF] font-mono text-xs focus:ring-2 focus:ring-[#7568E8]/20 focus:border-[#7568E8] outline-none" />
               </div>
             </div>
 
-            <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-200/80 dark:border-slate-800">
+            <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-200/80 dark:border-[#1F253D]">
               <Button onClick={() => setMaintModalOpen(false)} variant="ghost" size="sm">Cancel</Button>
               <Button onClick={handleAddMaintenance} variant="primary" size="sm">Post Service Log & Expense</Button>
             </div>

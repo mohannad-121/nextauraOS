@@ -38,13 +38,13 @@ export const EmployeeDetail: React.FC = () => {
   // Guard against missing or deleted employee record - prevents blank screen rendering crash!
   if (!employee) {
     return (
-      <div className="max-w-md mx-auto my-16 p-8 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm text-center space-y-5">
-        <div className="w-14 h-14 rounded-2xl bg-amber-50 text-amber-700 dark:bg-amber-950/50 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex items-center justify-center mx-auto">
+      <div className="max-w-md mx-auto my-16 p-8 rounded-2xl bg-white dark:bg-[#161B30] border border-slate-200/80 dark:border-[#1F253D] shadow-sm text-center space-y-5">
+        <div className="w-14 h-14 rounded-2xl bg-[#7568E8]/10 text-[#7568E8] border border-[#7568E8]/20 flex items-center justify-center mx-auto">
           <Building2 className="w-7 h-7" />
         </div>
         <div className="space-y-1.5">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">Employee Record Not Found</h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400">
+          <h2 className="text-lg font-bold text-slate-900 dark:text-[#F4F6FF]">Employee Record Not Found</h2>
+          <p className="text-xs text-slate-500 dark:text-[#A3ABC5]">
             The requested employee record is unavailable or may have been deleted.
           </p>
         </div>
@@ -143,7 +143,7 @@ export const EmployeeDetail: React.FC = () => {
       <div className="flex items-center justify-between">
         <button
           onClick={() => navigate('employees', 'overview')}
-          className="flex items-center gap-2 text-xs font-medium text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
+          className="flex items-center gap-2 text-xs font-medium text-slate-500 hover:text-slate-900 dark:hover:text-[#F4F6FF] transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
           Back to Directory
@@ -182,14 +182,14 @@ export const EmployeeDetail: React.FC = () => {
       )}
 
       {/* Header Profile Banner Card */}
-      <div className="p-6 sm:p-8 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-6">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 border-b border-slate-100 dark:border-slate-800 pb-6">
+      <div className="p-6 sm:p-8 rounded-2xl bg-white dark:bg-[#161B30] border border-slate-200/80 dark:border-[#1F253D] shadow-sm space-y-6">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6 border-b border-slate-100 dark:border-[#1F253D] pb-6">
           <div className="flex items-center gap-5">
             <div className="relative group">
               <Avatar
                 src={employee.avatar}
                 name={employee.name}
-                className="w-20 h-20 rounded-2xl object-cover ring-2 ring-slate-100 dark:ring-slate-800 shadow-sm"
+                className="w-20 h-20 rounded-2xl object-cover ring-2 ring-slate-100 dark:ring-[#1F253D] shadow-sm"
               />
               {canEditPhoto && (
                 <label className="absolute inset-0 bg-slate-900/70 rounded-2xl flex flex-col items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer text-[10px] font-semibold">
@@ -208,24 +208,24 @@ export const EmployeeDetail: React.FC = () => {
 
             <div>
               <div className="flex items-center gap-2.5">
-                <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">{employee.name}</h1>
+                <h1 className="text-xl font-bold text-slate-900 dark:text-[#F4F6FF]">{employee.name}</h1>
                 <StatusBadge status={employee.status} />
               </div>
-              <div className="text-sm font-medium text-blue-600 dark:text-blue-400 mt-0.5">{employee.jobTitle}</div>
-              <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center gap-2.5 mt-1.5 flex-wrap">
+              <div className="text-sm font-medium text-[#7568E8] mt-0.5">{employee.jobTitle}</div>
+              <div className="text-xs text-slate-500 dark:text-[#A3ABC5] flex items-center gap-2.5 mt-1.5 flex-wrap">
                 <span className="flex items-center gap-1.5">
-                  <Building2 className="w-3.5 h-3.5 text-slate-400" />
+                  <Building2 className="w-3.5 h-3.5 text-slate-400 dark:text-[#6B7694]" />
                   {employee.department}
                 </span>
                 <span>•</span>
                 <span>{employee.workLocation || 'HQ'}</span>
                 <span>•</span>
-                <span className="font-mono text-slate-400">{employee.employeeNumber}</span>
+                <span className="font-mono text-slate-400 dark:text-[#6B7694]">{employee.employeeNumber}</span>
               </div>
 
               {canEditPhoto && (
                 <div className="flex items-center gap-3 mt-3">
-                  <label className="text-[11px] font-medium text-blue-600 dark:text-blue-400 hover:underline cursor-pointer flex items-center gap-1">
+                  <label className="text-[11px] font-medium text-[#7568E8] hover:underline cursor-pointer flex items-center gap-1">
                     <Upload className="w-3 h-3" />
                     {employee.avatar ? 'Replace Photo' : 'Upload Photo'}
                     <input
@@ -240,7 +240,7 @@ export const EmployeeDetail: React.FC = () => {
                     <button
                       onClick={handleRemovePhoto}
                       disabled={isUploadingPhoto}
-                      className="text-[11px] font-medium text-slate-400 hover:text-rose-600 flex items-center gap-1 transition-colors"
+                      className="text-[11px] font-medium text-slate-400 dark:text-[#6B7694] hover:text-rose-500 dark:hover:text-rose-400 flex items-center gap-1 transition-colors"
                     >
                       <X className="w-3 h-3" />
                       Remove Photo
@@ -251,19 +251,19 @@ export const EmployeeDetail: React.FC = () => {
             </div>
           </div>
 
-          <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700/60 text-right shrink-0">
-            <span className="text-[10px] text-slate-400 uppercase tracking-wider block font-medium">Monthly Compensation</span>
-            <span className="text-xl font-bold text-slate-900 dark:text-slate-100 font-mono">
+          <div className="p-4 rounded-xl bg-slate-50 dark:bg-[#101426] border border-slate-200/60 dark:border-[#1F253D] text-right shrink-0">
+            <span className="text-[10px] text-slate-400 dark:text-[#6B7694] uppercase tracking-wider block font-medium">Monthly Compensation</span>
+            <span className="text-xl font-bold text-slate-900 dark:text-[#F4F6FF] font-mono">
               ${(employee.baseSalary || 0).toLocaleString()}
             </span>
-            <span className="text-[10px] text-slate-500 block">
+            <span className="text-[10px] text-slate-500 dark:text-[#A3ABC5] block">
               {employee.payFrequency || 'Monthly'} Salary
             </span>
           </div>
         </div>
 
         {/* Segmented Navigation Tabs */}
-        <div className="flex items-center gap-1.5 border-b border-slate-100 dark:border-slate-800 pb-3 overflow-x-auto">
+        <div className="flex items-center gap-1.5 border-b border-slate-100 dark:border-[#1F253D] pb-3 overflow-x-auto">
           {[
             { id: 'overview', label: 'Work Overview' },
             { id: 'private', label: 'Private Information' },
@@ -276,8 +276,8 @@ export const EmployeeDetail: React.FC = () => {
               onClick={() => setActiveTab(tab.id as any)}
               className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
                 activeTab === tab.id
-                  ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 shadow-sm'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                  ? 'bg-slate-900 text-white dark:bg-[#7568E8] dark:text-white shadow-[0_0_12px_rgba(117,104,232,0.35)]'
+                  : 'text-slate-600 dark:text-[#A3ABC5] hover:text-slate-900 dark:hover:text-[#F4F6FF] hover:bg-slate-100 dark:hover:bg-[#101426]'
               }`}
             >
               {tab.label}
@@ -287,43 +287,43 @@ export const EmployeeDetail: React.FC = () => {
 
         {/* TAB 1: OVERVIEW */}
         {activeTab === 'overview' && (
-          <div className="space-y-6 text-xs text-slate-600 dark:text-slate-300">
+          <div className="space-y-6 text-xs text-slate-600 dark:text-[#A3ABC5]">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="p-4 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 space-y-2">
-                <span className="text-[10px] text-slate-400 uppercase font-semibold tracking-wider">Contact Details</span>
+              <div className="p-4 rounded-xl bg-slate-50/50 dark:bg-[#101426] border border-slate-200/60 dark:border-[#1F253D] space-y-2">
+                <span className="text-[10px] text-slate-400 dark:text-[#6B7694] uppercase font-semibold tracking-wider">Contact Details</span>
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
-                    <Mail className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                  <div className="flex items-center gap-2 text-slate-900 dark:text-[#F4F6FF]">
+                    <Mail className="w-4 h-4 text-[#7568E8] shrink-0" />
                     <span className="truncate font-medium">{employee.email}</span>
                   </div>
                   {employee.phone && (
-                    <div className="flex items-center gap-2 text-slate-900 dark:text-slate-100">
-                      <Phone className="w-4 h-4 text-blue-600 dark:text-blue-400 shrink-0" />
+                    <div className="flex items-center gap-2 text-slate-900 dark:text-[#F4F6FF]">
+                      <Phone className="w-4 h-4 text-[#7568E8] shrink-0" />
                       <span className="font-medium">{employee.phone}</span>
                     </div>
                   )}
                 </div>
               </div>
 
-              <div className="p-4 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 space-y-2">
-                <span className="text-[10px] text-slate-400 uppercase font-semibold tracking-wider">Reporting Manager</span>
-                <div className="font-semibold text-slate-900 dark:text-slate-100 text-sm">{employee.managerName || 'Executive Leadership'}</div>
-                <div className="text-[11px] text-slate-500">Start Date: {employee.startDate}</div>
+              <div className="p-4 rounded-xl bg-slate-50/50 dark:bg-[#101426] border border-slate-200/60 dark:border-[#1F253D] space-y-2">
+                <span className="text-[10px] text-slate-400 dark:text-[#6B7694] uppercase font-semibold tracking-wider">Reporting Manager</span>
+                <div className="font-semibold text-slate-900 dark:text-[#F4F6FF] text-sm">{employee.managerName || 'Executive Leadership'}</div>
+                <div className="text-[11px] text-slate-500 dark:text-[#A3ABC5]">Start Date: {employee.startDate}</div>
               </div>
             </div>
 
             {/* Assigned Equipment */}
             {employee.equipment && employee.equipment.length > 0 && (
               <div className="space-y-3">
-                <h4 className="font-semibold text-slate-900 dark:text-slate-100 text-xs">Assigned Company Assets</h4>
+                <h4 className="font-semibold text-slate-900 dark:text-[#F4F6FF] text-xs">Assigned Company Assets</h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {employee.equipment.map((eq) => (
-                    <div key={eq.id} className="p-3.5 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 flex justify-between items-center">
+                    <div key={eq.id} className="p-3.5 rounded-xl bg-slate-50/50 dark:bg-[#101426] border border-slate-200/60 dark:border-[#1F253D] flex justify-between items-center">
                       <div>
-                        <div className="font-medium text-slate-900 dark:text-slate-100">{eq.assetName}</div>
-                        <div className="text-[10px] text-slate-400 font-mono">SN: {eq.serialNumber}</div>
+                        <div className="font-medium text-slate-900 dark:text-[#F4F6FF]">{eq.assetName}</div>
+                        <div className="text-[10px] text-slate-400 dark:text-[#6B7694] font-mono">SN: {eq.serialNumber}</div>
                       </div>
-                      <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 text-[10px] font-semibold">
+                      <span className="px-2.5 py-0.5 rounded-full bg-[#7568E8]/10 text-[#7568E8] border border-[#7568E8]/20 text-[10px] font-semibold">
                         {eq.status}
                       </span>
                     </div>
@@ -336,38 +336,38 @@ export const EmployeeDetail: React.FC = () => {
 
         {/* TAB 2: PRIVATE INFORMATION */}
         {activeTab === 'private' && (
-          <div className="space-y-4 text-xs text-slate-600 dark:text-slate-300">
+          <div className="space-y-4 text-xs text-slate-600 dark:text-[#A3ABC5]">
             {canViewPrivateInfo ? (
-              <div className="p-6 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 space-y-4">
-                <h4 className="font-semibold text-slate-900 dark:text-slate-100 text-xs">Confidential Personal Record</h4>
+              <div className="p-6 rounded-xl bg-slate-50/50 dark:bg-[#101426] border border-slate-200/60 dark:border-[#1F253D] space-y-4">
+                <h4 className="font-semibold text-slate-900 dark:text-[#F4F6FF] text-xs">Confidential Personal Record</h4>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <span className="text-slate-400 block text-[11px]">Full Legal Name</span>
-                    <span className="font-semibold text-slate-900 dark:text-slate-100">{employee.privateDetails?.legalName || employee.name}</span>
+                    <span className="text-slate-400 dark:text-[#6B7694] block text-[11px]">Full Legal Name</span>
+                    <span className="font-semibold text-slate-900 dark:text-[#F4F6FF]">{employee.privateDetails?.legalName || employee.name}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 block text-[11px]">Personal Email</span>
-                    <span className="font-semibold text-slate-900 dark:text-slate-100">{employee.privateDetails?.personalEmail || employee.email}</span>
+                    <span className="text-slate-400 dark:text-[#6B7694] block text-[11px]">Personal Email</span>
+                    <span className="font-semibold text-slate-900 dark:text-[#F4F6FF]">{employee.privateDetails?.personalEmail || employee.email}</span>
                   </div>
                   {employee.privateDetails?.dob && (
                     <div>
-                      <span className="text-slate-400 block text-[11px]">Date of Birth</span>
-                      <span className="font-semibold text-slate-900 dark:text-slate-100">{employee.privateDetails.dob}</span>
+                      <span className="text-slate-400 dark:text-[#6B7694] block text-[11px]">Date of Birth</span>
+                      <span className="font-semibold text-slate-900 dark:text-[#F4F6FF]">{employee.privateDetails.dob}</span>
                     </div>
                   )}
                   {employee.privateDetails?.nationality && (
                     <div>
-                      <span className="text-slate-400 block text-[11px]">Nationality</span>
-                      <span className="font-semibold text-slate-900 dark:text-slate-100">{employee.privateDetails.nationality}</span>
+                      <span className="text-slate-400 dark:text-[#6B7694] block text-[11px]">Nationality</span>
+                      <span className="font-semibold text-slate-900 dark:text-[#F4F6FF]">{employee.privateDetails.nationality}</span>
                     </div>
                   )}
                 </div>
               </div>
             ) : (
-              <div className="p-8 text-center rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 text-slate-500 space-y-2">
+              <div className="p-8 text-center rounded-xl bg-slate-50/50 dark:bg-[#101426] border border-slate-200/60 dark:border-[#1F253D] text-slate-500 space-y-2">
                 <Lock className="w-8 h-8 text-amber-500 mx-auto" />
-                <div className="font-semibold text-slate-900 dark:text-slate-100">Restricted Access Data</div>
-                <p className="text-xs text-slate-500">Private personal details are restricted to HR Officers & Administrators.</p>
+                <div className="font-semibold text-slate-900 dark:text-[#F4F6FF]">Restricted Access Data</div>
+                <p className="text-xs text-slate-500 dark:text-[#A3ABC5]">Private personal details are restricted to HR Officers & Administrators.</p>
               </div>
             )}
           </div>
@@ -375,10 +375,10 @@ export const EmployeeDetail: React.FC = () => {
 
         {/* TAB 3: CONTRACT */}
         {activeTab === 'contract' && (
-          <div className="space-y-4 text-xs text-slate-600 dark:text-slate-300">
-            <div className="p-6 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 space-y-4">
-              <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-slate-700/60 pb-3">
-                <h4 className="font-semibold text-slate-900 dark:text-slate-100 text-xs">Employment & Compensation Details</h4>
+          <div className="space-y-4 text-xs text-slate-600 dark:text-[#A3ABC5]">
+            <div className="p-6 rounded-xl bg-slate-50/50 dark:bg-[#101426] border border-slate-200/60 dark:border-[#1F253D] space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-200/60 dark:border-[#1F253D] pb-3">
+                <h4 className="font-semibold text-slate-900 dark:text-[#F4F6FF] text-xs">Employment & Compensation Details</h4>
                 {['Owner', 'Administrator', 'HR Manager'].includes(user.role) && !isEditingContract && (
                   <Button
                     onClick={() => {
@@ -399,40 +399,40 @@ export const EmployeeDetail: React.FC = () => {
               {!isEditingContract ? (
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   <div>
-                    <span className="text-slate-400 block text-[11px]">Employment Type</span>
-                    <span className="font-semibold text-blue-600 dark:text-blue-400">{employee.employmentType}</span>
+                    <span className="text-slate-400 dark:text-[#6B7694] block text-[11px]">Employment Type</span>
+                    <span className="font-semibold text-[#7568E8]">{employee.employmentType}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 block text-[11px]">Base Monthly Salary</span>
-                    <span className="font-mono font-bold text-slate-900 dark:text-slate-100">${(employee.baseSalary || 0).toLocaleString()}</span>
+                    <span className="text-slate-400 dark:text-[#6B7694] block text-[11px]">Base Monthly Salary</span>
+                    <span className="font-mono font-bold text-slate-900 dark:text-[#F4F6FF]">${(employee.baseSalary || 0).toLocaleString()}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 block text-[11px]">Pay Schedule</span>
-                    <span className="font-medium text-slate-800 dark:text-slate-200">{employee.payFrequency || 'Monthly'}</span>
+                    <span className="text-slate-400 dark:text-[#6B7694] block text-[11px]">Pay Schedule</span>
+                    <span className="font-medium text-slate-800 dark:text-[#A3ABC5]">{employee.payFrequency || 'Monthly'}</span>
                   </div>
                   <div>
-                    <span className="text-slate-400 block text-[11px]">Direct Manager</span>
-                    <span className="font-medium text-slate-800 dark:text-slate-200">{employee.managerName || 'No Direct Manager (Top-level)'}</span>
+                    <span className="text-slate-400 dark:text-[#6B7694] block text-[11px]">Direct Manager</span>
+                    <span className="font-medium text-slate-800 dark:text-[#A3ABC5]">{employee.managerName || 'No Direct Manager (Top-level)'}</span>
                   </div>
                 </div>
               ) : (
                 <div className="space-y-4 pt-2">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Base Monthly Salary ($)</label>
+                      <label className="block text-slate-700 dark:text-[#A3ABC5] font-medium mb-1 text-[11px]">Base Monthly Salary ($)</label>
                       <input
                         type="number"
                         value={editBaseSalary}
                         onChange={(e) => setEditBaseSalary(Number(e.target.value))}
-                        className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-bold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none text-xs"
+                        className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-[#161B30] border border-slate-200 dark:border-[#2A3048] text-slate-900 dark:text-[#F4F6FF] font-bold focus:ring-2 focus:ring-[#7568E8]/20 focus:border-[#7568E8] outline-none text-xs"
                       />
                     </div>
                     <div>
-                      <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Pay Schedule</label>
+                      <label className="block text-slate-700 dark:text-[#A3ABC5] font-medium mb-1 text-[11px]">Pay Schedule</label>
                       <select
                         value={editPayFrequency}
                         onChange={(e) => setEditPayFrequency(e.target.value as 'Weekly' | 'Monthly' | 'Bi-Weekly')}
-                        className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none text-xs"
+                        className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-[#161B30] border border-slate-200 dark:border-[#2A3048] text-slate-900 dark:text-[#F4F6FF] focus:ring-2 focus:ring-[#7568E8]/20 focus:border-[#7568E8] outline-none text-xs"
                       >
                         <option value="Monthly">Monthly</option>
                         <option value="Bi-Weekly">Bi-Weekly</option>
@@ -440,11 +440,11 @@ export const EmployeeDetail: React.FC = () => {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Employment Type</label>
+                      <label className="block text-slate-700 dark:text-[#A3ABC5] font-medium mb-1 text-[11px]">Employment Type</label>
                       <select
                         value={editEmploymentType}
                         onChange={(e) => setEditEmploymentType(e.target.value)}
-                        className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none text-xs"
+                        className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-[#161B30] border border-slate-200 dark:border-[#2A3048] text-slate-900 dark:text-[#F4F6FF] focus:ring-2 focus:ring-[#7568E8]/20 focus:border-[#7568E8] outline-none text-xs"
                       >
                         <option value="Full-time">Full-time</option>
                         <option value="Part-time">Part-time</option>
@@ -453,11 +453,11 @@ export const EmployeeDetail: React.FC = () => {
                       </select>
                     </div>
                     <div>
-                      <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Reporting Manager</label>
+                      <label className="block text-slate-700 dark:text-[#A3ABC5] font-medium mb-1 text-[11px]">Reporting Manager</label>
                       <select
                         value={editManagerId}
                         onChange={(e) => setEditManagerId(e.target.value)}
-                        className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none text-xs"
+                        className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-[#161B30] border border-slate-200 dark:border-[#2A3048] text-slate-900 dark:text-[#F4F6FF] focus:ring-2 focus:ring-[#7568E8]/20 focus:border-[#7568E8] outline-none text-xs"
                       >
                         <option value="">No Direct Manager (Top-level)</option>
                         {employees
@@ -471,7 +471,7 @@ export const EmployeeDetail: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-200/60 dark:border-slate-700/60">
+                  <div className="flex justify-end gap-2.5 pt-3 border-t border-slate-200/60 dark:border-[#1F253D]">
                     <Button
                       onClick={() => setIsEditingContract(false)}
                       disabled={isSavingContract}
@@ -517,22 +517,22 @@ export const EmployeeDetail: React.FC = () => {
 
         {/* TAB 4: LEAVE BALANCES */}
         {activeTab === 'leave' && (
-          <div className="space-y-4 text-xs text-slate-600 dark:text-slate-300">
-            <h4 className="font-semibold text-slate-900 dark:text-slate-100">Recorded leave requests</h4>
+          <div className="space-y-4 text-xs text-slate-600 dark:text-[#A3ABC5]">
+            <h4 className="font-semibold text-slate-900 dark:text-[#F4F6FF]">Recorded leave requests</h4>
             {employeeLeaveRequests.length > 0 ? (
-              <div className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 dark:divide-slate-800 dark:border-slate-800">
+              <div className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 dark:divide-[#1F253D] dark:border-[#1F253D]">
                 {employeeLeaveRequests.map((request) => (
-                  <div key={request.id} className="flex flex-col gap-2 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
-                    <div><p className="font-medium text-slate-900 dark:text-slate-100">{request.leaveType}</p><p className="mt-1 text-[11px] text-slate-500">{request.startDate} to {request.endDate} · {request.totalDays} day{request.totalDays === 1 ? '' : 's'}</p></div>
+                  <div key={request.id} className="flex flex-col gap-2 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between dark:bg-[#101426]">
+                    <div><p className="font-medium text-slate-900 dark:text-[#F4F6FF]">{request.leaveType}</p><p className="mt-1 text-[11px] text-slate-500 dark:text-[#6B7694]">{request.startDate} to {request.endDate} · {request.totalDays} day{request.totalDays === 1 ? '' : 's'}</p></div>
                     <StatusBadge status={request.status} />
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="rounded-xl border border-dashed border-slate-300 px-5 py-8 text-center dark:border-slate-700">
-                <Calendar className="mx-auto h-5 w-5 text-slate-400" />
-                <p className="mt-3 font-medium text-slate-900 dark:text-slate-100">No leave requests recorded</p>
-                <p className="mt-1 text-[11px] text-slate-500">Leave allocations are not inferred when no balance source is available.</p>
+              <div className="rounded-xl border border-dashed border-slate-300 px-5 py-8 text-center dark:border-[#2A3048] dark:bg-[#101426]">
+                <Calendar className="mx-auto h-5 w-5 text-slate-400 dark:text-[#6B7694]" />
+                <p className="mt-3 font-medium text-slate-900 dark:text-[#F4F6FF]">No leave requests recorded</p>
+                <p className="mt-1 text-[11px] text-slate-500 dark:text-[#6B7694]">Leave allocations are not inferred when no balance source is available.</p>
               </div>
             )}
           </div>
@@ -540,21 +540,21 @@ export const EmployeeDetail: React.FC = () => {
 
         {/* TAB 5: SKILLS */}
         {activeTab === 'skills' && (
-          <div className="space-y-4 text-xs text-slate-600 dark:text-slate-300">
-            <h4 className="font-semibold text-slate-900 dark:text-slate-100 text-xs">Verified Technical Competencies</h4>
+          <div className="space-y-4 text-xs text-slate-600 dark:text-[#A3ABC5]">
+            <h4 className="font-semibold text-slate-900 dark:text-[#F4F6FF] text-xs">Verified Technical Competencies</h4>
             {employee.skills && employee.skills.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {employee.skills.map((sk) => (
-                  <div key={sk.name} className="p-3.5 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 flex justify-between items-center">
-                    <span className="font-medium text-slate-900 dark:text-slate-100">{sk.name}</span>
-                    <span className="px-2.5 py-0.5 rounded-full bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 text-[10px] font-semibold">
+                  <div key={sk.name} className="p-3.5 rounded-xl bg-slate-50/50 dark:bg-[#101426] border border-slate-200/60 dark:border-[#1F253D] flex justify-between items-center">
+                    <span className="font-medium text-slate-900 dark:text-[#F4F6FF]">{sk.name}</span>
+                    <span className="px-2.5 py-0.5 rounded-full bg-[#7568E8]/10 text-[#7568E8] border border-[#7568E8]/20 text-[10px] font-semibold">
                       {sk.level}
                     </span>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="p-6 text-center rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 text-slate-500">
+              <div className="p-6 text-center rounded-xl bg-slate-50/50 dark:bg-[#101426] border border-slate-200/60 dark:border-[#1F253D] text-slate-500 dark:text-[#6B7694]">
                 No specific skills logged for this employee record yet.
               </div>
             )}

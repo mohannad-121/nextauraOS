@@ -89,30 +89,30 @@ export const AttendanceApp: React.FC = () => {
 
   if (isKioskMode) {
     return (
-      <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col items-center justify-center p-6 space-y-8">
+      <div className="min-h-screen bg-slate-50 dark:bg-[#090B1A] text-slate-900 dark:text-[#F4F6FF] flex flex-col items-center justify-center p-6 space-y-8">
         <button
           onClick={() => setIsKioskMode(false)}
-          className="absolute top-6 left-6 px-4 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 shadow-sm"
+          className="absolute top-6 left-6 px-4 py-2 rounded-xl bg-white dark:bg-[#161B30] border border-slate-200 dark:border-[#1F253D] text-xs font-semibold text-slate-600 dark:text-[#A3ABC5] hover:text-slate-900 dark:hover:text-[#F4F6FF] shadow-sm transition-colors"
         >
           Exit Kiosk Mode
         </button>
 
         <div className="text-center space-y-2">
-          <div className="w-14 h-14 rounded-2xl bg-blue-50 text-blue-600 dark:bg-blue-950/50 dark:text-blue-400 border border-blue-200 dark:border-blue-800 flex items-center justify-center mx-auto">
+          <div className="w-14 h-14 rounded-2xl bg-[#7568E8]/10 text-[#7568E8] border border-[#7568E8]/20 flex items-center justify-center mx-auto">
             <Monitor className="w-7 h-7" />
           </div>
           <h1 className="text-2xl font-bold">San Francisco HQ Attendance Kiosk</h1>
-          <p className="text-xs text-slate-500">Enter your 4-digit employee PIN or tap badge to check in.</p>
+          <p className="text-xs text-slate-500 dark:text-[#A3ABC5]">Enter your 4-digit employee PIN or tap badge to check in.</p>
         </div>
 
-        <div className="p-8 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-6 w-full max-w-sm">
+        <div className="p-8 rounded-2xl bg-white dark:bg-[#161B30] border border-slate-200/80 dark:border-[#1F253D] shadow-sm space-y-6 w-full max-w-sm">
           {kioskStatusMessage && (
-            <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300 text-xs font-medium text-center">
+            <div className="p-3.5 rounded-xl bg-emerald-500/10 dark:bg-emerald-950/40 border border-emerald-500/20 dark:border-emerald-800 text-emerald-700 dark:text-[#23C99C] text-xs font-medium text-center">
               {kioskStatusMessage}
             </div>
           )}
 
-          <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700 text-center font-mono text-3xl font-bold tracking-widest text-slate-900 dark:text-slate-100">
+          <div className="p-4 rounded-xl bg-slate-50 dark:bg-[#101426] border border-slate-200/60 dark:border-[#2A3048] text-center font-mono text-3xl font-bold tracking-widest text-slate-900 dark:text-[#F4F6FF]">
             {pinCode.padEnd(4, '•')}
           </div>
 
@@ -125,7 +125,7 @@ export const AttendanceApp: React.FC = () => {
                   else if (btn === 'OK') handleKioskSubmit();
                   else if (pinCode.length < 4) setPinCode((prev) => prev + btn);
                 }}
-                className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 border border-slate-200/60 dark:border-slate-700 text-base font-bold text-slate-900 dark:text-slate-100 transition-colors"
+                className="p-4 rounded-xl bg-slate-50 dark:bg-[#101426] hover:bg-slate-100 dark:hover:bg-[#1F253D] border border-slate-200/60 dark:border-[#2A3048] text-base font-bold text-slate-900 dark:text-[#F4F6FF] transition-colors"
               >
                 {btn}
               </button>
@@ -154,23 +154,23 @@ export const AttendanceApp: React.FC = () => {
       />
 
       {/* Live Clock-In Action Banner */}
-      <div className="p-6 sm:p-8 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
+      <div className="p-6 sm:p-8 rounded-2xl bg-white dark:bg-[#161B30] border border-slate-200/80 dark:border-[#1F253D] shadow-sm flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="flex items-center gap-5">
-          <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200/60 dark:border-slate-700 text-center">
-            <span className="text-[10px] text-slate-400 uppercase font-semibold tracking-wider block">Session Timer</span>
-            <span className="text-3xl font-bold font-mono text-blue-600 dark:text-blue-400 tracking-wider">
+          <div className="p-4 rounded-xl bg-slate-50 dark:bg-[#101426] border border-slate-200/60 dark:border-[#1F253D] text-center">
+            <span className="text-[10px] text-slate-400 dark:text-[#6B7694] uppercase font-semibold tracking-wider block">Session Timer</span>
+            <span className="text-3xl font-bold font-mono text-[#7568E8] tracking-wider">
               {formatTimer(secondsWorked)}
             </span>
           </div>
 
           <div>
             <div className="flex items-center gap-2">
-              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
-              <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#08B894] animate-pulse" />
+              <h2 className="text-lg font-bold text-slate-900 dark:text-[#F4F6FF]">
                 {isCurrentlyWorking ? (isOnBreak ? `On Break — ${user.name}` : `Checked In — ${user.name}`) : 'Ready to Start Work Day'}
               </h2>
             </div>
-            <p className="text-xs text-slate-500 mt-0.5">
+            <p className="text-xs text-slate-500 dark:text-[#A3ABC5] mt-0.5">
               Work Location: San Francisco HQ (Office IP 192.168.1.1)
             </p>
           </div>
@@ -180,7 +180,7 @@ export const AttendanceApp: React.FC = () => {
           {isCurrentlyWorking && (
             <Button
               onClick={handleToggleBreak}
-              variant={isOnBreak ? "secondary" : "secondary"}
+              variant="secondary"
               size="md"
               icon={<Coffee className="w-4 h-4" />}
             >
@@ -200,13 +200,13 @@ export const AttendanceApp: React.FC = () => {
       </div>
 
       {/* Attendance Records Table */}
-      <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
-        <div className="p-4 border-b border-slate-100 dark:border-slate-800 font-semibold text-xs text-slate-900 dark:text-slate-100">
+      <div className="rounded-2xl bg-white dark:bg-[#161B30] border border-slate-200/80 dark:border-[#1F253D] shadow-sm overflow-hidden">
+        <div className="p-4 border-b border-slate-100 dark:border-[#1F253D] font-semibold text-xs text-slate-900 dark:text-[#F4F6FF]">
           Today's Attendance Logs
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-start text-xs">
-            <thead className="bg-slate-50/70 dark:bg-slate-800/40 text-[11px] font-semibold text-slate-500 border-b border-slate-200/80 dark:border-slate-800">
+            <thead className="bg-slate-50/70 dark:bg-[#101426] text-[11px] font-semibold text-slate-500 dark:text-[#A3ABC5] border-b border-slate-200/80 dark:border-[#1F253D]">
               <tr>
                 <th className="p-3.5 text-start">Employee</th>
                 <th className="p-3.5 text-start">Check In</th>
@@ -216,20 +216,20 @@ export const AttendanceApp: React.FC = () => {
                 <th className="p-3.5 text-center">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            <tbody className="divide-y divide-slate-100 dark:divide-[#1F253D]">
               {attendanceRecords.map((att) => (
-                <tr key={att.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                <tr key={att.id} className="hover:bg-slate-50/50 dark:hover:bg-[#101426]/60 transition-colors">
                   <td className="p-3.5 flex items-center gap-2.5">
                     <Avatar src={att.employeeAvatar} name={att.employeeName} className="w-7 h-7 rounded-lg text-xs" />
                     <div>
-                      <div className="font-semibold text-slate-900 dark:text-slate-100">{att.employeeName}</div>
-                      <div className="text-[11px] text-slate-500">{att.department}</div>
+                      <div className="font-semibold text-slate-900 dark:text-[#F4F6FF]">{att.employeeName}</div>
+                      <div className="text-[11px] text-slate-500 dark:text-[#A3ABC5]">{att.department}</div>
                     </div>
                   </td>
-                  <td className="p-3.5 font-mono text-blue-600 dark:text-blue-400 font-semibold">{att.checkIn}</td>
-                  <td className="p-3.5 font-mono text-slate-500">{att.checkOut || 'In Session'}</td>
-                  <td className="p-3.5 text-center font-mono font-semibold text-slate-900 dark:text-slate-100">{att.workedHours} hrs</td>
-                  <td className="p-3.5 text-center text-slate-500">{att.locationType}</td>
+                  <td className="p-3.5 font-mono text-[#7568E8] font-semibold">{att.checkIn}</td>
+                  <td className="p-3.5 font-mono text-slate-500 dark:text-[#6B7694]">{att.checkOut || 'In Session'}</td>
+                  <td className="p-3.5 text-center font-mono font-semibold text-slate-900 dark:text-[#F4F6FF]">{att.workedHours} hrs</td>
+                  <td className="p-3.5 text-center text-slate-500 dark:text-[#A3ABC5]">{att.locationType}</td>
                   <td className="p-3.5 text-center">
                     <StatusBadge status={att.status} />
                   </td>

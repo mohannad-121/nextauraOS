@@ -128,23 +128,23 @@ export const CustomerServicesPage: React.FC = () => {
             return (
               <div
                 key={service.key}
-                className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col justify-between space-y-4 relative overflow-hidden"
+                className="p-5 rounded-2xl bg-white dark:bg-[#161B30] border border-slate-200/80 dark:border-[#1F253D] shadow-sm flex flex-col justify-between space-y-4 relative overflow-hidden"
               >
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 border border-indigo-200/60 dark:border-indigo-800/50 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-xl bg-[#7568E8]/10 text-[#7568E8] dark:text-[#867AF0] border border-[#7568E8]/20 flex items-center justify-center">
                       <Icon className="w-5 h-5" />
                     </div>
                     <div>
-                      <div className="font-semibold text-xs text-slate-900 dark:text-slate-100">{service.name}</div>
-                      <div className="text-[10px] font-mono text-indigo-600 dark:text-indigo-400 capitalize">{service.category}</div>
+                      <div className="font-semibold text-xs text-slate-900 dark:text-[#F4F6FF]">{service.name}</div>
+                      <div className="text-[10px] font-mono text-[#7568E8] dark:text-[#867AF0] capitalize">{service.category}</div>
                     </div>
                   </div>
 
                   <StatusBadge status="Active" variant="success" />
                 </div>
 
-                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{service.description}</p>
+                <p className="text-xs text-slate-500 dark:text-[#A3ABC5] leading-relaxed">{service.description}</p>
               </div>
             );
           })}
@@ -153,8 +153,8 @@ export const CustomerServicesPage: React.FC = () => {
 
       {/* AVAILABLE SERVICES GRID */}
       {availableServiceDefs.length > 0 && (
-        <div className="space-y-4 pt-6 border-t border-slate-200/80 dark:border-slate-800">
-          <h2 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+        <div className="space-y-4 pt-6 border-t border-slate-200/80 dark:border-[#1F253D]">
+          <h2 className="text-sm font-semibold text-slate-900 dark:text-[#F4F6FF]">
             Available to Enable ({availableServiceDefs.length})
           </h2>
 
@@ -164,21 +164,21 @@ export const CustomerServicesPage: React.FC = () => {
               return (
                 <div
                   key={service.key}
-                  className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col justify-between space-y-4 hover:border-slate-300 dark:hover:border-slate-700 transition-colors"
+                  className="p-5 rounded-2xl bg-white dark:bg-[#161B30] border border-slate-200/80 dark:border-[#1F253D] shadow-sm flex flex-col justify-between space-y-4 hover:border-slate-300 dark:hover:border-[#2A3048] transition-colors"
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-950 border border-slate-200/60 dark:border-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center">
+                      <div className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-[#101426] border border-slate-200/60 dark:border-[#2A3048] text-slate-500 dark:text-[#A3ABC5] flex items-center justify-center">
                         <Icon className="w-5 h-5" />
                       </div>
                       <div>
-                        <div className="font-semibold text-xs text-slate-900 dark:text-slate-100">{service.name}</div>
-                        <div className="text-[10px] font-mono text-slate-400 capitalize">{service.category}</div>
+                        <div className="font-semibold text-xs text-slate-900 dark:text-[#F4F6FF]">{service.name}</div>
+                        <div className="text-[10px] font-mono text-slate-400 dark:text-[#6B7694] capitalize">{service.category}</div>
                       </div>
                     </div>
                   </div>
 
-                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{service.description}</p>
+                  <p className="text-xs text-slate-500 dark:text-[#A3ABC5] leading-relaxed">{service.description}</p>
 
                   <Button
                     variant="outline"
@@ -212,14 +212,14 @@ export const CustomerServicesPage: React.FC = () => {
             )}
 
             {loadingCatalogEntitlements ? (
-              <div className="py-12 text-center text-xs font-medium text-slate-500 dark:text-slate-400">Loading plan access…</div>
+              <div className="py-12 text-center text-xs font-medium text-slate-500 dark:text-[#A3ABC5]">Loading plan access…</div>
             ) : <>
             {isFreePlan && (
               <div className="flex items-start gap-3 rounded-xl border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-200">
                 <Lock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                 <div>
                   <p className="font-semibold">{freePlanMessage}</p>
-                  <button type="button" onClick={() => navigate('pricing')} className="mt-2 font-semibold text-blue-700 hover:text-blue-800 hover:underline dark:text-blue-300">Upgrade to Standard</button>
+                  <button type="button" onClick={() => navigate('pricing')} className="mt-2 font-semibold text-[#7568E8] hover:underline dark:text-[#867AF0]">Upgrade to Standard</button>
                 </div>
               </div>
             )}
@@ -244,22 +244,22 @@ export const CustomerServicesPage: React.FC = () => {
                           toggleSelectService(service.key);
                         }
                       }}
-                      className={`p-4 rounded-xl border transition-all flex items-start gap-3 ${isLocked ? 'cursor-not-allowed border-slate-200/70 bg-slate-50/70 text-slate-400 opacity-70 dark:border-slate-800 dark:bg-slate-950/40' : 'cursor-pointer'} ${
+                      className={`p-4 rounded-xl border transition-all flex items-start gap-3 ${isLocked ? 'cursor-not-allowed border-slate-200/70 bg-slate-50/70 text-slate-400 opacity-70 dark:border-[#1F253D] dark:bg-[#101426]/40' : 'cursor-pointer'} ${
                         isSelected
-                          ? 'bg-indigo-50/60 dark:bg-indigo-950/30 border-indigo-500/50 text-slate-900 dark:text-slate-100 shadow-2xs'
-                          : 'bg-slate-50/50 dark:bg-slate-950/60 border-slate-200/80 dark:border-slate-800 hover:border-slate-300 text-slate-600 dark:text-slate-400'
+                          ? 'bg-[#7568E8]/10 dark:bg-[#7568E8]/15 border-[#7568E8]/50 text-slate-900 dark:text-[#F4F6FF] shadow-xs'
+                          : 'bg-slate-50/50 dark:bg-[#101426] border-slate-200/80 dark:border-[#1F253D] hover:border-slate-300 dark:hover:border-[#2A3048] text-slate-600 dark:text-[#A3ABC5]'
                       }`}
                     >
-                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isSelected ? 'bg-indigo-600 text-white' : 'bg-slate-200 dark:bg-slate-800 text-slate-500'}`}>
+                      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${isSelected ? 'bg-[#7568E8] text-white' : 'bg-slate-200 dark:bg-[#1F253D] text-slate-500 dark:text-[#A3ABC5]'}`}>
                         <Icon className="w-4 h-4" />
                       </div>
                       <div className="flex-1">
-                        <div className="font-semibold text-xs text-slate-900 dark:text-slate-100 flex items-center justify-between">
+                        <div className="font-semibold text-xs text-slate-900 dark:text-[#F4F6FF] flex items-center justify-between">
                           <span>{service.name}</span>
-                          {isLocked && <Lock className="h-3.5 w-3.5 text-amber-700 dark:text-amber-300" aria-label="Requires an upgrade" />}
-                          <span className={`w-4 h-4 rounded text-[10px] flex items-center justify-center ${isSelected ? 'bg-indigo-600 text-white font-bold' : 'border border-slate-300 dark:border-slate-700 text-transparent'}`}>✓</span>
+                          {isLocked && <Lock className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400" aria-label="Requires an upgrade" />}
+                          <span className={`w-4 h-4 rounded text-[10px] flex items-center justify-center ${isSelected ? 'bg-[#7568E8] text-white font-bold' : 'border border-slate-300 dark:border-[#2A3048] text-transparent'}`}>✓</span>
                         </div>
-                        <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-1">{service.description}</div>
+                        <div className="text-[11px] text-slate-500 dark:text-[#A3ABC5] mt-1">{service.description}</div>
                       </div>
                     </div>
                   );
@@ -268,8 +268,8 @@ export const CustomerServicesPage: React.FC = () => {
             </div>
             </>}
 
-            <div className="flex items-center justify-between border-t border-slate-100 dark:border-slate-800 pt-4">
-              <span className="text-xs font-mono text-slate-500 dark:text-slate-400">{selectedKeys.length} service(s) selected</span>
+            <div className="flex items-center justify-between border-t border-slate-100 dark:border-[#1F253D] pt-4">
+              <span className="text-xs font-mono text-slate-500 dark:text-[#A3ABC5]">{selectedKeys.length} service(s) selected</span>
               <div className="flex items-center gap-3">
                 <Button
                   variant="outline"

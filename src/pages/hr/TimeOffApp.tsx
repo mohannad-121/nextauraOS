@@ -65,33 +65,33 @@ export const TimeOffApp: React.FC = () => {
 
       {/* Manager Approval Queue */}
       <div className="space-y-4">
-        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Pending Manager Leave Requests ({pendingRequests.length})</h3>
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-[#F4F6FF]">Pending Manager Leave Requests ({pendingRequests.length})</h3>
 
         {pendingRequests.length === 0 ? (
-          <div className="p-8 text-center rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 text-slate-500 text-xs shadow-sm">
+          <div className="p-8 text-center rounded-2xl bg-white dark:bg-[#161B30] border border-slate-200/80 dark:border-[#1F253D] text-slate-500 dark:text-[#6B7694] text-xs shadow-sm">
             No pending time-off requests needing review.
           </div>
         ) : (
           <div className="space-y-4">
             {pendingRequests.map((req) => (
-              <div key={req.id} className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-4">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div key={req.id} className="p-6 rounded-2xl bg-white dark:bg-[#161B30] border border-slate-200/80 dark:border-[#1F253D] shadow-sm space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-[#1F253D] pb-4">
                   <div className="flex items-center gap-3">
                     <Avatar src={req.employeeAvatar} name={req.employeeName} className="w-10 h-10 rounded-xl" />
                     <div>
-                      <h4 className="text-sm font-semibold text-slate-900 dark:text-slate-100">{req.employeeName}</h4>
-                      <div className="text-xs text-slate-500">{req.department} • {req.leaveType}</div>
+                      <h4 className="text-sm font-semibold text-slate-900 dark:text-[#F4F6FF]">{req.employeeName}</h4>
+                      <div className="text-xs text-slate-500 dark:text-[#A3ABC5]">{req.department} • {req.leaveType}</div>
                     </div>
                   </div>
 
                   <div className="text-right">
-                    <div className="text-lg font-bold text-blue-600 dark:text-blue-400 font-mono">{req.totalDays} Days</div>
-                    <div className="text-xs text-slate-500">{req.startDate} to {req.endDate}</div>
+                    <div className="text-lg font-bold text-[#7568E8] font-mono">{req.totalDays} Days</div>
+                    <div className="text-xs text-slate-500 dark:text-[#A3ABC5]">{req.startDate} to {req.endDate}</div>
                   </div>
                 </div>
 
                 <div className="flex items-center justify-between text-xs pt-2">
-                  <span className="text-slate-500 italic">" Reason: {req.reason} "</span>
+                  <span className="text-slate-500 dark:text-[#A3ABC5] italic">" Reason: {req.reason} "</span>
                   <div className="flex items-center gap-2">
                     <Button
                       onClick={() => updateTimeOffStatus(req.id, 'Rejected')}
@@ -116,11 +116,11 @@ export const TimeOffApp: React.FC = () => {
       </div>
 
       {/* Past Requests Log */}
-      <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden space-y-3 p-6">
-        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Approved & Completed Leave History</h3>
+      <div className="rounded-2xl bg-white dark:bg-[#161B30] border border-slate-200/80 dark:border-[#1F253D] shadow-sm overflow-hidden space-y-3 p-6">
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-[#F4F6FF]">Approved & Completed Leave History</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-start text-xs">
-            <thead className="bg-slate-50/70 dark:bg-slate-800/40 text-[11px] font-semibold text-slate-500 border-b border-slate-200/80 dark:border-slate-800">
+            <thead className="bg-slate-50/70 dark:bg-[#101426] text-[11px] font-semibold text-slate-500 dark:text-[#A3ABC5] border-b border-slate-200/80 dark:border-[#1F253D]">
               <tr>
                 <th className="p-3 text-start">Employee</th>
                 <th className="p-3 text-start">Leave Type</th>
@@ -129,16 +129,16 @@ export const TimeOffApp: React.FC = () => {
                 <th className="p-3 text-center">Status</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
+            <tbody className="divide-y divide-slate-100 dark:divide-[#1F253D] font-medium">
               {pastRequests.map((req) => (
-                <tr key={req.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                <tr key={req.id} className="hover:bg-slate-50/50 dark:hover:bg-[#101426]/60 transition-colors">
                   <td className="p-3 flex items-center gap-2">
                     <Avatar src={req.employeeAvatar} name={req.employeeName} className="w-6 h-6 rounded-md text-[10px]" />
-                    <span className="font-medium text-slate-900 dark:text-slate-100">{req.employeeName}</span>
+                    <span className="font-medium text-slate-900 dark:text-[#F4F6FF]">{req.employeeName}</span>
                   </td>
-                  <td className="p-3 text-blue-600 dark:text-blue-400">{req.leaveType}</td>
-                  <td className="p-3 text-slate-500">{req.startDate} - {req.endDate}</td>
-                  <td className="p-3 text-center font-mono font-semibold text-slate-900 dark:text-slate-100">{req.totalDays}</td>
+                  <td className="p-3 text-[#7568E8]">{req.leaveType}</td>
+                  <td className="p-3 text-slate-500 dark:text-[#A3ABC5]">{req.startDate} - {req.endDate}</td>
+                  <td className="p-3 text-center font-mono font-semibold text-slate-900 dark:text-[#F4F6FF]">{req.totalDays}</td>
                   <td className="p-3 text-center">
                     <StatusBadge status={req.status} />
                   </td>
@@ -158,10 +158,10 @@ export const TimeOffApp: React.FC = () => {
           subtitle="Select leave category and date range."
           maxWidth="md"
         >
-          <div className="space-y-4 text-xs text-slate-600 dark:text-slate-300">
+          <div className="space-y-4 text-xs text-slate-600 dark:text-[#A3ABC5]">
             <div>
-              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Leave Type</label>
-              <select value={leaveType} onChange={(e) => setLeaveType(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-xs">
+              <label className="block text-slate-700 dark:text-[#A3ABC5] font-medium mb-1 text-[11px]">Leave Type</label>
+              <select value={leaveType} onChange={(e) => setLeaveType(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-[#101426] border border-slate-200 dark:border-[#2A3048] text-slate-900 dark:text-[#F4F6FF] text-xs focus:ring-2 focus:ring-[#7568E8]/20 focus:border-[#7568E8] outline-none">
                 <option value="Annual Leave">Annual Paid Leave</option>
                 <option value="Sick Leave">Sick Leave</option>
                 <option value="Personal Leave">Personal Leave</option>
@@ -171,21 +171,21 @@ export const TimeOffApp: React.FC = () => {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Start Date</label>
-                <input type="date" required value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-xs" />
+                <label className="block text-slate-700 dark:text-[#A3ABC5] font-medium mb-1 text-[11px]">Start Date</label>
+                <input type="date" required value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-[#101426] border border-slate-200 dark:border-[#2A3048] text-slate-900 dark:text-[#F4F6FF] text-xs focus:ring-2 focus:ring-[#7568E8]/20 focus:border-[#7568E8] outline-none" />
               </div>
               <div>
-                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">End Date</label>
-                <input type="date" required min={startDate || undefined} value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-xs" />
+                <label className="block text-slate-700 dark:text-[#A3ABC5] font-medium mb-1 text-[11px]">End Date</label>
+                <input type="date" required min={startDate || undefined} value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-[#101426] border border-slate-200 dark:border-[#2A3048] text-slate-900 dark:text-[#F4F6FF] text-xs focus:ring-2 focus:ring-[#7568E8]/20 focus:border-[#7568E8] outline-none" />
               </div>
             </div>
 
             <div>
-              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Reason / Notes</label>
-              <textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-xs" />
+              <label className="block text-slate-700 dark:text-[#A3ABC5] font-medium mb-1 text-[11px]">Reason / Notes</label>
+              <textarea rows={3} value={reason} onChange={(e) => setReason(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-[#101426] border border-slate-200 dark:border-[#2A3048] text-slate-900 dark:text-[#F4F6FF] text-xs focus:ring-2 focus:ring-[#7568E8]/20 focus:border-[#7568E8] outline-none" />
             </div>
 
-            <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-200/80 dark:border-slate-800">
+            <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-200/80 dark:border-[#1F253D]">
               <Button onClick={() => setModalOpen(false)} variant="ghost" size="sm">Cancel</Button>
               <Button onClick={handleCreate} disabled={!startDate || !endDate || endDate < startDate} variant="primary" size="sm">Submit Request</Button>
             </div>

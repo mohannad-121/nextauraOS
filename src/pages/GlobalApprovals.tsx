@@ -45,27 +45,27 @@ export const GlobalApprovals: React.FC = () => {
           const isRejected = rejectedIds.includes(item.id);
 
           return (
-            <div key={item.id} className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-4 hover:border-slate-300 dark:hover:border-slate-700 transition-all">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-4 gap-4">
+            <div key={item.id} className="p-6 rounded-2xl bg-white dark:bg-[#161B30] border border-slate-200/80 dark:border-[#1F253D] shadow-sm space-y-4 hover:border-slate-300 dark:hover:border-[#2A3048] transition-all">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 dark:border-[#1F253D] pb-4 gap-4">
                 <div>
                   <div className="flex items-center gap-2">
                     <StatusBadge status={item.module} variant="info" />
-                    <span className="text-xs text-slate-500 dark:text-slate-400">• Requested by {item.requestedBy}</span>
+                    <span className="text-xs text-slate-500 dark:text-[#A3ABC5]">• Requested by {item.requestedBy}</span>
                   </div>
-                  <h3 className="text-base font-bold text-slate-900 dark:text-slate-100 mt-1">{item.title}</h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{item.description}</p>
+                  <h3 className="text-base font-bold text-slate-900 dark:text-[#F4F6FF] mt-1">{item.title}</h3>
+                  <p className="text-xs text-slate-500 dark:text-[#A3ABC5] mt-0.5">{item.description}</p>
                 </div>
 
                 {item.amount && (
                   <div className="sm:text-end shrink-0">
-                    <span className="text-[10px] text-slate-400 dark:text-slate-500 uppercase block font-medium">Value</span>
-                    <span className="text-xl font-bold text-slate-900 dark:text-slate-100 font-mono">${item.amount.toLocaleString()}</span>
+                    <span className="text-[10px] text-slate-400 dark:text-[#A3ABC5] uppercase block font-medium">Value</span>
+                    <span className="text-xl font-bold text-slate-900 dark:text-[#F4F6FF] font-mono">${item.amount.toLocaleString()}</span>
                   </div>
                 )}
               </div>
 
               <div className="flex items-center justify-between text-xs pt-1">
-                <span className="text-slate-400 dark:text-slate-500 font-mono">Date: {item.date}</span>
+                <span className="text-slate-400 dark:text-[#6B7694] font-mono">Date: {item.date}</span>
 
                 {isApproved ? (
                   <StatusBadge status="Approved & Actioned" variant="success" />
@@ -82,6 +82,7 @@ export const GlobalApprovals: React.FC = () => {
                       Reject
                     </Button>
                     <Button
+                      variant="primary"
                       size="sm"
                       onClick={() => handleApprove(item.id, item.module)}
                       icon={<CheckCircle2 className="w-3.5 h-3.5" />}

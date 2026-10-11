@@ -350,7 +350,7 @@ export const PayrollApp: React.FC = () => {
       />
 
       {/* Segmented Subview Navigation */}
-      <div className="flex items-center gap-1.5 border-b border-slate-200/80 dark:border-slate-800 pb-3 overflow-x-auto">
+      <div className="flex items-center gap-1.5 border-b border-slate-200/80 dark:border-[#1F253D] pb-3 overflow-x-auto">
         {[
           { id: 'overview', label: 'Payroll Control Center' },
           { id: 'runs', label: 'Monthly Runs' },
@@ -361,8 +361,8 @@ export const PayrollApp: React.FC = () => {
             onClick={() => navigate('payroll', sub.id)}
             className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
               activeSubView === sub.id
-                ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                ? 'bg-slate-900 text-white dark:bg-[#7568E8] dark:text-white shadow-[0_0_12px_rgba(117,104,232,0.35)]'
+                : 'text-slate-600 dark:text-[#A3ABC5] hover:text-slate-900 dark:hover:text-[#F4F6FF] hover:bg-slate-100 dark:hover:bg-[#101426]'
             }`}
           >
             {sub.label}
@@ -385,15 +385,15 @@ export const PayrollApp: React.FC = () => {
             <>
               {/* Active Run Banner */}
               {activeRun && (
-                <div className="p-6 sm:p-8 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-6">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-5">
+                <div className="p-6 sm:p-8 rounded-2xl bg-white dark:bg-[#161B30] border border-slate-200/80 dark:border-[#1F253D] shadow-sm space-y-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 dark:border-[#1F253D] pb-5">
                     <div>
-                      <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider flex items-center gap-1.5">
+                      <span className="text-[10px] font-semibold text-[#7568E8] uppercase tracking-wider flex items-center gap-1.5">
                         <Building2 className="w-3.5 h-3.5" />
                         ACTIVE PAYROLL RUN
                       </span>
-                      <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 mt-1">{activeRun.periodName}</h2>
-                      <div className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      <h2 className="text-xl font-bold text-slate-900 dark:text-[#F4F6FF] mt-1">{activeRun.periodName}</h2>
+                      <div className="text-xs text-slate-500 dark:text-[#A3ABC5] mt-0.5">
                         Pay Date: {activeRun.payDate} • {activeRun.employeeCount || selectedRunPayslips.length} Employees Included
                       </div>
                     </div>
@@ -416,35 +416,35 @@ export const PayrollApp: React.FC = () => {
 
                   {/* Metrics Summary */}
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
-                    <div className="p-4 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800">
-                      <span className="text-[10px] text-slate-400 uppercase font-semibold tracking-wider block">Gross Compensation</span>
-                      <span className="text-lg font-bold text-slate-900 dark:text-slate-100 font-mono">${(activeRun.grossPayTotal || 0).toLocaleString()}</span>
+                    <div className="p-4 rounded-xl bg-slate-50/50 dark:bg-[#101426] border border-slate-200/60 dark:border-[#1F253D]">
+                      <span className="text-[10px] text-slate-400 dark:text-[#6B7694] uppercase font-semibold tracking-wider block">Gross Compensation</span>
+                      <span className="text-lg font-bold text-slate-900 dark:text-[#F4F6FF] font-mono">${(activeRun.grossPayTotal || 0).toLocaleString()}</span>
                     </div>
-                    <div className="p-4 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800">
-                      <span className="text-[10px] text-slate-400 uppercase font-semibold tracking-wider block">Tax & Benefit Deductions</span>
+                    <div className="p-4 rounded-xl bg-slate-50/50 dark:bg-[#101426] border border-slate-200/60 dark:border-[#1F253D]">
+                      <span className="text-[10px] text-slate-400 dark:text-[#6B7694] uppercase font-semibold tracking-wider block">Tax & Benefit Deductions</span>
                       <span className="text-lg font-bold text-rose-600 dark:text-rose-400 font-mono">-${(activeRun.deductionsTotal || 0).toLocaleString()}</span>
                     </div>
-                    <div className="p-4 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800">
-                      <span className="text-[10px] text-slate-400 uppercase font-semibold tracking-wider block">Employer Tax Match</span>
-                      <span className="text-lg font-bold text-slate-700 dark:text-slate-300 font-mono">${(activeRun.employerCostsTotal || 0).toLocaleString()}</span>
+                    <div className="p-4 rounded-xl bg-slate-50/50 dark:bg-[#101426] border border-slate-200/60 dark:border-[#1F253D]">
+                      <span className="text-[10px] text-slate-400 dark:text-[#6B7694] uppercase font-semibold tracking-wider block">Employer Tax Match</span>
+                      <span className="text-lg font-bold text-slate-700 dark:text-[#A3ABC5] font-mono">${(activeRun.employerCostsTotal || 0).toLocaleString()}</span>
                     </div>
-                    <div className="p-4 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800">
-                      <span className="text-[10px] text-emerald-600 dark:text-emerald-400 uppercase font-semibold tracking-wider block">Net Direct Disbursement</span>
-                      <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400 font-mono">${(activeRun.netPayTotal || 0).toLocaleString()}</span>
+                    <div className="p-4 rounded-xl bg-slate-50/50 dark:bg-[#101426] border border-slate-200/60 dark:border-[#1F253D]">
+                      <span className="text-[10px] text-emerald-600 dark:text-[#23C99C] uppercase font-semibold tracking-wider block">Net Direct Disbursement</span>
+                      <span className="text-xl font-bold text-emerald-600 dark:text-[#23C99C] font-mono">${(activeRun.netPayTotal || 0).toLocaleString()}</span>
                     </div>
                   </div>
                 </div>
               )}
 
               {/* Individual Employee Payslips Table */}
-              <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
-                <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Individual Employee Payslips</h3>
+              <div className="rounded-2xl bg-white dark:bg-[#161B30] border border-slate-200/80 dark:border-[#1F253D] shadow-sm overflow-hidden">
+                <div className="p-4 border-b border-slate-100 dark:border-[#1F253D] flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-[#F4F6FF]">Individual Employee Payslips</h3>
                   {payrollRuns.length > 1 && (
                     <select
                       value={selectedRunId}
                       onChange={(e) => setSelectedRunId(e.target.value)}
-                      className="px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-800 dark:text-slate-200 focus:outline-none"
+                      className="px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-[#101426] border border-slate-200 dark:border-[#2A3048] text-xs text-slate-800 dark:text-[#F4F6FF] focus:outline-none"
                     >
                       {payrollRuns.map((run) => (
                         <option key={run.id} value={run.id}>
@@ -456,13 +456,13 @@ export const PayrollApp: React.FC = () => {
                 </div>
 
                 {isLoadingPayslips ? (
-                  <div className="p-8 text-center text-slate-500 text-xs">Loading payslips...</div>
+                  <div className="p-8 text-center text-slate-500 dark:text-[#6B7694] text-xs">Loading payslips...</div>
                 ) : selectedRunPayslips.length === 0 ? (
-                  <div className="p-8 text-center text-slate-500 text-xs">No payslips recorded for this run.</div>
+                  <div className="p-8 text-center text-slate-500 dark:text-[#6B7694] text-xs">No payslips recorded for this run.</div>
                 ) : (
                   <div className="overflow-x-auto">
                     <table className="w-full text-start text-xs">
-                      <thead className="bg-slate-50/70 dark:bg-slate-800/40 text-[11px] font-semibold text-slate-500 border-b border-slate-200/80 dark:border-slate-800">
+                      <thead className="bg-slate-50/70 dark:bg-[#101426] text-[11px] font-semibold text-slate-500 dark:text-[#A3ABC5] border-b border-slate-200/80 dark:border-[#1F253D]">
                         <tr>
                           <th className="p-3.5 text-start">Employee</th>
                           <th className="p-3.5 text-start">Department</th>
@@ -473,22 +473,22 @@ export const PayrollApp: React.FC = () => {
                           <th className="p-3.5 text-center">Payslip</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                      <tbody className="divide-y divide-slate-100 dark:divide-[#1F253D]">
                         {selectedRunPayslips.map((ps) => (
-                          <tr key={ps.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                          <tr key={ps.id} className="hover:bg-slate-50/50 dark:hover:bg-[#101426]/60 transition-colors">
                             <td className="p-3.5">
-                              <div className="font-semibold text-slate-900 dark:text-slate-100">{ps.employeeName}</div>
-                              <div className="text-[11px] text-slate-500">{ps.employeeRole}</div>
+                              <div className="font-semibold text-slate-900 dark:text-[#F4F6FF]">{ps.employeeName}</div>
+                              <div className="text-[11px] text-slate-500 dark:text-[#A3ABC5]">{ps.employeeRole}</div>
                             </td>
-                            <td className="p-3.5 text-slate-600 dark:text-slate-300">{ps.department || 'General'}</td>
-                            <td className="p-3.5 text-end font-mono text-slate-900 dark:text-slate-100">${(ps.baseSalary || 0).toLocaleString()}</td>
-                            <td className="p-3.5 text-end font-mono text-emerald-600 dark:text-emerald-400 font-medium">
+                            <td className="p-3.5 text-slate-600 dark:text-[#A3ABC5]">{ps.department || 'General'}</td>
+                            <td className="p-3.5 text-end font-mono text-slate-900 dark:text-[#F4F6FF]">${(ps.baseSalary || 0).toLocaleString()}</td>
+                            <td className="p-3.5 text-end font-mono text-emerald-600 dark:text-[#23C99C] font-medium">
                               +${((ps.allowancesTotal || 0) + (ps.bonusPay || 0)).toLocaleString()}
                             </td>
                             <td className="p-3.5 text-end font-mono text-rose-600 dark:text-rose-400 font-medium">
                               -${((ps.taxDeduction || 0) + (ps.insuranceDeduction || 0) + (ps.otherDeductions || 0)).toLocaleString()}
                             </td>
-                            <td className="p-3.5 text-end font-mono font-bold text-slate-900 dark:text-slate-100">${(ps.netPay || 0).toLocaleString()}</td>
+                            <td className="p-3.5 text-end font-mono font-bold text-slate-900 dark:text-[#F4F6FF]">${(ps.netPay || 0).toLocaleString()}</td>
                             <td className="p-3.5 text-center">
                               <Button
                                 onClick={() => setSelectedPayslip(ps)}
@@ -513,9 +513,9 @@ export const PayrollApp: React.FC = () => {
       {/* SUBVIEW 2: MONTHLY RUNS */}
       {activeSubView === 'runs' && (
         <div className="space-y-6">
-          <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
-            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Historical & Active Payroll Runs</h3>
+          <div className="rounded-2xl bg-white dark:bg-[#161B30] border border-slate-200/80 dark:border-[#1F253D] shadow-sm overflow-hidden">
+            <div className="p-4 border-b border-slate-100 dark:border-[#1F253D] flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-[#F4F6FF]">Historical & Active Payroll Runs</h3>
               {isOwnerOrAdmin && (
                 <Button
                   onClick={handleOpenCreateModal}
@@ -539,7 +539,7 @@ export const PayrollApp: React.FC = () => {
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-start text-xs">
-                  <thead className="bg-slate-50/70 dark:bg-slate-800/40 text-[11px] font-semibold text-slate-500 border-b border-slate-200/80 dark:border-slate-800">
+                  <thead className="bg-slate-50/70 dark:bg-[#101426] text-[11px] font-semibold text-slate-500 dark:text-[#A3ABC5] border-b border-slate-200/80 dark:border-[#1F253D]">
                     <tr>
                       <th className="p-3.5 text-start">Period Name</th>
                       <th className="p-3.5 text-start">Pay Date</th>
@@ -551,15 +551,15 @@ export const PayrollApp: React.FC = () => {
                       <th className="p-3.5 text-center">Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  <tbody className="divide-y divide-slate-100 dark:divide-[#1F253D]">
                     {payrollRuns.map((run) => (
-                      <tr key={run.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                        <td className="p-3.5 font-semibold text-slate-900 dark:text-slate-100">{run.periodName}</td>
-                        <td className="p-3.5 text-slate-600 dark:text-slate-400 font-mono">{run.payDate}</td>
+                      <tr key={run.id} className="hover:bg-slate-50/50 dark:hover:bg-[#1A2035]/50 transition-colors">
+                        <td className="p-3.5 font-semibold text-slate-900 dark:text-[#F4F6FF]">{run.periodName}</td>
+                        <td className="p-3.5 text-slate-600 dark:text-[#A3ABC5] font-mono">{run.payDate}</td>
                         <td className="p-3.5 text-center text-slate-700 dark:text-slate-300 font-medium">{run.employeeCount || 0}</td>
-                        <td className="p-3.5 text-end font-mono text-slate-900 dark:text-slate-100">${(run.grossPayTotal || 0).toLocaleString()}</td>
-                        <td className="p-3.5 text-end font-mono text-rose-600 dark:text-rose-400">-${(run.deductionsTotal || 0).toLocaleString()}</td>
-                        <td className="p-3.5 text-end font-mono font-bold text-emerald-600 dark:text-emerald-400">${(run.netPayTotal || 0).toLocaleString()}</td>
+                        <td className="p-3.5 text-end font-mono text-slate-900 dark:text-[#F4F6FF]">${(run.grossPayTotal || 0).toLocaleString()}</td>
+                        <td className="p-3.5 text-end font-mono text-rose-500 dark:text-rose-400">-${(run.deductionsTotal || 0).toLocaleString()}</td>
+                        <td className="p-3.5 text-end font-mono font-bold text-emerald-500 dark:text-[#23C99C]">${(run.netPayTotal || 0).toLocaleString()}</td>
                         <td className="p-3.5 text-center">
                           <StatusBadge status={run.status} />
                         </td>
@@ -586,7 +586,7 @@ export const PayrollApp: React.FC = () => {
                                 </Button>
                                 <button
                                   onClick={() => handleDeleteRun(run.id)}
-                                  className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                                  className="p-1 rounded-lg text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
                                   title="Delete Draft Run"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
@@ -608,20 +608,20 @@ export const PayrollApp: React.FC = () => {
       {/* SUBVIEW 3: PAYSLIP GENERATOR */}
       {activeSubView === 'payslips' && (
         <div className="space-y-6">
-          <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-5">
+          <div className="p-6 rounded-2xl bg-white dark:bg-[#161B30] border border-slate-200/80 dark:border-[#1F253D] shadow-sm space-y-5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Payslip Generator & Inspector</h3>
-                <p className="text-xs text-slate-500">Select a payroll cycle to generate and print employee payslips.</p>
+                <h3 className="text-sm font-semibold text-slate-900 dark:text-[#F4F6FF]">Payslip Generator & Inspector</h3>
+                <p className="text-xs text-slate-500 dark:text-[#A3ABC5]">Select a payroll cycle to generate and print employee payslips.</p>
               </div>
 
               {payrollRuns.length > 0 && (
                 <div className="flex items-center gap-2">
-                  <label className="text-xs font-medium text-slate-600 dark:text-slate-400">Payroll Cycle:</label>
+                  <label className="text-xs font-medium text-slate-600 dark:text-[#A3ABC5]">Payroll Cycle:</label>
                   <select
                     value={selectedRunId}
                     onChange={(e) => setSelectedRunId(e.target.value)}
-                    className="px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-800 dark:text-slate-200 focus:outline-none"
+                    className="px-3 py-1.5 rounded-xl bg-slate-50 dark:bg-[#101426] border border-slate-200 dark:border-[#2A3048] text-xs text-slate-800 dark:text-[#F4F6FF] focus:outline-none focus:border-[#7568E8]"
                   >
                     {payrollRuns.map((r) => (
                       <option key={r.id} value={r.id}>
@@ -634,7 +634,7 @@ export const PayrollApp: React.FC = () => {
             </div>
 
             {selectedRunPayslips.length === 0 ? (
-              <div className="p-8 text-center text-slate-500 text-xs">
+              <div className="p-8 text-center text-slate-500 dark:text-[#A3ABC5] text-xs">
                 No payslips available for the selected cycle.
               </div>
             ) : (
@@ -642,32 +642,32 @@ export const PayrollApp: React.FC = () => {
                 {selectedRunPayslips.map((ps) => (
                   <div
                     key={ps.id}
-                    className="p-5 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 space-y-4 hover:border-slate-300 dark:hover:border-slate-700 transition-all"
+                    className="p-5 rounded-xl bg-slate-50/50 dark:bg-[#101426] border border-slate-200/60 dark:border-[#1F253D] space-y-4 hover:border-slate-300 dark:hover:border-[#2A3048] transition-all"
                   >
-                    <div className="flex justify-between items-start border-b border-slate-200/60 dark:border-slate-700/60 pb-3">
+                    <div className="flex justify-between items-start border-b border-slate-200/60 dark:border-[#1F253D] pb-3">
                       <div>
-                        <div className="font-semibold text-slate-900 dark:text-slate-100 text-sm">{ps.employeeName}</div>
-                        <div className="text-[11px] text-slate-500">
+                        <div className="font-semibold text-slate-900 dark:text-[#F4F6FF] text-sm">{ps.employeeName}</div>
+                        <div className="text-[11px] text-slate-500 dark:text-[#A3ABC5]">
                           {ps.employeeRole} • {ps.department || 'General'}
                         </div>
                       </div>
-                      <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-sm">
+                      <span className="font-mono font-bold text-emerald-600 dark:text-[#23C99C] text-sm">
                         ${(ps.netPay || 0).toLocaleString()} NET
                       </span>
                     </div>
 
                     <div className="space-y-1.5 text-xs text-slate-600 dark:text-slate-300">
                       <div className="flex justify-between">
-                        <span className="text-slate-500">Base Salary</span>
-                        <span className="font-mono font-semibold">${(ps.baseSalary || 0).toLocaleString()}</span>
+                        <span className="text-slate-500 dark:text-[#A3ABC5]">Base Salary</span>
+                        <span className="font-mono font-semibold text-slate-900 dark:text-[#F4F6FF]">${(ps.baseSalary || 0).toLocaleString()}</span>
                       </div>
-                      <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
+                      <div className="flex justify-between text-emerald-600 dark:text-[#23C99C]">
                         <span>Allowances & Bonus</span>
                         <span className="font-mono font-semibold">
                           +${((ps.allowancesTotal || 0) + (ps.bonusPay || 0)).toLocaleString()}
                         </span>
                       </div>
-                      <div className="flex justify-between text-rose-600 dark:text-rose-400">
+                      <div className="flex justify-between text-rose-500 dark:text-rose-400">
                         <span>Tax & Insurance Withholding</span>
                         <span className="font-mono font-semibold">
                           -${((ps.taxDeduction || 0) + (ps.insuranceDeduction || 0) + (ps.otherDeductions || 0)).toLocaleString()}
@@ -675,7 +675,7 @@ export const PayrollApp: React.FC = () => {
                       </div>
                     </div>
 
-                    <div className="flex justify-end gap-2 pt-2 border-t border-slate-200/60 dark:border-slate-700/60">
+                    <div className="flex justify-end gap-2 pt-2 border-t border-slate-200/60 dark:border-[#1F253D]">
                       <Button
                         onClick={() => setSelectedPayslip(ps)}
                         variant="secondary"
@@ -712,47 +712,47 @@ export const PayrollApp: React.FC = () => {
           <div className="space-y-6 text-xs text-slate-600 dark:text-slate-300">
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
               <div>
-                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Period Name *</label>
+                <label className="block text-slate-700 dark:text-[#A3ABC5] font-medium mb-1 text-[11px]">Period Name *</label>
                 <input
                   type="text"
                   value={periodName}
                   onChange={(e) => setPeriodName(e.target.value)}
                   placeholder="e.g. September 2026 Payroll"
-                  className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none text-xs"
+                  className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-[#101426] border border-slate-200 dark:border-[#2A3048] text-slate-900 dark:text-[#F4F6FF] placeholder-slate-400 dark:placeholder-slate-600 focus:ring-2 focus:ring-[#7568E8]/20 focus:border-[#7568E8] outline-none text-xs"
                 />
               </div>
               <div>
-                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Start Date</label>
+                <label className="block text-slate-700 dark:text-[#A3ABC5] font-medium mb-1 text-[11px]">Start Date</label>
                 <input
                   type="date"
                   value={periodStart}
                   onChange={(e) => setPeriodStart(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none text-xs"
+                  className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-[#101426] border border-slate-200 dark:border-[#2A3048] text-slate-900 dark:text-[#F4F6FF] focus:ring-2 focus:ring-[#7568E8]/20 focus:border-[#7568E8] outline-none text-xs"
                 />
               </div>
               <div>
-                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">End Date</label>
+                <label className="block text-slate-700 dark:text-[#A3ABC5] font-medium mb-1 text-[11px]">End Date</label>
                 <input
                   type="date"
                   value={periodEnd}
                   onChange={(e) => setPeriodEnd(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none text-xs"
+                  className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-[#101426] border border-slate-200 dark:border-[#2A3048] text-slate-900 dark:text-[#F4F6FF] focus:ring-2 focus:ring-[#7568E8]/20 focus:border-[#7568E8] outline-none text-xs"
                 />
               </div>
               <div>
-                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Pay Date *</label>
+                <label className="block text-slate-700 dark:text-[#A3ABC5] font-medium mb-1 text-[11px]">Pay Date *</label>
                 <input
                   type="date"
                   value={payDate}
                   onChange={(e) => setPayDate(e.target.value)}
-                  className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-bold focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none text-xs"
+                  className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-[#101426] border border-slate-200 dark:border-[#2A3048] text-slate-900 dark:text-[#F4F6FF] font-bold focus:ring-2 focus:ring-[#7568E8]/20 focus:border-[#7568E8] outline-none text-xs"
                 />
               </div>
             </div>
 
             {/* Editable Employee Payroll List */}
             <div className="space-y-3">
-              <h4 className="font-semibold text-slate-900 dark:text-slate-100 text-xs">Included Employee Compensation</h4>
+              <h4 className="font-semibold text-slate-900 dark:text-[#F4F6FF] text-xs">Included Employee Compensation</h4>
               {draftPayslips.length === 0 ? (
                 <div className="p-6 text-center rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300">
                   No active employees found. Please register employees first before executing payroll.
@@ -760,73 +760,73 @@ export const PayrollApp: React.FC = () => {
               ) : (
                 <div className="max-h-80 overflow-y-auto space-y-3 pr-1">
                   {draftPayslips.map((row, idx) => (
-                    <div key={row.employeeId} className="p-4 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 space-y-3">
-                      <div className="flex justify-between items-center border-b border-slate-200/60 dark:border-slate-700/60 pb-2">
+                    <div key={row.employeeId} className="p-4 rounded-xl bg-slate-50/50 dark:bg-[#101426] border border-slate-200/60 dark:border-[#1F253D] space-y-3">
+                      <div className="flex justify-between items-center border-b border-slate-200/60 dark:border-[#1F253D] pb-2">
                         <div>
-                          <div className="font-semibold text-slate-900 dark:text-slate-100">{row.employeeName}</div>
-                          <div className="text-[11px] text-slate-500">
+                          <div className="font-semibold text-slate-900 dark:text-[#F4F6FF]">{row.employeeName}</div>
+                          <div className="text-[11px] text-slate-500 dark:text-[#A3ABC5]">
                             {row.employeeRole} • {row.department}
                           </div>
                         </div>
                         <div className="text-end font-mono">
-                          <span className="text-[10px] text-slate-400 block uppercase">Net Pay</span>
-                          <span className="font-bold text-emerald-600 dark:text-emerald-400 text-sm">${row.netPay.toLocaleString()}</span>
+                          <span className="text-[10px] text-slate-400 dark:text-slate-500 block uppercase">Net Pay</span>
+                          <span className="font-bold text-emerald-600 dark:text-[#23C99C] text-sm">${row.netPay.toLocaleString()}</span>
                         </div>
                       </div>
 
                       <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                         <div>
-                          <label className="block text-[10px] text-slate-500 font-medium mb-0.5">Base Salary</label>
+                          <label className="block text-[10px] text-slate-500 dark:text-[#A3ABC5] font-medium mb-0.5">Base Salary</label>
                           <input
                             type="number"
                             value={row.baseSalary}
                             onChange={(e) => updateDraftRow(idx, 'baseSalary', Number(e.target.value))}
-                            className="w-full px-2 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-mono text-xs"
+                            className="w-full px-2 py-1 rounded-lg bg-white dark:bg-[#161B30] border border-slate-200 dark:border-[#2A3048] text-slate-900 dark:text-[#F4F6FF] font-mono text-xs focus:border-[#7568E8] outline-none"
                           />
                         </div>
                         <div>
-                          <label className="block text-[10px] text-emerald-600 dark:text-emerald-400 font-medium mb-0.5">Allowances</label>
+                          <label className="block text-[10px] text-emerald-600 dark:text-[#23C99C] font-medium mb-0.5">Allowances</label>
                           <input
                             type="number"
                             value={row.allowancesTotal}
                             onChange={(e) => updateDraftRow(idx, 'allowancesTotal', Number(e.target.value))}
-                            className="w-full px-2 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 font-mono text-xs"
+                            className="w-full px-2 py-1 rounded-lg bg-white dark:bg-[#161B30] border border-slate-200 dark:border-[#2A3048] text-emerald-600 dark:text-[#23C99C] font-mono text-xs focus:border-[#7568E8] outline-none"
                           />
                         </div>
                         <div>
-                          <label className="block text-[10px] text-emerald-600 dark:text-emerald-400 font-medium mb-0.5">Bonus</label>
+                          <label className="block text-[10px] text-emerald-600 dark:text-[#23C99C] font-medium mb-0.5">Bonus</label>
                           <input
                             type="number"
                             value={row.bonusPay}
                             onChange={(e) => updateDraftRow(idx, 'bonusPay', Number(e.target.value))}
-                            className="w-full px-2 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-emerald-600 dark:text-emerald-400 font-mono text-xs"
+                            className="w-full px-2 py-1 rounded-lg bg-white dark:bg-[#161B30] border border-slate-200 dark:border-[#2A3048] text-emerald-600 dark:text-[#23C99C] font-mono text-xs focus:border-[#7568E8] outline-none"
                           />
                         </div>
                         <div>
-                          <label className="block text-[10px] text-rose-600 dark:text-rose-400 font-medium mb-0.5">Tax Withholding</label>
+                          <label className="block text-[10px] text-rose-500 dark:text-rose-400 font-medium mb-0.5">Tax Withholding</label>
                           <input
                             type="number"
                             value={row.taxDeduction}
                             onChange={(e) => updateDraftRow(idx, 'taxDeduction', Number(e.target.value))}
-                            className="w-full px-2 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-rose-600 dark:text-rose-400 font-mono text-xs"
+                            className="w-full px-2 py-1 rounded-lg bg-white dark:bg-[#161B30] border border-slate-200 dark:border-[#2A3048] text-rose-500 dark:text-rose-400 font-mono text-xs focus:border-[#7568E8] outline-none"
                           />
                         </div>
                         <div>
-                          <label className="block text-[10px] text-rose-600 dark:text-rose-400 font-medium mb-0.5">Insurance</label>
+                          <label className="block text-[10px] text-rose-500 dark:text-rose-400 font-medium mb-0.5">Insurance</label>
                           <input
                             type="number"
                             value={row.insuranceDeduction}
                             onChange={(e) => updateDraftRow(idx, 'insuranceDeduction', Number(e.target.value))}
-                            className="w-full px-2 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-rose-600 dark:text-rose-400 font-mono text-xs"
+                            className="w-full px-2 py-1 rounded-lg bg-white dark:bg-[#161B30] border border-slate-200 dark:border-[#2A3048] text-rose-500 dark:text-rose-400 font-mono text-xs focus:border-[#7568E8] outline-none"
                           />
                         </div>
                         <div>
-                          <label className="block text-[10px] text-rose-600 dark:text-rose-400 font-medium mb-0.5">Other Deductions</label>
+                          <label className="block text-[10px] text-rose-500 dark:text-rose-400 font-medium mb-0.5">Other Deductions</label>
                           <input
                             type="number"
                             value={row.otherDeductions}
                             onChange={(e) => updateDraftRow(idx, 'otherDeductions', Number(e.target.value))}
-                            className="w-full px-2 py-1 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-rose-600 dark:text-rose-400 font-mono text-xs"
+                            className="w-full px-2 py-1 rounded-lg bg-white dark:bg-[#161B30] border border-slate-200 dark:border-[#2A3048] text-rose-500 dark:text-rose-400 font-mono text-xs focus:border-[#7568E8] outline-none"
                           />
                         </div>
                       </div>
@@ -843,7 +843,7 @@ export const PayrollApp: React.FC = () => {
               </div>
             )}
 
-            <div className="flex justify-between items-center pt-4 border-t border-slate-200/80 dark:border-slate-800">
+            <div className="flex justify-between items-center pt-4 border-t border-slate-200/80 dark:border-[#1F253D]">
               <Button
                 type="button"
                 onClick={() => setIsCreateModalOpen(false)}
@@ -888,42 +888,42 @@ export const PayrollApp: React.FC = () => {
           maxWidth="md"
         >
           <div className="space-y-6 text-xs text-slate-600 dark:text-slate-300">
-            <div className="p-6 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 space-y-4">
-              <div className="flex justify-between items-start border-b border-slate-200/60 dark:border-slate-700/60 pb-3">
+            <div className="p-6 rounded-xl bg-slate-50/50 dark:bg-[#101426] border border-slate-200/60 dark:border-[#1F253D] space-y-4">
+              <div className="flex justify-between items-start border-b border-slate-200/60 dark:border-[#1F253D] pb-3">
                 <div>
-                  <div className="font-semibold text-slate-900 dark:text-slate-100 text-sm">{selectedPayslip.employeeName}</div>
-                  <div className="text-[11px] text-slate-500">
+                  <div className="font-semibold text-slate-900 dark:text-[#F4F6FF] text-sm">{selectedPayslip.employeeName}</div>
+                  <div className="text-[11px] text-slate-500 dark:text-[#A3ABC5]">
                     {selectedPayslip.employeeRole} • {selectedPayslip.department || 'General'}
                   </div>
                 </div>
-                <span className="font-mono font-bold text-emerald-600 dark:text-emerald-400 text-base">
+                <span className="font-mono font-bold text-emerald-600 dark:text-[#23C99C] text-base">
                   ${(selectedPayslip.netPay || 0).toLocaleString()} NET
                 </span>
               </div>
 
               <div className="space-y-2 font-mono">
                 <div className="flex justify-between text-slate-700 dark:text-slate-300">
-                  <span>Base Monthly Salary</span>
-                  <span className="font-bold">${(selectedPayslip.baseSalary || 0).toLocaleString()}</span>
+                  <span className="text-slate-500 dark:text-[#A3ABC5]">Base Monthly Salary</span>
+                  <span className="font-bold text-slate-900 dark:text-[#F4F6FF]">${(selectedPayslip.baseSalary || 0).toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
+                <div className="flex justify-between text-emerald-600 dark:text-[#23C99C]">
                   <span>Allowances Total</span>
                   <span className="font-bold">+${(selectedPayslip.allowancesTotal || 0).toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between text-emerald-600 dark:text-emerald-400">
+                <div className="flex justify-between text-emerald-600 dark:text-[#23C99C]">
                   <span>Performance Bonus</span>
                   <span className="font-bold">+${(selectedPayslip.bonusPay || 0).toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between text-rose-600 dark:text-rose-400">
+                <div className="flex justify-between text-rose-500 dark:text-rose-400">
                   <span>Income Tax Deduction</span>
                   <span className="font-bold">-${(selectedPayslip.taxDeduction || 0).toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between text-rose-600 dark:text-rose-400">
+                <div className="flex justify-between text-rose-500 dark:text-rose-400">
                   <span>Insurance & Benefits Withholding</span>
                   <span className="font-bold">-${(selectedPayslip.insuranceDeduction || 0).toLocaleString()}</span>
                 </div>
                 {selectedPayslip.otherDeductions ? (
-                  <div className="flex justify-between text-rose-600 dark:text-rose-400">
+                  <div className="flex justify-between text-rose-500 dark:text-rose-400">
                     <span>Other Deductions</span>
                     <span className="font-bold">-${selectedPayslip.otherDeductions.toLocaleString()}</span>
                   </div>

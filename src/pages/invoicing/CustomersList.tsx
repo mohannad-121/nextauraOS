@@ -138,62 +138,62 @@ export const CustomersList: React.FC = () => {
             )}
 
             <div>
-              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Customer / Contact Name</label>
+              <label className="block text-xs font-semibold text-[#A3ABC5] mb-1.5">Customer / Contact Name</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="e.g. Sarah Jenkins"
-                className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#101426] border border-[#2A3048] text-xs text-[#F4F6FF] placeholder-[#6B7694] focus:outline-none focus:ring-1 focus:ring-[#7568E8] focus:border-[#7568E8]"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Company Name</label>
+                <label className="block text-xs font-semibold text-[#A3ABC5] mb-1.5">Company Name</label>
                 <input
                   type="text"
                   value={company}
                   onChange={(e) => setCompany(e.target.value)}
                   placeholder="Apex Global LLC"
-                  className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#101426] border border-[#2A3048] text-xs text-[#F4F6FF] placeholder-[#6B7694] focus:outline-none focus:ring-1 focus:ring-[#7568E8] focus:border-[#7568E8]"
                 />
               </div>
               <div>
-                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Email Address</label>
+                <label className="block text-xs font-semibold text-[#A3ABC5] mb-1.5">Email Address</label>
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="billing@apex.com"
-                  className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600"
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-[#101426] border border-[#2A3048] text-xs text-[#F4F6FF] placeholder-[#6B7694] focus:outline-none focus:ring-1 focus:ring-[#7568E8] focus:border-[#7568E8]"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Phone Number</label>
+              <label className="block text-xs font-semibold text-[#A3ABC5] mb-1.5">Phone Number</label>
               <input
                 type="text"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="+1 415 555 0199"
-                className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600"
+                className="w-full px-3.5 py-2.5 rounded-xl bg-[#101426] border border-[#2A3048] text-xs text-[#F4F6FF] placeholder-[#6B7694] focus:outline-none focus:ring-1 focus:ring-[#7568E8] focus:border-[#7568E8]"
               />
             </div>
 
-            <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex justify-end gap-2.5 pt-4 border-t border-[#1F253D]">
               <button
                 onClick={() => setIsModalOpen(false)}
                 disabled={isSubmitting}
-                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-medium hover:bg-slate-200 disabled:opacity-50 transition-colors"
+                className="px-4 py-2.5 rounded-xl bg-[#101426] hover:bg-[#1A2035] border border-[#2A3048] text-[#A3ABC5] hover:text-[#F4F6FF] text-xs font-semibold disabled:opacity-50 transition-colors cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={handleCreateCustomer}
                 disabled={isSubmitting}
-                className="px-4 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-500 text-white font-medium text-xs shadow-xs disabled:opacity-50 transition-colors"
+                className="px-5 py-2.5 rounded-xl bg-[#7568E8] hover:bg-[#867AF0] active:bg-[#6056C9] text-white font-bold text-xs shadow-[0_0_12px_rgba(117,104,232,0.35)] disabled:opacity-50 transition-all cursor-pointer"
               >
                 {isSubmitting ? 'Saving...' : 'Save Customer'}
               </button>

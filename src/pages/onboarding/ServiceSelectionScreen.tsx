@@ -48,15 +48,15 @@ const CATEGORIES: CategoryConfig[] = [
     title: 'Finance & Operations',
     description: 'Manage billing, accounting, expenses, e-signatures, equity, and carbon reporting.',
     icon: CreditCard,
-    badgeClass: 'bg-indigo-50 text-indigo-700 border-indigo-200/80',
-    iconBg: 'bg-indigo-50',
-    iconColor: 'text-indigo-700',
-    cardUnselectedBg: 'bg-white hover:bg-slate-50/80',
-    cardUnselectedBorder: 'border-slate-200/80 hover:border-slate-300',
-    cardSelectedBg: 'bg-indigo-50/50 dark:bg-slate-800',
-    cardSelectedBorder: 'border-blue-600 ring-2 ring-blue-500/20 shadow-xs',
-    checkBg: 'bg-blue-700 text-white',
-    pillBadge: 'bg-blue-100 text-blue-800 font-semibold',
+    badgeClass: 'bg-[#7568E8]/15 text-[#A499FA] border-[#7568E8]/30',
+    iconBg: 'bg-[#7568E8]/15',
+    iconColor: 'text-[#A499FA]',
+    cardUnselectedBg: 'bg-[#101426] hover:bg-[#131728]',
+    cardUnselectedBorder: 'border-[#1F253D] hover:border-[#2D3555]',
+    cardSelectedBg: 'bg-[#161B30]',
+    cardSelectedBorder: 'border-[#7568E8] ring-2 ring-[#7568E8]/20 shadow-[0_0_15px_rgba(117,104,232,0.2)]',
+    checkBg: 'bg-[#7568E8] text-white',
+    pillBadge: 'bg-[#7568E8]/20 text-[#A499FA] font-semibold',
     accentColor: 'indigo',
   },
   {
@@ -65,15 +65,15 @@ const CATEGORIES: CategoryConfig[] = [
     title: 'Human Resources & Talent',
     description: 'Empower workforce management, recruitment, time tracking, OKRs, fleet, and payroll.',
     icon: Users,
-    badgeClass: 'bg-amber-50 text-amber-800 border-amber-200/80',
-    iconBg: 'bg-amber-50',
-    iconColor: 'text-amber-800',
-    cardUnselectedBg: 'bg-white hover:bg-slate-50/80',
-    cardUnselectedBorder: 'border-slate-200/80 hover:border-slate-300',
-    cardSelectedBg: 'bg-amber-50/50 dark:bg-slate-800',
-    cardSelectedBorder: 'border-amber-600 ring-2 ring-amber-500/20 shadow-xs',
-    checkBg: 'bg-amber-600 text-white',
-    pillBadge: 'bg-amber-100 text-amber-800 font-semibold',
+    badgeClass: 'bg-[#178CFF]/15 text-[#60A5FA] border-[#178CFF]/30',
+    iconBg: 'bg-[#178CFF]/15',
+    iconColor: 'text-[#60A5FA]',
+    cardUnselectedBg: 'bg-[#101426] hover:bg-[#131728]',
+    cardUnselectedBorder: 'border-[#1F253D] hover:border-[#2D3555]',
+    cardSelectedBg: 'bg-[#161B30]',
+    cardSelectedBorder: 'border-[#178CFF] ring-2 ring-[#178CFF]/20 shadow-[0_0_15px_rgba(23,140,255,0.2)]',
+    checkBg: 'bg-[#178CFF] text-white',
+    pillBadge: 'bg-[#178CFF]/20 text-[#60A5FA] font-semibold',
     accentColor: 'amber',
   },
   {
@@ -82,15 +82,15 @@ const CATEGORIES: CategoryConfig[] = [
     title: 'Marketing & Audience Growth',
     description: 'Drive growth with email campaigns, SMS broadcasts, CSAT surveys, and social scheduling.',
     icon: Share2,
-    badgeClass: 'bg-rose-50 text-rose-700 border-rose-200/80',
-    iconBg: 'bg-rose-50',
-    iconColor: 'text-rose-700',
-    cardUnselectedBg: 'bg-white hover:bg-slate-50/80',
-    cardUnselectedBorder: 'border-slate-200/80 hover:border-slate-300',
-    cardSelectedBg: 'bg-rose-50/50 dark:bg-slate-800',
-    cardSelectedBorder: 'border-rose-600 ring-2 ring-rose-500/20 shadow-xs',
-    checkBg: 'bg-rose-600 text-white',
-    pillBadge: 'bg-rose-100 text-rose-800 font-semibold',
+    badgeClass: 'bg-rose-500/15 text-rose-300 border-rose-500/30',
+    iconBg: 'bg-rose-500/15',
+    iconColor: 'text-rose-300',
+    cardUnselectedBg: 'bg-[#101426] hover:bg-[#131728]',
+    cardUnselectedBorder: 'border-[#1F253D] hover:border-[#2D3555]',
+    cardSelectedBg: 'bg-[#161B30]',
+    cardSelectedBorder: 'border-rose-500 ring-2 ring-rose-500/20 shadow-[0_0_15px_rgba(244,63,94,0.2)]',
+    checkBg: 'bg-rose-500 text-white',
+    pillBadge: 'bg-rose-500/20 text-rose-300 font-semibold',
     accentColor: 'rose',
   },
   {
@@ -99,15 +99,15 @@ const CATEGORIES: CategoryConfig[] = [
     title: 'Global Core Platform',
     description: 'Unified customer CRM directory, enterprise document vault, and executive analytics.',
     icon: Globe,
-    badgeClass: 'bg-emerald-50 text-emerald-700 border-emerald-200/80',
-    iconBg: 'bg-emerald-50',
-    iconColor: 'text-emerald-700',
-    cardUnselectedBg: 'bg-white hover:bg-slate-50/80',
-    cardUnselectedBorder: 'border-slate-200/80 hover:border-slate-300',
-    cardSelectedBg: 'bg-emerald-50/50 dark:bg-slate-800',
-    cardSelectedBorder: 'border-emerald-600 ring-2 ring-emerald-500/20 shadow-xs',
-    checkBg: 'bg-emerald-600 text-white',
-    pillBadge: 'bg-emerald-100 text-emerald-800 font-semibold',
+    badgeClass: 'bg-[#08B894]/15 text-[#23C99C] border-[#08B894]/30',
+    iconBg: 'bg-[#08B894]/15',
+    iconColor: 'text-[#23C99C]',
+    cardUnselectedBg: 'bg-[#101426] hover:bg-[#131728]',
+    cardUnselectedBorder: 'border-[#1F253D] hover:border-[#2D3555]',
+    cardSelectedBg: 'bg-[#161B30]',
+    cardSelectedBorder: 'border-[#08B894] ring-2 ring-[#08B894]/20 shadow-[0_0_15px_rgba(8,184,148,0.2)]',
+    checkBg: 'bg-[#08B894] text-white',
+    pillBadge: 'bg-[#08B894]/20 text-[#23C99C] font-semibold',
     accentColor: 'emerald',
   },
 ];
@@ -202,26 +202,26 @@ export const ServiceSelectionScreen: React.FC<ServiceSelectionScreenProps> = ({
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#F8F9FA] dark:bg-slate-950 text-slate-900 dark:text-slate-100 relative font-sans flex flex-col">
+    <div className="min-h-screen w-full bg-[#090B1A] text-[#F4F6FF] relative font-sans flex flex-col">
       {/* Header Bar */}
-      <header className="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/80 dark:border-slate-800 sticky top-0 z-30 px-6 sm:px-10 py-4 shadow-xs">
+      <header className="bg-[#101426]/90 backdrop-blur-md border-b border-[#1F253D] sticky top-0 z-30 px-6 sm:px-10 py-4 shadow-lg">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
           
           {/* Logo & Welcome Header */}
           <div className="flex items-center gap-3.5 w-full md:w-auto">
-            <div className="w-10 h-10 rounded-xl bg-blue-700 text-white flex items-center justify-center font-black text-lg shadow-xs shrink-0 font-heading">
+            <div className="w-10 h-10 rounded-2xl bg-[#7568E8]/20 border border-[#7568E8]/40 text-[#F4F6FF] flex items-center justify-center font-black text-lg shadow-[0_0_12px_rgba(117,104,232,0.35)] shrink-0 font-heading">
               N
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-lg sm:text-xl font-semibold text-slate-900 dark:text-slate-100 font-heading tracking-tight">
-                  Welcome to NextAura
+                <h1 className="text-lg sm:text-xl font-bold text-[#F4F6FF] font-heading tracking-tight">
+                  Welcome to NextAura OS
                 </h1>
-                <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-blue-50 border border-blue-200 text-blue-700 text-[11px] font-medium">
-                  <Sparkles className="w-3 h-3 text-blue-600" /> Enterprise Operating System
+                <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#7568E8]/10 border border-[#7568E8]/30 text-[#A499FA] text-[11px] font-semibold">
+                  <Sparkles className="w-3 h-3 text-[#7568E8]" /> Enterprise Operating System
                 </span>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
+              <p className="text-xs text-[#A3ABC5]">
                 Select the applications your organization requires today. Additional services can be enabled anytime.
               </p>
             </div>
@@ -231,19 +231,19 @@ export const ServiceSelectionScreen: React.FC<ServiceSelectionScreenProps> = ({
           <div className="flex items-center gap-3.5 w-full md:w-auto justify-between md:justify-end">
             {/* Search Box */}
             <div className="relative w-full max-w-xs">
-              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Search className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-[#747E9B]" />
               <input
                 type="text"
                 placeholder="Search applications..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-8 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600 transition-colors"
+                className="w-full pl-9 pr-8 py-2 text-xs rounded-xl bg-[#161B30] border border-[#2A3048] text-[#F4F6FF] placeholder-[#6B7694] focus:outline-none focus:ring-1 focus:ring-[#7568E8] focus:border-[#7568E8] transition-colors"
               />
               {searchQuery && (
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 font-bold text-xs"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#747E9B] hover:text-[#F4F6FF] font-bold text-xs"
                 >
                   ×
                 </button>
@@ -251,8 +251,8 @@ export const ServiceSelectionScreen: React.FC<ServiceSelectionScreenProps> = ({
             </div>
 
             {/* Selected Count Badge */}
-            <div className="px-3.5 py-1.5 rounded-xl bg-blue-50 border border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800 text-blue-700 font-medium text-xs shrink-0 flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-blue-600" />
+            <div className="px-3.5 py-1.5 rounded-xl bg-[#7568E8]/15 border border-[#7568E8]/30 text-[#A499FA] font-semibold text-xs shrink-0 flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-[#23C99C] shadow-[0_0_8px_rgba(35,201,156,0.6)]" />
               <span>{selectedKeys.length} selected</span>
             </div>
           </div>
@@ -436,17 +436,17 @@ export const ServiceSelectionScreen: React.FC<ServiceSelectionScreenProps> = ({
       </main>
 
       {/* Sticky Bottom Action Bar */}
-      <footer className="sticky bottom-0 z-30 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200/80 dark:border-slate-800 px-6 sm:px-10 py-4 shadow-lg">
+      <footer className="sticky bottom-0 z-30 bg-[#101426]/95 backdrop-blur-md border-t border-[#1F253D] px-6 sm:px-10 py-4 shadow-[0_-10px_30px_rgba(0,0,0,0.5)]">
         <div className="max-w-7xl mx-auto flex items-center justify-between gap-4">
           {/* Selected Status Text */}
           <div>
             {selectedKeys.length === 0 ? (
-              <span className="text-xs sm:text-sm text-slate-500 font-medium">
+              <span className="text-xs sm:text-sm text-[#747E9B] font-medium">
                 Select at least one application to continue.
               </span>
             ) : (
-              <span className="text-xs sm:text-sm text-slate-900 dark:text-slate-100 font-semibold flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-blue-600" />
+              <span className="text-xs sm:text-sm text-[#F4F6FF] font-semibold flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-[#23C99C] shadow-[0_0_8px_rgba(35,201,156,0.6)]" />
                 <span>
                   {selectedKeys.length} {selectedKeys.length === 1 ? 'application' : 'applications'} selected
                 </span>
@@ -459,7 +459,7 @@ export const ServiceSelectionScreen: React.FC<ServiceSelectionScreenProps> = ({
             type="button"
             onClick={handleActivateServices}
             disabled={submitting || selectedKeys.length === 0}
-            className="px-6 py-2.5 rounded-xl bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-500 disabled:opacity-40 disabled:cursor-not-allowed text-white font-semibold text-xs sm:text-sm shadow-xs flex items-center gap-2 transition-all active:scale-[0.98]"
+            className="px-6 py-3 rounded-xl bg-[#7568E8] hover:bg-[#867AF0] active:bg-[#6056C9] disabled:opacity-40 disabled:cursor-not-allowed text-white font-bold text-xs sm:text-sm shadow-[0_0_12px_rgba(117,104,232,0.35)] flex items-center gap-2 transition-all active:scale-[0.98] cursor-pointer"
           >
             <span>{submitting ? 'Activating Services...' : 'Activate Services'}</span>
             <ArrowRight className="w-4 h-4" />

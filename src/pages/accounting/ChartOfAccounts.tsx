@@ -21,13 +21,13 @@ export const ChartOfAccounts: React.FC = () => {
       />
 
       {/* Segmented Category Tabs */}
-      <div className="flex items-center gap-1.5 border-b border-slate-200/80 dark:border-slate-800 pb-3 overflow-x-auto">
+      <div className="flex items-center gap-1.5 border-b border-slate-200/80 dark:border-[#1F253D] pb-3 overflow-x-auto">
         <button
           onClick={() => setActiveCategory('all')}
-          className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+          className={`px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer ${
             activeCategory === 'all'
-              ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 shadow-sm'
-              : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+              ? 'bg-[#7568E8] text-white shadow-[0_0_12px_rgba(117,104,232,0.35)]'
+              : 'text-slate-600 dark:text-[#A3ABC5] hover:text-slate-900 dark:hover:text-[#F4F6FF] hover:bg-slate-100 dark:hover:bg-[#161B30]'
           }`}
         >
           All Accounts ({accounts.length})
@@ -36,10 +36,10 @@ export const ChartOfAccounts: React.FC = () => {
           <button
             key={cat}
             onClick={() => setActiveCategory(cat)}
-            className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+            className={`px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer ${
               activeCategory === cat
-                ? 'bg-slate-900 text-white dark:bg-slate-100 dark:text-slate-900 shadow-sm'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                ? 'bg-[#7568E8] text-white shadow-[0_0_12px_rgba(117,104,232,0.35)]'
+                : 'text-slate-600 dark:text-[#A3ABC5] hover:text-slate-900 dark:hover:text-[#F4F6FF] hover:bg-slate-100 dark:hover:bg-[#161B30]'
             }`}
           >
             {cat}
@@ -48,10 +48,10 @@ export const ChartOfAccounts: React.FC = () => {
       </div>
 
       {/* Table */}
-      <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm overflow-hidden">
+      <div className="rounded-2xl bg-white dark:bg-[#161B30] border border-slate-200/80 dark:border-[#1F253D] shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-start text-xs">
-            <thead className="bg-slate-50/70 dark:bg-slate-800/40 text-[11px] font-semibold text-slate-500 border-b border-slate-200/80 dark:border-slate-800">
+            <thead className="bg-slate-50/70 dark:bg-[#101426] text-[11px] font-semibold text-slate-500 dark:text-[#A3ABC5] border-b border-slate-200/80 dark:border-[#1F253D]">
               <tr>
                 <th className="p-3.5 text-start">Code</th>
                 <th className="p-3.5 text-start">Account Name</th>
@@ -60,14 +60,14 @@ export const ChartOfAccounts: React.FC = () => {
                 <th className="p-3.5 text-end">Current Balance</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800 font-medium">
+            <tbody className="divide-y divide-slate-100 dark:divide-[#1F253D] font-medium">
               {filteredAccounts.map((acc) => (
-                <tr key={acc.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                  <td className="p-3.5 font-mono font-semibold text-blue-600 dark:text-blue-400">{acc.code}</td>
-                  <td className="p-3.5 font-semibold text-slate-900 dark:text-slate-100">{acc.name}</td>
-                  <td className="p-3.5 text-slate-600 dark:text-slate-300">{acc.category}</td>
-                  <td className="p-3.5 text-slate-500">{acc.type}</td>
-                  <td className="p-3.5 text-end font-bold text-slate-900 dark:text-slate-100 font-mono">
+                <tr key={acc.id} className="hover:bg-slate-50/50 dark:hover:bg-[#101426]/50 transition-colors">
+                  <td className="p-3.5 font-mono font-semibold text-[#7568E8] dark:text-[#A499FA]">{acc.code}</td>
+                  <td className="p-3.5 font-semibold text-slate-900 dark:text-[#F4F6FF]">{acc.name}</td>
+                  <td className="p-3.5 text-slate-600 dark:text-[#A3ABC5]">{acc.category}</td>
+                  <td className="p-3.5 text-slate-500 dark:text-[#6B7694]">{acc.type}</td>
+                  <td className="p-3.5 text-end font-bold text-slate-900 dark:text-[#F4F6FF] font-mono">
                     ${acc.balance.toLocaleString()}
                   </td>
                 </tr>

@@ -98,11 +98,9 @@ export const VerificationScreen: React.FC<VerificationScreenProps> = ({
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (isLocked) return;
-
-    const codeStr = digits.join('');
-    if (codeStr.length < 6) {
-      setErrorMsg('Please enter the complete 6-digit verification code.');
+    const code = digits.join('');
+    if (code.length !== 6) {
+      setErrorMsg('Please enter all 6 digits of the code.');
       return;
     }
 
@@ -111,18 +109,18 @@ export const VerificationScreen: React.FC<VerificationScreenProps> = ({
     setSuccessMsg('');
 
     try {
-      const result = await verificationService.verifyLoginVerification(userId, codeStr);
-      if (result.success) {
-        setSuccessMsg('Email verified successfully! Opening workspace...');
+      const res = await verificationService.verifyLoginVerification(userId, code);
+      if (res.success) {
+        setSuccessMsg('Identity verified! Redirecting to workspace...');
         setTimeout(() => {
           onVerified();
-        }, 800);
+        }, 600);
       } else {
-        if (result.code === 'MAX_ATTEMPTS' || result.attemptsRemaining === 0) {
+        if ((res as any).locked) {
           setIsLocked(true);
-          setErrorMsg(result.error || 'Too many incorrect attempts. Please request a new verification code.');
+          setErrorMsg(res.error || 'Too many failed attempts. Account locked.');
         } else {
-          setErrorMsg(result.error || 'Incorrect verification code. Please try again.');
+          setErrorMsg(res.error || 'Invalid verification code.');
         }
       }
     } catch (err: any) {
@@ -156,37 +154,40 @@ export const VerificationScreen: React.FC<VerificationScreenProps> = ({
   };
 
   return (
-    <div className="min-h-screen w-full bg-[#F8F9FA] dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex items-center justify-center p-4 sm:p-6 md:p-10 relative overflow-hidden font-sans">
+    <div className="min-h-screen w-full bg-[#090B1A] text-[#F4F6FF] flex items-center justify-center p-4 sm:p-6 md:p-10 relative overflow-hidden font-sans">
+      {/* Background soft glow */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#7568E8]/10 blur-[130px] rounded-full pointer-events-none" />
+
       {/* Main Container Card */}
-      <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 rounded-2xl p-8 shadow-xl relative z-10 text-center space-y-6 animate-in zoom-in-95">
+      <div className="w-full max-w-md bg-[#161B30] border border-[#1F253D] rounded-3xl p-8 sm:p-10 shadow-[0_25px_60px_rgba(0,0,0,0.6)] relative z-10 text-center space-y-6 animate-in zoom-in-95">
         
         {/* Logo & Header */}
         <div className="space-y-3">
-          <div className="w-12 h-12 rounded-xl bg-blue-700 text-white mx-auto flex items-center justify-center font-black text-xl shadow-xs">
+          <div className="w-12 h-12 rounded-2xl bg-[#7568E8]/20 border border-[#7568E8]/40 text-[#F4F6FF] mx-auto flex items-center justify-center font-black text-xl shadow-[0_0_12px_rgba(117,104,232,0.35)]">
             N
           </div>
 
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-950/50 dark:text-blue-300 dark:border-blue-800 text-xs font-medium">
-            <ShieldCheck className="w-3.5 h-3.5" />
-            Security Verification
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#7568E8]/10 text-[#A499FA] border border-[#7568E8]/30 text-xs font-semibold">
+            <ShieldCheck className="w-3.5 h-3.5 text-[#23C99C]" />
+            <span>Security Verification</span>
           </div>
 
-          <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100 font-heading">Verify your email</h1>
-          <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-xs mx-auto">
-            We sent a 6-digit verification code to <span className="font-semibold text-slate-800 dark:text-slate-200">{maskEmail(email)}</span>
+          <h1 className="text-xl font-bold text-[#F4F6FF] font-heading">Verify your email</h1>
+          <p className="text-xs text-[#A3ABC5] leading-relaxed max-w-xs mx-auto">
+            We sent a 6-digit verification code to <span className="font-semibold text-[#F4F6FF]">{maskEmail(email)}</span>
           </p>
         </div>
 
         {/* Error / Success Banners */}
         {errorMsg && (
-          <div className="p-3 rounded-xl bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-950/40 dark:text-rose-300 dark:border-rose-800 text-xs flex items-center gap-2 text-start animate-in fade-in">
-            <AlertCircle className="w-4 h-4 shrink-0" />
+          <div className="p-3 rounded-xl bg-rose-950/40 text-rose-300 border border-rose-800 text-xs flex items-center gap-2 text-start">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
             <span>{errorMsg}</span>
           </div>
         )}
 
         {successMsg && (
-          <div className="p-3 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 text-xs font-semibold text-center animate-in fade-in">
+          <div className="p-3 rounded-xl bg-[#08B894]/15 text-[#23C99C] border border-[#08B894]/30 text-xs font-semibold text-center">
             {successMsg}
           </div>
         )}
@@ -208,7 +209,7 @@ export const VerificationScreen: React.FC<VerificationScreenProps> = ({
                 onKeyDown={(e) => handleKeyDown(idx, e)}
                 onPaste={handlePaste}
                 disabled={loading || isLocked}
-                className="w-11 h-13 text-center text-xl font-bold font-mono rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-blue-700 dark:text-blue-400 focus:border-blue-600 focus:ring-2 focus:ring-blue-600/20 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-xs"
+                className="w-11 sm:w-12 h-14 text-center text-2xl font-bold font-mono rounded-xl bg-[#101426] border border-[#2A3048] text-[#A499FA] focus:border-[#7568E8] focus:ring-2 focus:ring-[#7568E8]/25 focus:outline-none transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-inner"
               />
             ))}
           </div>
@@ -216,7 +217,7 @@ export const VerificationScreen: React.FC<VerificationScreenProps> = ({
           <button
             type="submit"
             disabled={loading || isLocked}
-            className="w-full py-3 rounded-xl bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-500 disabled:opacity-50 disabled:cursor-not-allowed text-white font-semibold text-xs shadow-xs flex items-center justify-center gap-2 transition-all"
+            className="w-full py-3.5 rounded-xl bg-[#7568E8] hover:bg-[#867AF0] active:bg-[#6056C9] disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold text-xs shadow-[0_0_12px_rgba(117,104,232,0.35)] flex items-center justify-center gap-2 transition-all cursor-pointer"
           >
             <span>{loading ? 'Verifying Code...' : 'Verify & Continue'}</span>
             <ArrowRight className="w-4 h-4" />
@@ -224,12 +225,12 @@ export const VerificationScreen: React.FC<VerificationScreenProps> = ({
         </form>
 
         {/* Action Controls */}
-        <div className="pt-2 flex items-center justify-between border-t border-slate-100 dark:border-slate-800 text-xs">
+        <div className="pt-2 flex items-center justify-between border-t border-[#1F253D] text-xs">
           <button
             type="button"
             onClick={handleResend}
             disabled={resendCooldown > 0 || resending}
-            className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 disabled:opacity-40 font-medium flex items-center gap-1.5 transition-colors"
+            className="text-[#747E9B] hover:text-[#F4F6FF] disabled:opacity-40 font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${resending ? 'animate-spin' : ''}`} />
             <span>
@@ -240,7 +241,7 @@ export const VerificationScreen: React.FC<VerificationScreenProps> = ({
           <button
             type="button"
             onClick={onSignOut}
-            className="text-rose-600 hover:text-rose-700 dark:text-rose-400 font-medium flex items-center gap-1.5 transition-colors"
+            className="text-rose-400 hover:text-rose-300 font-medium flex items-center gap-1.5 transition-colors cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" />
             <span>Sign out</span>

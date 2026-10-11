@@ -23,46 +23,46 @@ export const BankReconciliation: React.FC = () => {
 
       {/* Summary Header */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-1">
-          <span className="text-xs text-slate-500 font-medium">Bank Statement Balance</span>
-          <div className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+        <div className="p-6 rounded-2xl bg-white dark:bg-[#161B30] border border-slate-200/80 dark:border-[#1F253D] shadow-xs space-y-1">
+          <span className="text-xs text-slate-500 dark:text-[#A3ABC5] font-medium">Bank Statement Balance</span>
+          <div className="text-2xl font-bold text-slate-900 dark:text-[#F4F6FF]">
             ${(operatingAccount?.balance || 0).toLocaleString()}
           </div>
-          <span className="text-[11px] text-emerald-600 dark:text-emerald-400 font-mono">Bank Feed Sync</span>
+          <span className="text-[11px] text-[#08B894] dark:text-[#23C99C] font-mono">Bank Feed Sync</span>
         </div>
 
-        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-1">
-          <span className="text-xs text-slate-500 font-medium">Unmatched Statement Items</span>
-          <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">{pendingTx.length} Transactions</div>
-          <span className="text-[11px] text-slate-500">Requires review or one-click match</span>
+        <div className="p-6 rounded-2xl bg-white dark:bg-[#161B30] border border-slate-200/80 dark:border-[#1F253D] shadow-xs space-y-1">
+          <span className="text-xs text-slate-500 dark:text-[#A3ABC5] font-medium">Unmatched Statement Items</span>
+          <div className="text-2xl font-bold text-amber-500 dark:text-amber-400">{pendingTx.length} Transactions</div>
+          <span className="text-[11px] text-slate-500 dark:text-[#6B7694]">Requires review or one-click match</span>
         </div>
 
-        <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-1">
-          <span className="text-xs text-slate-500 font-medium">Match Rate Confidence</span>
-          <div className="text-2xl font-bold text-blue-600 dark:text-blue-400">{matchRate}</div>
-          <span className="text-[11px] text-blue-600 dark:text-blue-400 font-mono">AI Neural Matcher Active</span>
+        <div className="p-6 rounded-2xl bg-white dark:bg-[#161B30] border border-slate-200/80 dark:border-[#1F253D] shadow-xs space-y-1">
+          <span className="text-xs text-slate-500 dark:text-[#A3ABC5] font-medium">Match Rate Confidence</span>
+          <div className="text-2xl font-bold text-[#7568E8] dark:text-[#A499FA]">{matchRate}</div>
+          <span className="text-[11px] text-[#7568E8] dark:text-[#A499FA] font-mono">AI Neural Matcher Active</span>
         </div>
       </div>
 
       {/* Split Screen Reconciliation Workstation */}
       <div className="space-y-4">
-        <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100">Statement Lines Awaiting Reconciliation</h3>
+        <h3 className="text-sm font-semibold text-slate-900 dark:text-[#F4F6FF]">Statement Lines Awaiting Reconciliation</h3>
 
         <div className="space-y-4">
           {pendingTx.map((tx) => (
             <div
               key={tx.id}
-              className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm grid grid-cols-1 lg:grid-cols-12 gap-6 items-center"
+              className="p-6 rounded-2xl bg-white dark:bg-[#161B30] border border-slate-200/80 dark:border-[#1F253D] shadow-xs grid grid-cols-1 lg:grid-cols-12 gap-6 items-center"
             >
               {/* Bank Statement Side */}
-              <div className="lg:col-span-5 space-y-1 border-b lg:border-b-0 lg:border-r border-slate-100 dark:border-slate-800 pb-4 lg:pb-0 lg:pr-6">
+              <div className="lg:col-span-5 space-y-1 border-b lg:border-b-0 lg:border-r border-slate-100 dark:border-[#1F253D] pb-4 lg:pb-0 lg:pr-6">
                 <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-500 font-mono">{tx.date}</span>
-                  <span className="text-[10px] uppercase font-semibold text-slate-400">Bank Statement</span>
+                  <span className="text-slate-500 dark:text-[#6B7694] font-mono">{tx.date}</span>
+                  <span className="text-[10px] uppercase font-semibold text-slate-400 dark:text-[#6B7694]">Bank Statement</span>
                 </div>
-                <div className="text-sm font-semibold text-slate-900 dark:text-slate-100">{tx.description}</div>
-                <div className="text-xs text-slate-500">Payee: {tx.payee}</div>
-                <div className={`text-base font-bold font-mono mt-2 ${tx.amount > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-900 dark:text-slate-100'}`}>
+                <div className="text-sm font-semibold text-slate-900 dark:text-[#F4F6FF]">{tx.description}</div>
+                <div className="text-xs text-slate-500 dark:text-[#A3ABC5]">Payee: {tx.payee}</div>
+                <div className={`text-base font-bold font-mono mt-2 ${tx.amount > 0 ? 'text-[#08B894] dark:text-[#23C99C]' : 'text-slate-900 dark:text-[#F4F6FF]'}`}>
                   {tx.amount > 0 ? `+$${tx.amount.toLocaleString()}` : `-$${Math.abs(tx.amount).toLocaleString()}`}
                 </div>
               </div>
@@ -70,9 +70,9 @@ export const BankReconciliation: React.FC = () => {
               {/* AI Match Suggestion Center */}
               <div className="lg:col-span-7 space-y-3">
                 {tx.suggestedMatch ? (
-                  <div className="p-4 rounded-xl bg-blue-50/60 dark:bg-blue-950/30 border border-blue-200/60 dark:border-blue-800 space-y-2">
+                  <div className="p-4 rounded-xl bg-indigo-50/60 dark:bg-[#7568E8]/10 border border-indigo-200/60 dark:border-[#7568E8]/25 space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-blue-700 dark:text-blue-300 flex items-center gap-1.5 uppercase">
+                      <span className="text-xs font-semibold text-[#7568E8] dark:text-[#A499FA] flex items-center gap-1.5 uppercase">
                         <Sparkles className="w-3.5 h-3.5" />
                         AI Suggested Match ({tx.suggestedMatch.confidence}% Confidence)
                       </span>
@@ -85,16 +85,16 @@ export const BankReconciliation: React.FC = () => {
                       </Button>
                     </div>
 
-                    <div className="text-xs font-semibold text-slate-900 dark:text-slate-100">
+                    <div className="text-xs font-semibold text-slate-900 dark:text-[#F4F6FF]">
                       {tx.suggestedMatch.accountName}
                     </div>
-                    <p className="text-[11px] text-slate-500">{tx.suggestedMatch.reason}</p>
+                    <p className="text-[11px] text-slate-500 dark:text-[#A3ABC5]">{tx.suggestedMatch.reason}</p>
                   </div>
                 ) : (
-                  <div className="p-4 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 flex items-center justify-between">
+                  <div className="p-4 rounded-xl bg-slate-50/50 dark:bg-[#101426] border border-slate-200/60 dark:border-[#1F253D] flex items-center justify-between">
                     <div>
-                      <div className="text-xs font-medium text-slate-800 dark:text-slate-200">No exact match found in General Ledger</div>
-                      <div className="text-[11px] text-slate-500">Select ledger account to record item</div>
+                      <div className="text-xs font-medium text-slate-800 dark:text-[#F4F6FF]">No exact match found in General Ledger</div>
+                      <div className="text-[11px] text-slate-500 dark:text-[#A3ABC5]">Select ledger account to record item</div>
                     </div>
                     <Button
                       onClick={() => reconcileBankTx(tx.id, 'acc-6100')}
@@ -112,19 +112,19 @@ export const BankReconciliation: React.FC = () => {
       </div>
 
       {/* Completed History */}
-      <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 p-6 space-y-3 shadow-sm">
-        <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">Recently Reconciled</h4>
+      <div className="rounded-2xl bg-white dark:bg-[#161B30] border border-slate-200/80 dark:border-[#1F253D] p-6 space-y-3 shadow-xs">
+        <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-[#A3ABC5]">Recently Reconciled</h4>
         <div className="space-y-2">
           {reconciledTx.map((tx) => (
-            <div key={tx.id} className="p-3 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 flex items-center justify-between text-xs">
+            <div key={tx.id} className="p-3 rounded-xl bg-slate-50/50 dark:bg-[#101426] border border-slate-200/60 dark:border-[#1F253D] flex items-center justify-between text-xs">
               <div className="flex items-center gap-3">
-                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <CheckCircle2 className="w-4 h-4 text-[#08B894] dark:text-[#23C99C]" />
                 <div>
-                  <span className="font-semibold text-slate-900 dark:text-slate-100">{tx.description}</span>
-                  <span className="text-[11px] text-slate-500 ml-2 font-mono">{tx.date}</span>
+                  <span className="font-semibold text-slate-900 dark:text-[#F4F6FF]">{tx.description}</span>
+                  <span className="text-[11px] text-slate-500 dark:text-[#6B7694] ml-2 font-mono">{tx.date}</span>
                 </div>
               </div>
-              <span className="font-bold text-slate-900 dark:text-slate-100">${Math.abs(tx.amount).toLocaleString()}</span>
+              <span className="font-bold text-slate-900 dark:text-[#F4F6FF] font-mono">${Math.abs(tx.amount).toLocaleString()}</span>
             </div>
           ))}
         </div>

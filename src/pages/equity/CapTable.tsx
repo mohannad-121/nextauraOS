@@ -45,7 +45,7 @@ export const CapTable: React.FC = () => {
         actions={
           <button
             onClick={() => setModalOpen(true)}
-            className="px-4 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 text-white font-medium text-xs shadow-xs flex items-center gap-1.5 transition-colors"
+            className="px-4 py-2 rounded-xl bg-[#7568E8] hover:bg-[#867AF0] active:bg-[#6056C9] text-white font-medium text-xs shadow-[0_0_12px_rgba(117,104,232,0.35)] flex items-center gap-1.5 transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             Issue New Shares
@@ -53,10 +53,10 @@ export const CapTable: React.FC = () => {
         }
       />
 
-      <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
+      <div className="rounded-2xl bg-white dark:bg-[#161B30] border border-slate-200/80 dark:border-[#1F253D] shadow-xs overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-start text-xs">
-            <thead className="bg-slate-50 dark:bg-slate-800/80 text-[11px] font-semibold uppercase tracking-wider text-slate-500 border-b border-slate-200/80 dark:border-slate-800">
+            <thead className="bg-slate-50 dark:bg-[#101426] text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-[#A3ABC5] border-b border-slate-200/80 dark:border-[#1F253D]">
               <tr>
                 <th className="p-3.5 text-start">Shareholder Name</th>
                 <th className="p-3.5 text-start">Security Class</th>
@@ -66,20 +66,20 @@ export const CapTable: React.FC = () => {
                 <th className="p-3.5 text-start">Issue Date</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
+            <tbody className="divide-y divide-slate-100 dark:divide-[#1F253D] font-medium">
               {shareholders.map((sh) => (
-                <tr key={sh.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
+                <tr key={sh.id} className="hover:bg-slate-50/80 dark:hover:bg-[#101426]/50 transition-colors">
                   <td className="p-3.5">
-                    <div className="font-semibold text-slate-900 dark:text-slate-100">{sh.name}</div>
-                    <div className="text-[11px] text-slate-400">{sh.email}</div>
+                    <div className="font-semibold text-slate-900 dark:text-[#F4F6FF]">{sh.name}</div>
+                    <div className="text-[11px] text-slate-400 dark:text-[#6B7694]">{sh.email}</div>
                   </td>
-                  <td className="p-3.5 text-slate-600 dark:text-slate-400">{sh.shareClass}</td>
-                  <td className="p-3.5 text-end font-mono font-semibold text-slate-900 dark:text-slate-100 tabular-nums">{sh.sharesCount.toLocaleString()}</td>
-                  <td className="p-3.5 text-end font-mono font-bold text-amber-600 dark:text-amber-400 tabular-nums">{sh.ownershipPercentage}%</td>
-                  <td className="p-3.5 text-end font-semibold text-slate-900 dark:text-slate-100 tabular-nums">
+                  <td className="p-3.5 text-slate-600 dark:text-[#A3ABC5]">{sh.shareClass}</td>
+                  <td className="p-3.5 text-end font-mono font-semibold text-slate-900 dark:text-[#F4F6FF] tabular-nums">{sh.sharesCount.toLocaleString()}</td>
+                  <td className="p-3.5 text-end font-mono font-bold text-[#7568E8] dark:text-[#A499FA] tabular-nums">{sh.ownershipPercentage}%</td>
+                  <td className="p-3.5 text-end font-semibold text-slate-900 dark:text-[#F4F6FF] tabular-nums">
                     {sh.totalInvestment > 0 ? formatCurrency(sh.totalInvestment) : '-'}
                   </td>
-                  <td className="p-3.5 text-slate-500 dark:text-slate-400">{sh.issueDate}</td>
+                  <td className="p-3.5 text-slate-500 dark:text-[#A3ABC5]">{sh.issueDate}</td>
                 </tr>
               ))}
             </tbody>
@@ -96,34 +96,34 @@ export const CapTable: React.FC = () => {
           subtitle="Add new shareholder or grant additional equity shares."
           maxWidth="md"
         >
-          <div className="space-y-3.5 text-xs text-slate-700 dark:text-slate-300">
+          <div className="space-y-3.5 text-xs text-slate-700 dark:text-[#A3ABC5]">
             <div>
-              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Shareholder Name</label>
+              <label className="block text-slate-700 dark:text-[#A3ABC5] font-medium mb-1">Shareholder Name</label>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600"
+                className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#101426] border border-slate-200 dark:border-[#2A3048] text-slate-900 dark:text-[#F4F6FF] placeholder-slate-400 dark:placeholder-[#6B7694] focus:outline-none focus:ring-2 focus:ring-[#7568E8]/20 focus:border-[#7568E8]"
               />
             </div>
 
             <div>
-              <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Email Address</label>
+              <label className="block text-slate-700 dark:text-[#A3ABC5] font-medium mb-1">Email Address</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600"
+                className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#101426] border border-slate-200 dark:border-[#2A3048] text-slate-900 dark:text-[#F4F6FF] placeholder-slate-400 dark:placeholder-[#6B7694] focus:outline-none focus:ring-2 focus:ring-[#7568E8]/20 focus:border-[#7568E8]"
               />
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Type</label>
+                <label className="block text-slate-700 dark:text-[#A3ABC5] font-medium mb-1">Type</label>
                 <select
                   value={type}
                   onChange={(e) => setType(e.target.value as any)}
-                  className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600"
+                  className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#101426] border border-slate-200 dark:border-[#2A3048] text-slate-900 dark:text-[#F4F6FF] focus:outline-none focus:ring-2 focus:ring-[#7568E8]/20 focus:border-[#7568E8]"
                 >
                   <option value="Founder">Founder</option>
                   <option value="Investor">Investor</option>
@@ -132,11 +132,11 @@ export const CapTable: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Share Class</label>
+                <label className="block text-slate-700 dark:text-[#A3ABC5] font-medium mb-1">Share Class</label>
                 <select
                   value={shareClass}
                   onChange={(e) => setShareClass(e.target.value as any)}
-                  className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600"
+                  className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#101426] border border-slate-200 dark:border-[#2A3048] text-slate-900 dark:text-[#F4F6FF] focus:outline-none focus:ring-2 focus:ring-[#7568E8]/20 focus:border-[#7568E8]"
                 >
                   <option value="Common A">Common A</option>
                   <option value="Preferred Series A">Preferred Series A</option>
@@ -147,35 +147,35 @@ export const CapTable: React.FC = () => {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Number of Shares</label>
+                <label className="block text-slate-700 dark:text-[#A3ABC5] font-medium mb-1">Number of Shares</label>
                 <input
                   type="number"
                   value={sharesCount}
                   onChange={(e) => setSharesCount(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 font-semibold focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600"
+                  className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#101426] border border-slate-200 dark:border-[#2A3048] text-slate-900 dark:text-[#F4F6FF] font-semibold focus:outline-none focus:ring-2 focus:ring-[#7568E8]/20 focus:border-[#7568E8]"
                 />
               </div>
               <div>
-                <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1">Capital Investment ($)</label>
+                <label className="block text-slate-700 dark:text-[#A3ABC5] font-medium mb-1">Capital Investment ($)</label>
                 <input
                   type="number"
                   value={investment}
                   onChange={(e) => setInvestment(e.target.value)}
-                  className="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600"
+                  className="w-full px-3 py-2 rounded-xl bg-white dark:bg-[#101426] border border-slate-200 dark:border-[#2A3048] text-slate-900 dark:text-[#F4F6FF] focus:outline-none focus:ring-2 focus:ring-[#7568E8]/20 focus:border-[#7568E8]"
                 />
               </div>
             </div>
 
-            <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-100 dark:border-slate-800">
+            <div className="flex justify-end gap-2.5 pt-4 border-t border-slate-100 dark:border-[#1F253D]">
               <button
                 onClick={() => setModalOpen(false)}
-                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 text-xs font-medium transition-colors"
+                className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-[#101426] hover:bg-slate-200 dark:hover:bg-[#1F253D] text-slate-700 dark:text-[#A3ABC5] text-xs font-medium transition-colors cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 onClick={handleIssue}
-                className="px-4 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 text-white font-medium text-xs shadow-xs transition-colors"
+                className="px-4 py-2 rounded-xl bg-[#7568E8] hover:bg-[#867AF0] active:bg-[#6056C9] text-white font-medium text-xs shadow-[0_0_12px_rgba(117,104,232,0.35)] transition-all cursor-pointer"
               >
                 Issue Certificate
               </button>

@@ -92,51 +92,51 @@ export const JournalEntryForm: React.FC = () => {
         </Button>
       </div>
 
-      <div className="p-6 sm:p-8 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-sm space-y-6">
-        <div className="border-b border-slate-100 dark:border-slate-800 pb-4">
-          <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">New Double-Entry Journal Post</h2>
-          <p className="text-xs text-slate-500 mt-1">Total Debits must equal Total Credits before posting.</p>
+      <div className="p-6 sm:p-8 rounded-2xl bg-white dark:bg-[#161B30] border border-slate-200/80 dark:border-[#1F253D] shadow-xs space-y-6">
+        <div className="border-b border-slate-100 dark:border-[#1F253D] pb-4">
+          <h2 className="text-lg font-bold text-slate-900 dark:text-[#F4F6FF]">New Double-Entry Journal Post</h2>
+          <p className="text-xs text-slate-500 dark:text-[#A3ABC5] mt-1">Total Debits must equal Total Credits before posting.</p>
         </div>
 
         {/* Header Fields */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
           <div>
-            <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Journal Entry Number</label>
-            <input type="text" value={entryNumber} readOnly className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 font-mono font-bold text-blue-600 dark:text-blue-400 text-xs" />
+            <label className="block text-slate-700 dark:text-[#A3ABC5] font-medium mb-1 text-[11px]">Journal Entry Number</label>
+            <input type="text" value={entryNumber} readOnly className="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-[#101426] border border-slate-200 dark:border-[#2A3048] font-mono font-bold text-[#7568E8] dark:text-[#A499FA] text-xs" />
           </div>
           <div>
-            <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Posting Date</label>
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-xs" />
+            <label className="block text-slate-700 dark:text-[#A3ABC5] font-medium mb-1 text-[11px]">Posting Date</label>
+            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-[#101426] border border-slate-200 dark:border-[#2A3048] text-slate-900 dark:text-[#F4F6FF] text-xs focus:outline-none focus:ring-2 focus:ring-[#7568E8]/20 focus:border-[#7568E8]" />
           </div>
           <div>
-            <label className="block text-slate-700 dark:text-slate-300 font-medium mb-1 text-[11px]">Reference / Document #</label>
-            <input type="text" value={reference} onChange={(e) => setReference(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-xs" />
+            <label className="block text-slate-700 dark:text-[#A3ABC5] font-medium mb-1 text-[11px]">Reference / Document #</label>
+            <input type="text" value={reference} onChange={(e) => setReference(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-[#101426] border border-slate-200 dark:border-[#2A3048] text-slate-900 dark:text-[#F4F6FF] text-xs focus:outline-none focus:ring-2 focus:ring-[#7568E8]/20 focus:border-[#7568E8]" />
           </div>
         </div>
 
         <div>
-          <label className="block text-[11px] font-medium text-slate-700 dark:text-slate-300 mb-1">Entry Memo / Description</label>
-          <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-slate-100" />
+          <label className="block text-[11px] font-medium text-slate-700 dark:text-[#A3ABC5] mb-1">Entry Memo / Description</label>
+          <input type="text" value={description} onChange={(e) => setDescription(e.target.value)} className="w-full px-3.5 py-2 rounded-xl bg-white dark:bg-[#101426] border border-slate-200 dark:border-[#2A3048] text-xs text-slate-900 dark:text-[#F4F6FF] focus:outline-none focus:ring-2 focus:ring-[#7568E8]/20 focus:border-[#7568E8]" />
         </div>
 
         {/* Lines Editor */}
-        <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+        <div className="space-y-3 pt-4 border-t border-slate-100 dark:border-[#1F253D]">
           <div className="flex justify-between items-center">
-            <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500">Journal Lines</h4>
-            <button onClick={addLine} className="flex items-center gap-1 text-xs font-medium text-blue-600 dark:text-blue-400 hover:underline">
+            <h4 className="text-xs font-semibold uppercase tracking-wider text-slate-500 dark:text-[#A3ABC5]">Journal Lines</h4>
+            <button onClick={addLine} className="flex items-center gap-1 text-xs font-medium text-[#7568E8] dark:text-[#A499FA] hover:underline cursor-pointer">
               <Plus className="w-3.5 h-3.5" /> Add Line
             </button>
           </div>
 
           <div className="space-y-3">
             {lines.map((ln) => (
-              <div key={ln.id} className="p-3.5 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 grid grid-cols-1 sm:grid-cols-12 gap-3 text-xs items-center">
+              <div key={ln.id} className="p-3.5 rounded-xl bg-slate-50/50 dark:bg-[#101426] border border-slate-200/60 dark:border-[#1F253D] grid grid-cols-1 sm:grid-cols-12 gap-3 text-xs items-center">
                 <div className="sm:col-span-5">
-                  <span className="text-[10px] text-slate-400 block mb-1">Account</span>
+                  <span className="text-[10px] text-slate-400 dark:text-[#6B7694] block mb-1">Account</span>
                   <select
                     value={ln.accountId}
                     onChange={(e) => updateLine(ln.id, 'accountId', e.target.value)}
-                    className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100 text-xs"
+                    className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-[#161B30] border border-slate-200 dark:border-[#2A3048] text-slate-900 dark:text-[#F4F6FF] text-xs focus:outline-none focus:border-[#7568E8]"
                   >
                     {accounts.map((a) => (
                       <option key={a.id} value={a.id}>
@@ -147,27 +147,27 @@ export const JournalEntryForm: React.FC = () => {
                 </div>
 
                 <div className="sm:col-span-3">
-                  <span className="text-[10px] text-slate-400 block mb-1">Debit ($)</span>
+                  <span className="text-[10px] text-slate-400 dark:text-[#6B7694] block mb-1">Debit ($)</span>
                   <input
                     type="number"
                     value={ln.debit || ''}
                     onChange={(e) => updateLine(ln.id, 'debit', Number(e.target.value))}
-                    className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-semibold text-slate-900 dark:text-slate-100 text-xs"
+                    className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-[#161B30] border border-slate-200 dark:border-[#2A3048] font-mono font-semibold text-slate-900 dark:text-[#F4F6FF] text-xs focus:outline-none focus:border-[#7568E8]"
                   />
                 </div>
 
                 <div className="sm:col-span-3">
-                  <span className="text-[10px] text-slate-400 block mb-1">Credit ($)</span>
+                  <span className="text-[10px] text-slate-400 dark:text-[#6B7694] block mb-1">Credit ($)</span>
                   <input
                     type="number"
                     value={ln.credit || ''}
                     onChange={(e) => updateLine(ln.id, 'credit', Number(e.target.value))}
-                    className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 font-mono font-semibold text-slate-900 dark:text-slate-100 text-xs"
+                    className="w-full px-2.5 py-1.5 rounded-lg bg-white dark:bg-[#161B30] border border-slate-200 dark:border-[#2A3048] font-mono font-semibold text-slate-900 dark:text-[#F4F6FF] text-xs focus:outline-none focus:border-[#7568E8]"
                   />
                 </div>
 
                 <div className="sm:col-span-1 text-center pt-4 sm:pt-0">
-                  <button onClick={() => removeLine(ln.id)} className="text-slate-400 hover:text-rose-600 p-1 transition-colors">
+                  <button onClick={() => removeLine(ln.id)} className="text-slate-400 hover:text-rose-500 p-1 transition-colors cursor-pointer">
                     <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
@@ -177,20 +177,20 @@ export const JournalEntryForm: React.FC = () => {
         </div>
 
         {/* Balance Verification Footer */}
-        <div className="p-4 rounded-xl bg-slate-50/50 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-800 flex items-center justify-between text-xs">
+        <div className="p-4 rounded-xl bg-slate-50/50 dark:bg-[#101426] border border-slate-200/60 dark:border-[#1F253D] flex items-center justify-between text-xs">
           <div>
-            <span className="text-slate-500">Debits: <strong className="text-slate-900 dark:text-slate-100 font-mono">${totalDebit.toLocaleString()}</strong></span>
-            <span className="mx-3 text-slate-300 dark:text-slate-700">|</span>
-            <span className="text-slate-500">Credits: <strong className="text-slate-900 dark:text-slate-100 font-mono">${totalCredit.toLocaleString()}</strong></span>
+            <span className="text-slate-500 dark:text-[#A3ABC5]">Debits: <strong className="text-slate-900 dark:text-[#F4F6FF] font-mono">${totalDebit.toLocaleString()}</strong></span>
+            <span className="mx-3 text-slate-300 dark:text-[#2A3048]">|</span>
+            <span className="text-slate-500 dark:text-[#A3ABC5]">Credits: <strong className="text-slate-900 dark:text-[#F4F6FF] font-mono">${totalCredit.toLocaleString()}</strong></span>
           </div>
 
           <div>
             {isBalanced ? (
-              <span className="px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800 font-semibold flex items-center gap-1 text-[11px]">
+              <span className="px-3 py-1 rounded-full bg-emerald-50 dark:bg-[#08B894]/10 text-emerald-700 dark:text-[#23C99C] border border-emerald-200 dark:border-[#08B894]/20 font-semibold flex items-center gap-1 text-[11px]">
                 <CheckCircle2 className="w-3.5 h-3.5" /> Balanced (Debits = Credits)
               </span>
             ) : (
-              <span className="px-3 py-1 rounded-full bg-rose-50 text-rose-700 dark:bg-rose-950/40 dark:text-rose-300 border border-rose-200 dark:border-rose-800 font-semibold flex items-center gap-1 text-[11px]">
+              <span className="px-3 py-1 rounded-full bg-rose-50 dark:bg-rose-500/10 text-rose-700 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20 font-semibold flex items-center gap-1 text-[11px]">
                 <AlertTriangle className="w-3.5 h-3.5" /> Imbalanced (${Math.abs(totalDebit - totalCredit)} difference)
               </span>
             )}
