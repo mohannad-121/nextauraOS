@@ -36,6 +36,7 @@ const appTitles: Record<string, string> = {
   calendar: 'Calendar',
   approvals: 'Approvals',
   contacts: 'Contacts',
+  crm: 'CRM Dashboard',
   documents: 'Document Vault',
   analytics: 'Analytics',
   ai: 'NextAura AI',
@@ -63,7 +64,7 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
   }
 
   return (
-    <div className={`min-h-screen bg-[#F7F7F4] dark:bg-[#171B19] text-slate-900 dark:text-slate-100 flex flex-col antialiased ${isRtl ? 'rtl' : 'ltr'}`}>
+    <div className={`min-h-screen bg-[#F8FAFC] dark:bg-[#090B1A] text-slate-900 dark:text-[#F4F6FF] flex flex-col antialiased ${isRtl ? 'rtl' : 'ltr'}`}>
       <div className="flex-1 flex w-full overflow-x-hidden">
         <Sidebar />
         {!isSidebarCollapsed && (
@@ -71,12 +72,12 @@ export const AppShell: React.FC<AppShellProps> = ({ children }) => {
             type="button"
             aria-label="Close navigation"
             onClick={() => setSidebarCollapsed(true)}
-            className="fixed inset-0 z-[25] bg-slate-900/15 backdrop-blur-[1px] lg:hidden"
+            className="fixed inset-0 z-[25] bg-black/50 backdrop-blur-xs lg:hidden"
           />
         )}
         <div className="flex-1 flex flex-col min-w-0 min-h-screen bg-transparent">
           <Topbar />
-          <main className="workspace-main flex-1 w-full max-w-[1480px] mx-auto px-4 py-5 sm:px-6 sm:py-7 xl:px-10 xl:py-9 animate-in fade-in duration-200">
+          <main className="workspace-main flex-1 w-full max-w-[1640px] mx-auto px-4 py-4 sm:px-6 sm:py-5 xl:px-8 xl:py-6 animate-in fade-in duration-200">
             <ErrorBoundary
               activeApp={activeApp}
               activeSubView={activeSubView}

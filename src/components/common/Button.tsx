@@ -22,19 +22,19 @@ export const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const baseClasses =
-    'inline-flex min-h-10 items-center justify-center font-medium transition-[background-color,border-color,color,box-shadow] duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-700/25 focus-visible:ring-offset-2 disabled:opacity-45 disabled:cursor-not-allowed select-none';
+    'inline-flex min-h-10 items-center justify-center font-medium transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7568E8]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[#090B1A] disabled:opacity-45 disabled:cursor-not-allowed select-none cursor-pointer';
 
   const variantClasses = {
     primary:
-      'bg-blue-700 hover:bg-blue-800 active:bg-blue-900 text-white shadow-[0_1px_2px_rgba(26,35,30,.12)] dark:bg-blue-600 dark:hover:bg-blue-500',
+      'bg-[#7568E8] hover:bg-[#867AF0] active:bg-[#6056C9] text-white shadow-[0_0_14px_rgba(117,104,232,0.35)] dark:bg-[#7568E8] dark:hover:bg-[#867AF0] dark:text-white border border-[#867AF0]/40',
     secondary:
-      'bg-white hover:bg-slate-50 active:bg-slate-100 text-slate-700 border border-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-200 dark:border-slate-700',
+      'bg-white hover:bg-slate-50 active:bg-slate-100 text-slate-700 border border-slate-200 dark:bg-[#1A2035] dark:hover:bg-[#222842] dark:text-[#F4F6FF] dark:border-[#2A3048]',
     outline:
-      'bg-white hover:bg-slate-50 active:bg-slate-100 text-slate-700 border border-slate-200/90 dark:bg-slate-900 dark:hover:bg-slate-800 dark:text-slate-200 dark:border-slate-700',
+      'bg-white hover:bg-slate-50 active:bg-slate-100 text-slate-700 border border-slate-200/90 dark:bg-[#161B30] dark:hover:bg-[#1E243E] dark:text-[#A3ABC5] dark:hover:text-[#F4F6FF] dark:border-[#2A3048]',
     ghost:
-      'bg-transparent hover:bg-slate-100/80 dark:hover:bg-slate-800 text-slate-600 hover:text-slate-900 dark:text-slate-300',
+      'bg-transparent hover:bg-slate-100/80 dark:hover:bg-[#1A2035] text-slate-600 hover:text-slate-900 dark:text-[#A3ABC5] dark:hover:text-[#F4F6FF]',
     danger:
-      'bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white shadow-xs dark:bg-rose-600 dark:hover:bg-rose-500',
+      'bg-rose-600 hover:bg-rose-700 active:bg-rose-800 text-white shadow-xs dark:bg-rose-600/90 dark:hover:bg-rose-500 dark:border dark:border-rose-500/40',
   };
 
   const sizeClasses = {

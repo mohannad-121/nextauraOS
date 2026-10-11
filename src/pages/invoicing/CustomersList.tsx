@@ -53,7 +53,7 @@ export const CustomersList: React.FC = () => {
         actions={
           <button
             onClick={() => setIsModalOpen(true)}
-            className="px-4 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-500 text-white font-medium text-xs shadow-xs flex items-center gap-1.5 transition-colors"
+            className="px-4 py-2 rounded-xl bg-[#7568E8] hover:bg-[#867AF0] active:bg-[#6056C9] text-white font-medium text-xs shadow-[0_0_12px_rgba(117,104,232,0.35)] flex items-center gap-1.5 transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Add Customer</span>
@@ -74,44 +74,44 @@ export const CustomersList: React.FC = () => {
           {customers.map((c) => (
             <div
               key={c.id}
-              className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs space-y-4 hover:border-slate-300 dark:hover:border-slate-700 transition-all"
+              className="p-5 rounded-2xl bg-white dark:bg-[#161B30] border border-slate-200/80 dark:border-[#1F253D] shadow-xs space-y-4 hover:border-slate-300 dark:hover:border-[#2D3555] transition-all"
             >
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 border border-blue-200 dark:border-blue-800 flex items-center justify-center font-bold text-xs font-heading shrink-0">
+                <div className="w-10 h-10 rounded-xl bg-indigo-50 text-[#7568E8] dark:bg-[#7568E8]/15 dark:text-[#A499FA] border border-indigo-200/60 dark:border-[#7568E8]/30 flex items-center justify-center font-bold text-xs font-heading shrink-0">
                   {c.name.substring(0, 2).toUpperCase()}
                 </div>
                 <div className="truncate">
-                  <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 font-heading truncate">{c.name}</h3>
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-[#F4F6FF] font-heading truncate">{c.name}</h3>
                   {c.company && (
-                    <div className="text-[11px] text-slate-500 flex items-center gap-1 truncate">
-                      <Building2 className="w-3 h-3 text-slate-400 shrink-0" />
+                    <div className="text-[11px] text-slate-500 dark:text-[#A3ABC5] flex items-center gap-1 truncate">
+                      <Building2 className="w-3 h-3 text-slate-400 dark:text-[#747E9B] shrink-0" />
                       <span className="truncate">{c.company}</span>
                     </div>
                   )}
                 </div>
               </div>
 
-              <div className="space-y-1.5 text-xs text-slate-500 dark:text-slate-400">
+              <div className="space-y-1.5 text-xs text-slate-500 dark:text-[#A3ABC5]">
                 <div className="flex items-center gap-2">
-                  <Mail className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                  <Mail className="w-3.5 h-3.5 text-slate-400 dark:text-[#747E9B] shrink-0" />
                   <span className="truncate">{c.email}</span>
                 </div>
                 {c.phone && (
                   <div className="flex items-center gap-2">
-                    <Phone className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                    <Phone className="w-3.5 h-3.5 text-slate-400 dark:text-[#747E9B] shrink-0" />
                     <span>{c.phone}</span>
                   </div>
                 )}
               </div>
 
-              <div className="pt-3.5 border-t border-slate-100 dark:border-slate-800 grid grid-cols-2 gap-3 text-xs">
+              <div className="pt-3.5 border-t border-slate-100 dark:border-[#1F253D] grid grid-cols-2 gap-3 text-xs">
                 <div>
-                  <span className="text-[10px] text-slate-400 uppercase block font-medium">Lifetime Revenue</span>
-                  <span className="font-semibold text-slate-900 dark:text-slate-100 tabular-nums">{formatCurrency(c.lifetimeRevenue)}</span>
+                  <span className="text-[10px] text-slate-400 dark:text-[#747E9B] uppercase block font-semibold">Lifetime Revenue</span>
+                  <span className="font-semibold text-slate-900 dark:text-[#F4F6FF] tabular-nums">{formatCurrency(c.lifetimeRevenue)}</span>
                 </div>
                 <div>
-                  <span className="text-[10px] text-slate-400 uppercase block font-medium">Outstanding</span>
-                  <span className={`font-semibold tabular-nums ${c.outstandingBalance > 0 ? 'text-amber-700 dark:text-amber-400' : 'text-slate-500'}`}>
+                  <span className="text-[10px] text-slate-400 dark:text-[#747E9B] uppercase block font-semibold">Outstanding</span>
+                  <span className={`font-semibold tabular-nums ${c.outstandingBalance > 0 ? 'text-amber-700 dark:text-amber-400' : 'text-slate-500 dark:text-[#A3ABC5]'}`}>
                     {formatCurrency(c.outstandingBalance)}
                   </span>
                 </div>

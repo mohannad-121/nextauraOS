@@ -1,462 +1,451 @@
 import React, { useState } from 'react';
 import {
-  LayoutGrid,
   Home,
   CreditCard,
-  FileSignature,
-  PieChart,
-  Leaf,
   Users,
-  Clock,
   UserPlus,
   Calendar as CalendarIcon,
-  Award,
-  Car,
   Wallet,
   Mail,
   MessageSquare,
-  ClipboardList,
-  Share2,
   ChevronDown,
-  ChevronRight,
   FolderKanban,
   BarChart3,
   Settings,
-  CheckCircle2,
-  Plus,
   Sparkles,
-  Building2,
-  Lock,
   BadgeDollarSign,
   Workflow,
   Globe2,
+  Briefcase,
+  Layers,
 } from 'lucide-react';
-import type { AppView } from '../../context/AppContext';
 import { useApp } from '../../context/AppContext';
-import { getServiceCustomIcon } from '../../utils/serviceIconMapper';
-import { NextAuraAIIcon } from '../common/NextAuraAIIcon';
-import { useCompanyCreationAccess } from './useCompanyCreationAccess';
 
 export const Sidebar: React.FC = () => {
   const {
     activeApp,
     activeSubView,
     navigate,
-    organizations,
     currentOrg,
-    switchOrg,
-    setCompanyCreationOpen,
     isSidebarCollapsed,
     activeServices,
   } = useApp();
 
-  const [isOrgDropdownOpen, setIsOrgDropdownOpen] = useState(false);
-  const companyCreationAccess = useCompanyCreationAccess();
-  const [expandedCategory, setExpandedCategory] = useState<'finance' | 'hr' | 'marketing' | null>(
-    ['invoicing', 'accounting', 'expenses', 'sign', 'equity', 'esg'].includes(activeApp)
-      ? 'finance'
-      : ['hr', 'employees', 'attendance', 'recruitment', 'time-off', 'appraisals', 'fleet', 'payroll'].includes(activeApp)
-      ? 'hr'
-      : ['marketing', 'email', 'sms', 'surveys', 'social'].includes(activeApp)
-      ? 'marketing'
-      : 'finance'
-  );
+  const [expandedMenu, setExpandedMenu] = useState<string | null>(() => {
+    if (['employees', 'attendance', 'time-off', 'appraisals', 'recruitment', 'payroll'].includes(activeApp)) return 'users';
+    if (['invoicing', 'accounting', 'expenses', 'sign', 'equity', 'esg'].includes(activeApp)) return 'finance';
+    if (['email', 'sms', 'surveys', 'social'].includes(activeApp)) return 'marketing';
+    return null;
+  });
 
-  const [expandedApp, setExpandedApp] = useState<string | null>(activeApp);
-
-  const rawFinanceModules = [
-    { key: 'invoicing', id: 'invoicing', title: 'Invoicing', icon: CreditCard, color: 'text-blue-700 dark:text-blue-300', subViews: [{ id: 'overview', label: 'Invoices' }, { id: 'new-invoice', label: 'Create Invoice' }, { id: 'customers', label: 'Customers' }] },
-    { key: 'accounting', id: 'accounting', defaultSubView: 'ledger', title: 'Accounting', icon: CreditCard, color: 'text-blue-600 dark:text-blue-400', subViews: [{ id: 'overview', label: 'Accounting Overview' }, { id: 'ledger', label: 'General Ledger' }, { id: 'journal-new', label: 'Journal Entry' }, { id: 'reconciliation', label: 'Bank Reconciliation' }, { id: 'reports', label: 'Financial Reports' }] },
-    { key: 'expenses', id: 'expenses', title: 'Expenses & Cards', icon: CreditCard, color: 'text-rose-600 dark:text-rose-400', subViews: [{ id: 'overview', label: 'Expenses' }, { id: 'approvals', label: 'Approval Queue' }, { id: 'cards', label: 'Corporate Cards' }] },
-    { key: 'sign', id: 'sign', title: 'Sign (E-Signature)', icon: FileSignature, color: 'text-teal-600 dark:text-teal-400', subViews: [{ id: 'overview', label: 'Sign Documents' }, { id: 'builder', label: 'Prepare Agreement' }] },
-    { key: 'equity', id: 'equity', defaultSubView: 'cap-table', title: 'Equity & Cap Table', icon: PieChart, color: 'text-amber-600 dark:text-amber-400', subViews: [{ id: 'overview', label: 'Ownership' }, { id: 'cap-table', label: 'Shareholders' }, { id: 'dilution', label: 'Dilution Simulator' }] },
-    { key: 'esg', id: 'esg', title: 'ESG & Carbon', icon: Leaf, color: 'text-emerald-600 dark:text-emerald-400', subViews: [{ id: 'overview', label: 'ESG Records' }, { id: 'carbon', label: 'Carbon Calculator' }] },
-  ];
-
-  const rawHrModules = [
-    { key: 'employees', id: 'employees', title: 'Employees', icon: Users, color: 'text-amber-600 dark:text-amber-400', subViews: [{ id: 'overview', label: 'Employee Directory' }, { id: 'org-chart', label: 'Organization Chart' }] },
-    { key: 'attendance', id: 'attendance', title: 'Attendances', icon: Clock, color: 'text-cyan-600 dark:text-cyan-400', subViews: [{ id: 'overview', label: 'Who\'s Working Board' }, { id: 'log', label: 'Attendance Log' }, { id: 'kiosk', label: 'Kiosk Mode' }] },
-    { key: 'recruitment', id: 'recruitment', defaultSubView: 'kanban', title: 'Recruitment (ATS)', icon: UserPlus, color: 'text-rose-600 dark:text-rose-400', subViews: [{ id: 'overview', label: 'Recruitment Overview' }, { id: 'kanban', label: 'Candidate Pipeline' }, { id: 'jobs', label: 'Job Openings' }] },
-    { key: 'time_off', id: 'time-off', defaultSubView: 'requests', title: 'Time Off & Leave', icon: CalendarIcon, color: 'text-purple-600 dark:text-purple-400', subViews: [{ id: 'overview', label: 'My Requests' }, { id: 'requests', label: 'Pending Approvals' }, { id: 'calendar', label: 'Team Leave Calendar' }] },
-    { key: 'appraisals', id: 'appraisals', title: 'Appraisals & OKRs', icon: Award, color: 'text-amber-600 dark:text-amber-400', subViews: [{ id: 'overview', label: 'Review Cycles' }, { id: 'goals', label: 'Goals & OKRs' }] },
-    { key: 'fleet', id: 'fleet', title: 'Fleet Management', icon: Car, color: 'text-blue-600 dark:text-blue-400', subViews: [{ id: 'overview', label: 'Vehicles Directory' }, { id: 'maintenance', label: 'Maintenance Schedule' }] },
-    { key: 'payroll', id: 'payroll', defaultSubView: 'runs', title: 'Payroll Processing', icon: Wallet, color: 'text-emerald-600 dark:text-emerald-400', subViews: [{ id: 'overview', label: 'Payroll Overview' }, { id: 'runs', label: 'Payroll Runs' }, { id: 'payslips', label: 'Payslip Generator' }] },
-  ];
-
-  const rawMarketingModules = [
-    { key: 'email_marketing', id: 'email', title: 'Email Marketing', icon: Mail, color: 'text-rose-600 dark:text-rose-400', subViews: [{ id: 'overview', label: 'Email Campaigns' }, { id: 'new', label: 'Campaign Wizard' }, { id: 'templates', label: 'Email Templates' }] },
-    { key: 'sms_marketing', id: 'sms', title: 'SMS Marketing', icon: MessageSquare, color: 'text-indigo-600 dark:text-indigo-400', subViews: [{ id: 'overview', label: 'SMS Campaigns' }, { id: 'new', label: 'Create SMS' }] },
-    { key: 'surveys', id: 'surveys', title: 'Surveys & Forms', icon: ClipboardList, color: 'text-amber-600 dark:text-amber-400', subViews: [{ id: 'overview', label: 'Active Surveys' }, { id: 'new', label: 'Form Builder' }] },
-    { key: 'social_marketing', id: 'social', title: 'Social Marketing', icon: Share2, color: 'text-sky-600 dark:text-sky-400', subViews: [{ id: 'overview', label: 'Social Content Calendar' }, { id: 'new', label: 'Compose Post' }, { id: 'accounts', label: 'Connected Accounts' }] },
-  ];
-
-  const financeModules = rawFinanceModules.filter((m) => activeServices.includes(m.key));
-  const hrModules = rawHrModules.filter((m) => activeServices.includes(m.key));
-  const marketingModules = rawMarketingModules.filter((m) => activeServices.includes(m.key));
-
-  const contactsCustomIcon = getServiceCustomIcon('contacts');
-  const documentsCustomIcon = getServiceCustomIcon('documents');
-  const analyticsCustomIcon = getServiceCustomIcon('analytics');
-
-  const renderModuleGroup = (title: string, categoryKey: 'finance' | 'hr' | 'marketing', modules: any[], badgeColor: string) => {
-    const isOpen = expandedCategory === categoryKey;
-
-    return (
-      <div className="space-y-1">
-        <button
-          aria-label={title}
-          onClick={() => setExpandedCategory(isOpen ? null : categoryKey)}
-          className="w-full px-2.5 py-2 rounded-xl flex items-center justify-between text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100/70 dark:hover:bg-slate-800/50 transition-colors"
-        >
-          <span className="flex items-center gap-2">
-            <span className={`w-1.5 h-1.5 rounded-full ${badgeColor}`} />
-            {!isSidebarCollapsed && <span className="text-[11px] font-semibold">{title}</span>}
-          </span>
-          {!isSidebarCollapsed && (
-            isOpen ? <ChevronDown className="w-3.5 h-3.5 text-slate-400" /> : <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-          )}
-        </button>
-
-        {(!isSidebarCollapsed && isOpen) && (
-          <div className="space-y-0.5 ps-1">
-            {modules.map((mod) => {
-              const Icon = mod.icon;
-              const customIcon = getServiceCustomIcon(categoryKey, mod.title, mod.key);
-              const isModExpanded = expandedApp === mod.id;
-              const isModActive = activeApp === mod.id;
-
-              return (
-                <div key={mod.id} className="space-y-0.5">
-                  <button
-                    onClick={() => {
-                      if (!isModActive) {
-                        navigate(mod.id as AppView, mod.defaultSubView || 'overview');
-                      }
-                      setExpandedApp(isModExpanded ? null : mod.id);
-                    }}
-                    className={`w-full px-2.5 py-2.5 rounded-xl flex items-center justify-between text-xs font-medium transition-all ${
-                      isModActive
-                        ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 font-semibold shadow-[inset_0_0_0_1px_rgba(40,81,67,.08)]'
-                        : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-slate-800/40'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2.5">
-                      {customIcon ? (
-                        <img
-                          src={customIcon}
-                          alt={`${mod.title} icon`}
-                          className="w-4 h-4 object-contain select-none pointer-events-none"
-                        />
-                      ) : (
-                        <Icon className={`w-4 h-4 ${mod.color}`} />
-                      )}
-                      <span>{mod.title}</span>
-                    </div>
-                    {isModExpanded ? (
-                      <ChevronDown className="w-3 h-3 text-slate-400" />
-                    ) : (
-                      <ChevronRight className="w-3 h-3 text-slate-400" />
-                    )}
-                  </button>
-
-                  {isModExpanded && (
-                    <div className="ps-5 pe-1 py-1 space-y-0.5 border-s border-slate-200 dark:border-slate-800 ms-4">
-                      {mod.subViews.map((sub: any) => (
-                        <button
-                          key={sub.id}
-                          onClick={() => navigate(mod.id as AppView, sub.id)}
-                          className={`w-full py-1 px-2 rounded-lg text-start text-[11px] transition-colors ${
-                            isModActive && activeSubView === sub.id
-                              ? 'text-blue-700 dark:text-blue-400 font-semibold bg-blue-50/80 dark:bg-blue-950/40'
-                              : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100/50 dark:hover:bg-slate-800/30'
-                          }`}
-                        >
-                          {sub.label}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-    );
+  const toggleSubmenu = (key: string) => {
+    setExpandedMenu((prev) => (prev === key ? null : key));
   };
+
+  const isCrmActive = activeApp === 'contacts' || activeApp === 'crm';
+  const isOverviewActive = activeApp === 'home';
+  const isAnalyticsActive = activeApp === 'analytics';
+  const isFinanceActive = ['invoicing', 'accounting', 'expenses', 'equity', 'esg'].includes(activeApp) && activeApp !== 'launchpad';
+  const isTeamActive = ['hr', 'employees', 'attendance', 'recruitment', 'time-off', 'appraisals', 'fleet', 'payroll'].includes(activeApp);
 
   return (
     <aside
-      aria-label="Primary workspace navigation"
-      className={`fixed inset-y-0 start-0 h-screen shrink-0 z-30 bg-[#FCFCFA] dark:bg-[#1D221F] border-e border-slate-200/80 dark:border-slate-800 flex flex-col justify-between transition-[width,transform] duration-300 lg:sticky ${
-        isSidebarCollapsed ? '-translate-x-full rtl:translate-x-full lg:translate-x-0 lg:w-[76px]' : 'translate-x-0 w-[280px]'
+      aria-label="Primary navigation"
+      className={`fixed inset-y-0 start-0 h-screen shrink-0 z-30 bg-[#131728] border-e border-[#1F243D] flex flex-col justify-between transition-[width,transform] duration-200 lg:sticky select-none ${
+        isSidebarCollapsed ? '-translate-x-full rtl:translate-x-full lg:translate-x-0 lg:w-[68px]' : 'translate-x-0 w-[240px]'
       }`}
     >
-      <div className="space-y-5 p-3.5 overflow-y-auto">
-        {/* Top Brand Logo */}
-        <div className="flex items-center justify-between px-1">
+      {/* Background Decorative Curve (sampled from reference bottom-left) */}
+      <div className="absolute inset-0 pointer-events-none overflow-hidden opacity-30">
+        <div className="absolute -bottom-20 -left-20 w-64 h-64 rounded-full bg-gradient-to-tr from-[#7568E8]/20 via-[#178CFF]/10 to-transparent blur-2xl" />
+      </div>
+
+      <div className="relative z-10 flex flex-col h-full overflow-hidden">
+        {/* Brand Header */}
+        <div className="flex items-center justify-between px-4 py-3.5 border-b border-[#1F243D]/60 shrink-0">
           <div
-            onClick={() => navigate('launchpad')}
-            className="flex items-center gap-3 cursor-pointer group"
+            onClick={() => navigate('contacts')}
+            className="flex items-center gap-2.5 cursor-pointer group"
           >
-            <div className="w-9 h-9 rounded-xl bg-blue-700 flex items-center justify-center shadow-sm group-hover:bg-blue-800 transition-colors overflow-hidden p-0.5">
-              <img src="/logo.png" alt="NextAura" className="w-full h-full object-contain" />
+            {/* Golden 8-point star logo emblem matching reference */}
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-amber-400 via-orange-500 to-amber-600 flex items-center justify-center shadow-[0_0_12px_rgba(245,158,11,0.35)] shrink-0">
+              <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3" fill="currentColor" />
+                <path d="M12 2v3m0 14v3M2 12h3m14 0h3M4.93 4.93l2.12 2.12m9.9 9.9l2.12 2.12M4.93 19.07l2.12-2.12m9.9-9.9l2.12-2.12" />
+              </svg>
             </div>
             {!isSidebarCollapsed && (
-              <div>
-                <div className="flex items-center gap-1.5 font-semibold text-sm tracking-tight text-slate-900 dark:text-slate-100 font-heading">
-                  NextAura <Sparkles className="w-3 h-3 text-blue-600 dark:text-blue-400" aria-hidden="true" />
+              <div className="flex flex-col">
+                <div className="flex items-center gap-1 font-bold text-[15px] tracking-tight text-[#F4F6FF]">
+                  NextAura<span className="text-[#7568E8] font-extrabold ms-0.5">OS</span>
                 </div>
-                <div className="text-[10px] font-medium tracking-wide text-slate-500 dark:text-slate-400">
-                  Business OS
-                </div>
+                <span className="text-[10px] text-[#6B7694] tracking-wider uppercase font-medium">Business Platform</span>
               </div>
             )}
           </div>
         </div>
 
-        {/* Workspace Switcher */}
-        {!isSidebarCollapsed && (
-          <div className="relative">
-            <button
-              aria-label="Switch workspace"
-              onClick={() => setIsOrgDropdownOpen(!isOrgDropdownOpen)}
-              className="w-full p-3 rounded-xl bg-white hover:bg-slate-50 dark:bg-slate-800/80 border border-slate-200/80 dark:border-slate-700/80 flex items-center justify-between transition-colors shadow-[0_1px_2px_rgba(26,35,30,.02)]"
-            >
-              <div className="flex items-center gap-2 overflow-hidden">
-                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300"><Building2 className="h-3.5 w-3.5" aria-hidden="true" /></span>
-                <div className="text-start truncate">
-                  <div className="text-xs font-semibold text-slate-900 dark:text-slate-100 truncate">{currentOrg.name}</div>
-                  <div className="text-[10px] text-slate-500 dark:text-slate-400 font-mono">{currentOrg.baseCurrency} Workspace</div>
-                </div>
-              </div>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-            </button>
-
-            {isOrgDropdownOpen && (
-              <div className="absolute top-full start-0 w-full mt-1.5 p-1.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-lg z-50 space-y-0.5">
-                <div className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider px-2 py-1">Switch Workspace</div>
-                {organizations.map((org) => (
-                  <button
-                    key={org.id}
-                    disabled={org.lifecycleStatus !== undefined && org.lifecycleStatus !== 'active'}
-                    onClick={() => {
-                      if (org.lifecycleStatus && org.lifecycleStatus !== 'active') return;
-                      void switchOrg(org.id).catch((error) => console.error('[Sidebar] Failed to switch workspace:', error));
-                      setIsOrgDropdownOpen(false);
-                    }}
-                    className={`w-full p-2 rounded-lg flex items-center justify-between text-xs font-medium transition-colors ${(org.lifecycleStatus && org.lifecycleStatus !== 'active') ? 'cursor-not-allowed opacity-50' : 'cursor-pointer'} ${
-                      currentOrg.id === org.id
-                        ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300 font-semibold'
-                        : 'text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'
-                    }`}
-                  >
-                    <span className="flex items-center gap-2">
-                      <Building2 className="h-3.5 w-3.5 text-blue-600" aria-hidden="true" />
-                      {org.name}
-                    </span>
-                    {org.lifecycleStatus && org.lifecycleStatus !== 'active' ? <span className="flex items-center gap-1 text-[10px] text-slate-400"><Lock className="h-3 w-3" />{org.lifecycleStatus === 'archived' ? 'Archived' : 'Locked'}</span> : <span className="text-[10px] font-mono text-slate-400">{org.baseCurrency}</span>}
-                  </button>
-                ))}
-                {companyCreationAccess !== 'none' && <div className="mt-1 border-t border-slate-100 pt-1 dark:border-slate-800">
-                  <button type="button" disabled={companyCreationAccess === 'loading'} onClick={() => { if (companyCreationAccess === 'upgrade') navigate('pricing'); else setCompanyCreationOpen(true); setIsOrgDropdownOpen(false); }} className="flex w-full items-center gap-2 rounded-lg px-2 py-2 text-xs font-semibold text-blue-700 hover:bg-blue-50 disabled:cursor-wait disabled:opacity-60 dark:text-blue-300 dark:hover:bg-blue-950/30">
-                    <Plus className="h-3.5 w-3.5" aria-hidden="true" />{companyCreationAccess === 'loading' ? 'Checking company access…' : companyCreationAccess === 'upgrade' ? 'Upgrade for more companies' : companyCreationAccess === 'error' ? 'Company access unavailable' : 'Add company'}
-                  </button>
-                </div>}
+        {/* Scrollable Navigation Area */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden px-2.5 py-3 space-y-4 text-xs font-medium">
+          
+          {/* SECTION 1: DASHBOARDS */}
+          <div>
+            {!isSidebarCollapsed && (
+              <div className="px-2 pb-1.5 text-[10px] font-semibold text-[#6B7694] uppercase tracking-wider">
+                Dashboards
               </div>
             )}
+
+            <div className="space-y-0.5">
+              {/* Overview */}
+              <button
+                type="button"
+                onClick={() => navigate('home')}
+                className={`w-full px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-xs transition-all ${
+                  isOverviewActive
+                    ? 'bg-[#262356] border border-[#584BE2] text-[#F4F6FF] font-semibold shadow-[0_0_12px_rgba(117,104,232,0.25)]'
+                    : 'text-[#A3ABC5] hover:text-[#F4F6FF] hover:bg-[#1A2035]'
+                }`}
+                title="Overview"
+              >
+                <Home className={`w-4 h-4 shrink-0 ${isOverviewActive ? 'text-[#F4F6FF]' : 'text-[#747E9B]'}`} />
+                {!isSidebarCollapsed && <span>Overview</span>}
+              </button>
+
+              {/* Analytics */}
+              <button
+                type="button"
+                onClick={() => navigate('analytics')}
+                className={`w-full px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-xs transition-all ${
+                  isAnalyticsActive
+                    ? 'bg-[#262356] border border-[#584BE2] text-[#F4F6FF] font-semibold shadow-[0_0_12px_rgba(117,104,232,0.25)]'
+                    : 'text-[#A3ABC5] hover:text-[#F4F6FF] hover:bg-[#1A2035]'
+                }`}
+                title="Analytics"
+              >
+                <BarChart3 className={`w-4 h-4 shrink-0 ${isAnalyticsActive ? 'text-[#F4F6FF]' : 'text-[#747E9B]'}`} />
+                {!isSidebarCollapsed && <span>Analytics</span>}
+              </button>
+
+              {/* CRM / Sales — Primary Reference Target */}
+              <button
+                type="button"
+                onClick={() => navigate('contacts')}
+                className={`w-full px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-xs transition-all ${
+                  isCrmActive
+                    ? 'bg-[#262356] border border-[#584BE2] text-[#F4F6FF] font-semibold shadow-[0_0_14px_rgba(117,104,232,0.3)]'
+                    : 'text-[#A3ABC5] hover:text-[#F4F6FF] hover:bg-[#1A2035]'
+                }`}
+                title="CRM / Sales"
+              >
+                <Users className={`w-4 h-4 shrink-0 ${isCrmActive ? 'text-[#F4F6FF]' : 'text-[#747E9B]'}`} />
+                {!isSidebarCollapsed && <span className="font-medium">CRM / Sales</span>}
+              </button>
+
+              {/* Finance */}
+              <button
+                type="button"
+                onClick={() => navigate('invoicing')}
+                className={`w-full px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-xs transition-all ${
+                  isFinanceActive
+                    ? 'bg-[#262356] border border-[#584BE2] text-[#F4F6FF] font-semibold shadow-[0_0_12px_rgba(117,104,232,0.25)]'
+                    : 'text-[#A3ABC5] hover:text-[#F4F6FF] hover:bg-[#1A2035]'
+                }`}
+                title="Finance"
+              >
+                <CreditCard className={`w-4 h-4 shrink-0 ${isFinanceActive ? 'text-[#F4F6FF]' : 'text-[#747E9B]'}`} />
+                {!isSidebarCollapsed && <span>Finance</span>}
+              </button>
+
+              {/* Team / Projects */}
+              <button
+                type="button"
+                onClick={() => navigate('hr')}
+                className={`w-full px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-xs transition-all ${
+                  isTeamActive
+                    ? 'bg-[#262356] border border-[#584BE2] text-[#F4F6FF] font-semibold shadow-[0_0_12px_rgba(117,104,232,0.25)]'
+                    : 'text-[#A3ABC5] hover:text-[#F4F6FF] hover:bg-[#1A2035]'
+                }`}
+                title="Team / Projects"
+              >
+                <Briefcase className={`w-4 h-4 shrink-0 ${isTeamActive ? 'text-[#F4F6FF]' : 'text-[#747E9B]'}`} />
+                {!isSidebarCollapsed && <span>Team / Projects</span>}
+              </button>
+            </div>
+          </div>
+
+          {/* SECTION 2: APPS */}
+          <div>
+            {!isSidebarCollapsed && (
+              <div className="px-2 pb-1.5 text-[10px] font-semibold text-[#6B7694] uppercase tracking-wider">
+                Apps
+              </div>
+            )}
+
+            <div className="space-y-0.5">
+              {/* User Management */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isSidebarCollapsed) navigate('employees');
+                    else toggleSubmenu('users');
+                  }}
+                  className={`w-full px-2.5 py-2 rounded-xl flex items-center justify-between text-xs transition-all ${
+                    ['employees', 'attendance', 'time-off', 'appraisals'].includes(activeApp)
+                      ? 'text-[#F4F6FF] bg-[#1A2035]'
+                      : 'text-[#A3ABC5] hover:text-[#F4F6FF] hover:bg-[#1A2035]'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <UserPlus className="w-4 h-4 text-[#747E9B] shrink-0" />
+                    {!isSidebarCollapsed && <span>User Management</span>}
+                  </div>
+                  {!isSidebarCollapsed && (
+                    <ChevronDown className={`w-3.5 h-3.5 text-[#6B7694] transition-transform duration-200 ${expandedMenu === 'users' ? 'rotate-180' : ''}`} />
+                  )}
+                </button>
+                {expandedMenu === 'users' && !isSidebarCollapsed && (
+                  <div className="ms-6 ps-2.5 my-1 border-s border-[#1F243D] space-y-1">
+                    <button onClick={() => navigate('employees', 'overview')} className={`block w-full text-start py-1 text-[11px] ${activeApp === 'employees' && activeSubView === 'overview' ? 'text-[#7568E8] font-semibold' : 'text-[#A3ABC5] hover:text-white'}`}>Employees List</button>
+                    <button onClick={() => navigate('employees', 'org-chart')} className={`block w-full text-start py-1 text-[11px] ${activeApp === 'employees' && activeSubView === 'org-chart' ? 'text-[#7568E8] font-semibold' : 'text-[#A3ABC5] hover:text-white'}`}>Org Chart</button>
+                    <button onClick={() => navigate('attendance')} className={`block w-full text-start py-1 text-[11px] ${activeApp === 'attendance' ? 'text-[#7568E8] font-semibold' : 'text-[#A3ABC5] hover:text-white'}`}>Attendance Kiosk</button>
+                    <button onClick={() => navigate('time-off')} className={`block w-full text-start py-1 text-[11px] ${activeApp === 'time-off' ? 'text-[#7568E8] font-semibold' : 'text-[#A3ABC5] hover:text-white'}`}>Leave Requests</button>
+                  </div>
+                )}
+              </div>
+
+              {/* Projects & Tasks */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isSidebarCollapsed) navigate('approvals');
+                    else toggleSubmenu('projects');
+                  }}
+                  className={`w-full px-2.5 py-2 rounded-xl flex items-center justify-between text-xs transition-all ${
+                    ['approvals', 'fleet', 'recruitment', 'payroll'].includes(activeApp)
+                      ? 'text-[#F4F6FF] bg-[#1A2035]'
+                      : 'text-[#A3ABC5] hover:text-[#F4F6FF] hover:bg-[#1A2035]'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Layers className="w-4 h-4 text-[#747E9B] shrink-0" />
+                    {!isSidebarCollapsed && <span>Projects & Tasks</span>}
+                  </div>
+                  {!isSidebarCollapsed && (
+                    <ChevronDown className={`w-3.5 h-3.5 text-[#6B7694] transition-transform duration-200 ${expandedMenu === 'projects' ? 'rotate-180' : ''}`} />
+                  )}
+                </button>
+                {expandedMenu === 'projects' && !isSidebarCollapsed && (
+                  <div className="ms-6 ps-2.5 my-1 border-s border-[#1F243D] space-y-1">
+                    <button onClick={() => navigate('approvals')} className={`block w-full text-start py-1 text-[11px] ${activeApp === 'approvals' ? 'text-[#7568E8] font-semibold' : 'text-[#A3ABC5] hover:text-white'}`}>Central Approvals</button>
+                    <button onClick={() => navigate('recruitment')} className={`block w-full text-start py-1 text-[11px] ${activeApp === 'recruitment' ? 'text-[#7568E8] font-semibold' : 'text-[#A3ABC5] hover:text-white'}`}>Recruitment ATS</button>
+                    <button onClick={() => navigate('payroll')} className={`block w-full text-start py-1 text-[11px] ${activeApp === 'payroll' ? 'text-[#7568E8] font-semibold' : 'text-[#A3ABC5] hover:text-white'}`}>Payroll Runs</button>
+                    <button onClick={() => navigate('fleet')} className={`block w-full text-start py-1 text-[11px] ${activeApp === 'fleet' ? 'text-[#7568E8] font-semibold' : 'text-[#A3ABC5] hover:text-white'}`}>Fleet Operations</button>
+                  </div>
+                )}
+              </div>
+
+              {/* Finance Suite */}
+              <div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (isSidebarCollapsed) navigate('invoicing');
+                    else toggleSubmenu('finance');
+                  }}
+                  className={`w-full px-2.5 py-2 rounded-xl flex items-center justify-between text-xs transition-all ${
+                    ['invoicing', 'accounting', 'expenses', 'equity', 'esg'].includes(activeApp)
+                      ? 'text-[#F4F6FF] bg-[#1A2035]'
+                      : 'text-[#A3ABC5] hover:text-[#F4F6FF] hover:bg-[#1A2035]'
+                  }`}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Wallet className="w-4 h-4 text-[#747E9B] shrink-0" />
+                    {!isSidebarCollapsed && <span>Finance Suite</span>}
+                  </div>
+                  {!isSidebarCollapsed && (
+                    <ChevronDown className={`w-3.5 h-3.5 text-[#6B7694] transition-transform duration-200 ${expandedMenu === 'finance' ? 'rotate-180' : ''}`} />
+                  )}
+                </button>
+                {expandedMenu === 'finance' && !isSidebarCollapsed && (
+                  <div className="ms-6 ps-2.5 my-1 border-s border-[#1F243D] space-y-1">
+                    <button onClick={() => navigate('invoicing', 'overview')} className={`block w-full text-start py-1 text-[11px] ${activeApp === 'invoicing' && activeSubView === 'overview' ? 'text-[#7568E8] font-semibold' : 'text-[#A3ABC5] hover:text-white'}`}>Invoices</button>
+                    <button onClick={() => navigate('invoicing', 'customers')} className={`block w-full text-start py-1 text-[11px] ${activeApp === 'invoicing' && activeSubView === 'customers' ? 'text-[#7568E8] font-semibold' : 'text-[#A3ABC5] hover:text-white'}`}>Customers</button>
+                    <button onClick={() => navigate('accounting', 'ledger')} className={`block w-full text-start py-1 text-[11px] ${activeApp === 'accounting' ? 'text-[#7568E8] font-semibold' : 'text-[#A3ABC5] hover:text-white'}`}>General Ledger</button>
+                    <button onClick={() => navigate('expenses')} className={`block w-full text-start py-1 text-[11px] ${activeApp === 'expenses' ? 'text-[#7568E8] font-semibold' : 'text-[#A3ABC5] hover:text-white'}`}>Expenses & Cards</button>
+                    <button onClick={() => navigate('equity')} className={`block w-full text-start py-1 text-[11px] ${activeApp === 'equity' ? 'text-[#7568E8] font-semibold' : 'text-[#A3ABC5] hover:text-white'}`}>Equity & Cap Table</button>
+                    <button onClick={() => navigate('esg')} className={`block w-full text-start py-1 text-[11px] ${activeApp === 'esg' ? 'text-[#7568E8] font-semibold' : 'text-[#A3ABC5] hover:text-white'}`}>ESG & Carbon</button>
+                  </div>
+                )}
+              </div>
+
+              {/* Calendar */}
+              <button
+                type="button"
+                onClick={() => navigate('calendar')}
+                className={`w-full px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-xs transition-all ${
+                  activeApp === 'calendar'
+                    ? 'bg-[#262356] border border-[#584BE2] text-[#F4F6FF] font-semibold shadow-[0_0_12px_rgba(117,104,232,0.25)]'
+                    : 'text-[#A3ABC5] hover:text-[#F4F6FF] hover:bg-[#1A2035]'
+                }`}
+                title="Calendar"
+              >
+                <CalendarIcon className="w-4 h-4 text-[#747E9B] shrink-0" />
+                {!isSidebarCollapsed && <span>Calendar</span>}
+              </button>
+
+              {/* Email */}
+              <button
+                type="button"
+                onClick={() => navigate('email')}
+                className={`w-full px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-xs transition-all ${
+                  activeApp === 'email'
+                    ? 'bg-[#262356] border border-[#584BE2] text-[#F4F6FF] font-semibold shadow-[0_0_12px_rgba(117,104,232,0.25)]'
+                    : 'text-[#A3ABC5] hover:text-[#F4F6FF] hover:bg-[#1A2035]'
+                }`}
+                title="Email"
+              >
+                <Mail className="w-4 h-4 text-[#747E9B] shrink-0" />
+                {!isSidebarCollapsed && <span>Email Marketing</span>}
+              </button>
+
+              {/* Chat / SMS */}
+              <button
+                type="button"
+                onClick={() => navigate('sms')}
+                className={`w-full px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-xs transition-all ${
+                  activeApp === 'sms'
+                    ? 'bg-[#262356] border border-[#584BE2] text-[#F4F6FF] font-semibold shadow-[0_0_12px_rgba(117,104,232,0.25)]'
+                    : 'text-[#A3ABC5] hover:text-[#F4F6FF] hover:bg-[#1A2035]'
+                }`}
+                title="Chat & SMS"
+              >
+                <MessageSquare className="w-4 h-4 text-[#747E9B] shrink-0" />
+                {!isSidebarCollapsed && <span>Chat & Broadcasts</span>}
+              </button>
+
+              {/* File Manager & Documents */}
+              <button
+                type="button"
+                onClick={() => navigate('documents')}
+                className={`w-full px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-xs transition-all ${
+                  ['documents', 'sign'].includes(activeApp)
+                    ? 'bg-[#262356] border border-[#584BE2] text-[#F4F6FF] font-semibold shadow-[0_0_12px_rgba(117,104,232,0.25)]'
+                    : 'text-[#A3ABC5] hover:text-[#F4F6FF] hover:bg-[#1A2035]'
+                }`}
+                title="File Manager"
+              >
+                <FolderKanban className="w-4 h-4 text-[#747E9B] shrink-0" />
+                {!isSidebarCollapsed && <span>File Manager</span>}
+              </button>
+
+              {/* NextAura AI */}
+              <button
+                type="button"
+                onClick={() => navigate('ai')}
+                className={`w-full px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-xs transition-all ${
+                  activeApp === 'ai'
+                    ? 'bg-[#262356] border border-[#584BE2] text-[#F4F6FF] font-semibold shadow-[0_0_12px_rgba(117,104,232,0.25)]'
+                    : 'text-[#A3ABC5] hover:text-[#F4F6FF] hover:bg-[#1A2035]'
+                }`}
+                title="NextAura AI"
+              >
+                <Sparkles className="w-4 h-4 text-[#7568E8] shrink-0" />
+                {!isSidebarCollapsed && <span className="font-semibold text-[#F4F6FF]">NextAura AI</span>}
+              </button>
+            </div>
+          </div>
+
+          {/* SECTION 3: PAGES & PLATFORM */}
+          <div>
+            {!isSidebarCollapsed && (
+              <div className="px-2 pb-1.5 text-[10px] font-semibold text-[#6B7694] uppercase tracking-wider">
+                Pages
+              </div>
+            )}
+
+            <div className="space-y-0.5">
+              {/* Plans & Billing */}
+              <button
+                type="button"
+                onClick={() => navigate('pricing')}
+                className={`w-full px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-xs transition-all ${
+                  activeApp === 'pricing'
+                    ? 'bg-[#262356] border border-[#584BE2] text-[#F4F6FF] font-semibold shadow-[0_0_12px_rgba(117,104,232,0.25)]'
+                    : 'text-[#A3ABC5] hover:text-[#F4F6FF] hover:bg-[#1A2035]'
+                }`}
+                title="Plans & Billing"
+              >
+                <BadgeDollarSign className="w-4 h-4 text-[#747E9B] shrink-0" />
+                {!isSidebarCollapsed && <span>Plans & Billing</span>}
+              </button>
+
+              {/* Automations */}
+              <button
+                type="button"
+                onClick={() => navigate('automations')}
+                className={`w-full px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-xs transition-all ${
+                  activeApp === 'automations'
+                    ? 'bg-[#262356] border border-[#584BE2] text-[#F4F6FF] font-semibold shadow-[0_0_12px_rgba(117,104,232,0.25)]'
+                    : 'text-[#A3ABC5] hover:text-[#F4F6FF] hover:bg-[#1A2035]'
+                }`}
+                title="Automations"
+              >
+                <Workflow className="w-4 h-4 text-[#747E9B] shrink-0" />
+                {!isSidebarCollapsed && <span>Automations</span>}
+              </button>
+
+              {/* Website Builder */}
+              {activeServices.includes('website_builder') && (
+                <button
+                  type="button"
+                  onClick={() => navigate('websites')}
+                  className={`w-full px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-xs transition-all ${
+                    activeApp === 'websites'
+                      ? 'bg-[#262356] border border-[#584BE2] text-[#F4F6FF] font-semibold shadow-[0_0_12px_rgba(117,104,232,0.25)]'
+                      : 'text-[#A3ABC5] hover:text-[#F4F6FF] hover:bg-[#1A2035]'
+                  }`}
+                  title="Websites"
+                >
+                  <Globe2 className="w-4 h-4 text-[#747E9B] shrink-0" />
+                  {!isSidebarCollapsed && <span>Websites</span>}
+                </button>
+              )}
+
+              {/* Settings */}
+              <button
+                type="button"
+                onClick={() => navigate('settings')}
+                className={`w-full px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-xs transition-all ${
+                  activeApp === 'settings'
+                    ? 'bg-[#262356] border border-[#584BE2] text-[#F4F6FF] font-semibold shadow-[0_0_12px_rgba(117,104,232,0.25)]'
+                    : 'text-[#A3ABC5] hover:text-[#F4F6FF] hover:bg-[#1A2035]'
+                }`}
+                title="Settings"
+              >
+                <Settings className="w-4 h-4 text-[#747E9B] shrink-0" />
+                {!isSidebarCollapsed && <span>Settings</span>}
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Bottom Workspace Status */}
+        {!isSidebarCollapsed && (
+          <div className="p-3 border-t border-[#1F243D]/60 bg-[#101426]/50 shrink-0">
+            <div className="flex items-center justify-between text-[11px] text-[#6B7694]">
+              <span className="flex items-center gap-1.5 truncate">
+                <span className="w-2 h-2 rounded-full bg-[#08B894] animate-pulse shrink-0" />
+                <span className="truncate">{currentOrg.name}</span>
+              </span>
+              <span className="font-mono text-[10px] text-[#A3ABC5] shrink-0">{currentOrg.baseCurrency}</span>
+            </div>
           </div>
         )}
-
-        {/* Navigation Sections */}
-        <div className="space-y-3 pt-1">
-          {/* Main Apps & Overview */}
-          <div className="space-y-0.5">
-            <button
-              aria-label="Workspace Home"
-              onClick={() => navigate('home')}
-              className={`w-full px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-xs font-medium transition-all ${
-                activeApp === 'home'
-                  ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 font-semibold shadow-[inset_0_0_0_1px_rgba(40,81,67,.08)]'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-slate-800/40'
-              }`}
-            >
-              <Home className="w-4 h-4 text-slate-500" />
-              {!isSidebarCollapsed && <span>Workspace Home</span>}
-            </button>
-
-            <button
-              aria-label="Apps Launchpad"
-              onClick={() => navigate('launchpad')}
-              className={`w-full px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-xs font-medium transition-all ${
-                activeApp === 'launchpad'
-                  ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 font-semibold shadow-[inset_0_0_0_1px_rgba(40,81,67,.08)]'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-slate-800/40'
-              }`}
-            >
-              <LayoutGrid className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              {!isSidebarCollapsed && <span>Apps Launchpad</span>}
-            </button>
-
-            <button
-              aria-label="NextAura AI"
-              onClick={() => navigate('ai')}
-              className={`w-full px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-xs font-medium transition-all ${
-                activeApp === 'ai'
-                  ? 'bg-emerald-50 text-emerald-900 font-semibold shadow-[inset_0_0_0_1px_rgba(40,81,67,.1)] dark:bg-emerald-950/40 dark:text-emerald-200'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-slate-800/40'
-              }`}
-            >
-              <NextAuraAIIcon className="w-4 h-4" />
-              {!isSidebarCollapsed && <span>NextAura AI</span>}
-            </button>
-          </div>
-
-          <div className="pt-1">
-            {!isSidebarCollapsed && (
-              <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 px-2 pb-1">
-                Business Operations
-              </div>
-            )}
-          </div>
-
-          {/* 3 Major Category Groups */}
-          {renderModuleGroup('Finance', 'finance', financeModules, 'bg-indigo-500')}
-          {renderModuleGroup('Human Resources', 'hr', hrModules, 'bg-amber-500')}
-          {renderModuleGroup('Marketing', 'marketing', marketingModules, 'bg-rose-500')}
-
-          <div className="pt-1">
-            {!isSidebarCollapsed && (
-              <div className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 px-2 pb-1">
-                Global Platform
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-0.5">
-            <button
-              aria-label="Global Calendar"
-              onClick={() => navigate('calendar')}
-              className={`w-full px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-xs font-medium transition-all ${
-                activeApp === 'calendar'
-                  ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 font-semibold shadow-[inset_0_0_0_1px_rgba(40,81,67,.08)]'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-slate-800/40'
-              }`}
-            >
-              <CalendarIcon className="w-4 h-4 text-cyan-600 dark:text-cyan-400" />
-              {!isSidebarCollapsed && <span>Global Calendar</span>}
-            </button>
-
-            <button
-              aria-label="Central Approvals"
-              onClick={() => navigate('approvals')}
-              className={`w-full px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-xs font-medium transition-all ${
-                activeApp === 'approvals'
-                  ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 font-semibold shadow-[inset_0_0_0_1px_rgba(40,81,67,.08)]'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-slate-800/40'
-              }`}
-            >
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              {!isSidebarCollapsed && <span>Central Approvals</span>}
-            </button>
-
-            <button
-              aria-label="Contacts CRM"
-              onClick={() => navigate('contacts')}
-              className={`w-full px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-xs font-medium transition-all ${
-                activeApp === 'contacts'
-                  ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 font-semibold shadow-[inset_0_0_0_1px_rgba(40,81,67,.08)]'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-slate-800/40'
-              }`}
-            >
-              {contactsCustomIcon ? (
-                <img src={contactsCustomIcon} alt="Contacts CRM icon" className="w-4 h-4 object-contain select-none pointer-events-none" />
-              ) : (
-                <Users className="w-4 h-4 text-indigo-600 dark:text-indigo-400" />
-              )}
-              {!isSidebarCollapsed && <span>Contacts CRM</span>}
-            </button>
-
-            <button
-              aria-label="Document Vault"
-              onClick={() => navigate('documents')}
-              className={`w-full px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-xs font-medium transition-all ${
-                activeApp === 'documents'
-                  ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 font-semibold shadow-[inset_0_0_0_1px_rgba(40,81,67,.08)]'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-slate-800/40'
-              }`}
-            >
-              {documentsCustomIcon ? (
-                <img src={documentsCustomIcon} alt="Document Vault icon" className="w-4 h-4 object-contain select-none pointer-events-none" />
-              ) : (
-                <FolderKanban className="w-4 h-4 text-slate-500" />
-              )}
-              {!isSidebarCollapsed && <span>Document Vault</span>}
-            </button>
-
-            <button
-              aria-label="Analytics Center"
-              onClick={() => navigate('analytics')}
-              className={`w-full px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-xs font-medium transition-all ${
-                activeApp === 'analytics'
-                  ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 font-semibold shadow-[inset_0_0_0_1px_rgba(40,81,67,.08)]'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-slate-800/40'
-              }`}
-            >
-              {analyticsCustomIcon ? (
-                <img src={analyticsCustomIcon} alt="Analytics Center icon" className="w-4 h-4 object-contain select-none pointer-events-none" />
-              ) : (
-                <BarChart3 className="w-4 h-4 text-slate-500" />
-              )}
-              {!isSidebarCollapsed && <span>Analytics Center</span>}
-            </button>
-
-            <button
-              aria-label="Add Services"
-              onClick={() => navigate('settings', 'services')}
-              className={`w-full px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-xs font-medium transition-all ${
-                activeApp === 'settings' && activeSubView === 'services'
-                  ? 'bg-blue-50 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300 font-semibold shadow-[inset_0_0_0_1px_rgba(40,81,67,.08)]'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-slate-800/40'
-              }`}
-            >
-              <Plus className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-              {!isSidebarCollapsed && <span>Add Services</span>}
-            </button>
-
-            <button aria-label="Automations" onClick={() => navigate('automations')} className={`w-full px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-xs font-medium transition-all ${activeApp === 'automations' ? 'bg-blue-50 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300 font-semibold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100/60 dark:hover:bg-slate-800/40'}`}>
-              <Workflow className="w-4 h-4 text-violet-600" />{!isSidebarCollapsed && <span>Automations</span>}
-            </button>
-            {activeServices.includes('website_builder') && <button aria-label="Website Builder" onClick={() => navigate('websites')} className={`w-full px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-xs font-medium transition-all ${activeApp === 'websites' ? 'bg-blue-50 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300 font-semibold' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100/60 dark:hover:bg-slate-800/40'}`}><Globe2 className="w-4 h-4 text-blue-600" />{!isSidebarCollapsed && <span>Website Builder</span>}</button>}
-
-            <button
-              aria-label="Settings"
-              onClick={() => navigate('settings')}
-              className={`w-full px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-xs font-medium transition-all ${
-                activeApp === 'settings' && activeSubView !== 'services' && activeSubView !== 'admin-requests'
-                  ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 font-semibold shadow-[inset_0_0_0_1px_rgba(40,81,67,.08)]'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-slate-800/40'
-              }`}
-            >
-              <Settings className="w-4 h-4 text-slate-500" />
-              {!isSidebarCollapsed && <span>Settings</span>}
-            </button>
-
-            <button
-              aria-label="Pricing"
-              onClick={() => navigate('pricing')}
-              className={`w-full px-2.5 py-2 rounded-xl flex items-center gap-2.5 text-xs font-medium transition-all ${
-                activeApp === 'pricing'
-                  ? 'bg-blue-50 dark:bg-blue-950/40 text-blue-800 dark:text-blue-300 font-semibold shadow-[inset_0_0_0_1px_rgba(40,81,67,.08)]'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100/60 dark:hover:bg-slate-800/40'
-              }`}
-            >
-              <BadgeDollarSign className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
-              {!isSidebarCollapsed && <span>Pricing</span>}
-            </button>
-          </div>
-        </div>
       </div>
     </aside>
   );
 };
+

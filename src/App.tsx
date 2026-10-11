@@ -48,6 +48,7 @@ import { SocialMarketingApp } from "./pages/marketing/SocialMarketingApp";
 import { GlobalCalendar } from "./pages/GlobalCalendar";
 import { GlobalApprovals } from "./pages/GlobalApprovals";
 import { ContactsDirectory } from "./pages/ContactsDirectory";
+import { CrmDashboard } from "./pages/crm/CrmDashboard";
 import { DocumentCenter } from "./pages/DocumentCenter";
 import { AnalyticsCenter } from "./pages/AnalyticsCenter";
 import { SettingsPage } from "./pages/settings/SettingsPage";
@@ -193,6 +194,9 @@ const AppContent: React.FC = () => {
 
       case "contacts":
         return <ContactsDirectory />;
+
+      case "crm":
+        return <CrmDashboard />;
 
       case "documents":
         return <DocumentCenter />;

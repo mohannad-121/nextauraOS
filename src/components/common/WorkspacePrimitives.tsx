@@ -38,13 +38,13 @@ export const SectionHeader: React.FC<SectionHeaderProps> = ({ title, description
     <div className="min-w-0">
       <div className="flex items-center gap-2.5">
         {Icon && (
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-700 border border-indigo-200/50 dark:bg-[#7568E8]/15 dark:text-[#A499FA] dark:border-[#7568E8]/30">
             <Icon className="h-4 w-4" aria-hidden="true" />
           </span>
         )}
-        <h2 className="text-base font-semibold text-slate-900 dark:text-slate-100">{title}</h2>
+        <h2 className="text-base font-semibold text-slate-900 dark:text-[#F4F6FF]">{title}</h2>
       </div>
-      {description && <p className={`${Icon ? 'ms-10' : ''} mt-1 text-sm text-slate-500 dark:text-slate-400`}>{description}</p>}
+      {description && <p className={`${Icon ? 'ms-10' : ''} mt-1 text-sm text-slate-500 dark:text-[#A3ABC5]`}>{description}</p>}
     </div>
     {action && <div className="shrink-0">{action}</div>}
   </div>
@@ -57,7 +57,7 @@ interface SkeletonProps extends React.HTMLAttributes<HTMLDivElement> {
 export const Skeleton: React.FC<SkeletonProps> = ({ rounded = 'md', className = '', ...props }) => (
   <div
     aria-hidden="true"
-    className={`animate-pulse bg-slate-200/70 dark:bg-slate-700/70 ${
+    className={`animate-pulse bg-slate-200/70 dark:bg-[#1E243E] ${
       rounded === 'full' ? 'rounded-full' : rounded === 'sm' ? 'rounded-lg' : 'rounded-xl'
     } ${className}`}
     {...props}

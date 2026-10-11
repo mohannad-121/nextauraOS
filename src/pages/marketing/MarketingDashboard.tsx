@@ -37,10 +37,10 @@ export const MarketingDashboard: React.FC = () => {
         <SectionHeader title="Choose a channel" description="Each workspace keeps creation, review, and results together." />
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {channels.map(({ title, detail, icon: Icon, onClick }) => (
-            <button key={title} type="button" onClick={onClick} className="group flex min-h-[136px] flex-col rounded-2xl border border-slate-200/80 bg-white p-5 text-start transition-all hover:-translate-y-px hover:border-slate-300 hover:shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:hover:border-slate-700">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-blue-50 text-blue-700 dark:bg-blue-950/50 dark:text-blue-300"><Icon className="h-[18px] w-[18px]" /></span>
-              <span className="mt-4 flex w-full items-center justify-between gap-2 text-sm font-semibold text-slate-900 dark:text-white">{title}<ArrowRight className="h-4 w-4 text-slate-300 transition-transform group-hover:translate-x-0.5 group-hover:text-blue-600" /></span>
-              <span className="mt-1 text-xs text-slate-500">{detail}</span>
+            <button key={title} type="button" onClick={onClick} className="group flex min-h-[136px] flex-col rounded-2xl border border-slate-200/80 bg-white p-5 text-start transition-all hover:-translate-y-px hover:border-slate-300 hover:shadow-sm dark:border-[#1F253D] dark:bg-[#161B30] dark:hover:border-[#2D3555] cursor-pointer">
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-700 dark:bg-[#101426] dark:text-[#A499FA] border border-indigo-200/50 dark:border-[#7568E8]/30"><Icon className="h-[18px] w-[18px]" /></span>
+              <span className="mt-4 flex w-full items-center justify-between gap-2 text-sm font-semibold text-slate-900 dark:text-[#F4F6FF]">{title}<ArrowRight className="h-4 w-4 text-slate-300 dark:text-[#6B7694] transition-transform group-hover:translate-x-0.5 group-hover:text-[#7568E8]" /></span>
+              <span className="mt-1 text-xs text-slate-500 dark:text-[#A3ABC5]">{detail}</span>
             </button>
           ))}
         </div>
@@ -51,12 +51,12 @@ export const MarketingDashboard: React.FC = () => {
           <SectionHeader title="Scheduled next" description="Upcoming customer communications across channels." icon={CalendarClock} />
           <Surface padding="none" className="overflow-hidden">
             {upcoming.length > 0 ? (
-              <div className="divide-y divide-slate-100 dark:divide-slate-800">
+              <div className="divide-y divide-slate-100 dark:divide-[#1F253D]">
                 {upcoming.slice(0, 7).map((item) => (
-                  <button key={item.id} type="button" onClick={item.onClick} className="flex w-full items-center justify-between gap-4 px-5 py-4 text-start transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/50 sm:px-6">
+                  <button key={item.id} type="button" onClick={item.onClick} className="flex w-full items-center justify-between gap-4 px-5 py-4 text-start transition-colors hover:bg-slate-50 dark:hover:bg-[#1A2035] sm:px-6 cursor-pointer">
                     <span className="min-w-0">
-                      <span className="block truncate text-sm font-medium text-slate-900 dark:text-white">{item.title}</span>
-                      <span className="mt-0.5 block text-xs text-slate-500">{item.detail}</span>
+                      <span className="block truncate text-sm font-medium text-slate-900 dark:text-[#F4F6FF]">{item.title}</span>
+                      <span className="mt-0.5 block text-xs text-slate-500 dark:text-[#A3ABC5]">{item.detail}</span>
                     </span>
                     <StatusBadge status={item.type} variant="neutral" size="sm" />
                   </button>
@@ -64,9 +64,9 @@ export const MarketingDashboard: React.FC = () => {
               </div>
             ) : (
               <div className="px-6 py-12 text-center">
-                <CalendarClock className="mx-auto h-6 w-6 text-slate-400" />
-                <p className="mt-3 text-sm font-medium text-slate-900 dark:text-white">Nothing scheduled yet</p>
-                <p className="mx-auto mt-1 max-w-sm text-xs text-slate-500">Create a campaign or schedule a social post to build your communication plan.</p>
+                <CalendarClock className="mx-auto h-6 w-6 text-slate-400 dark:text-[#747E9B]" />
+                <p className="mt-3 text-sm font-medium text-slate-900 dark:text-[#F4F6FF]">Nothing scheduled yet</p>
+                <p className="mx-auto mt-1 max-w-sm text-xs text-slate-500 dark:text-[#A3ABC5]">Create a campaign or schedule a social post to build your communication plan.</p>
                 <Button className="mt-5" onClick={() => navigate('email', 'new')}>Create campaign</Button>
               </div>
             )}
@@ -76,10 +76,10 @@ export const MarketingDashboard: React.FC = () => {
         <section className="space-y-4">
           <SectionHeader title="Audience" description="Real contacts available to your campaigns." icon={Users} />
           <Surface>
-            <p className="text-3xl font-semibold tracking-tight text-slate-900 dark:text-white tabular-nums">{contacts.length.toLocaleString()}</p>
-            <p className="mt-1 text-sm text-slate-500">contact{contacts.length === 1 ? '' : 's'} in this workspace</p>
-            <div className="mt-6 border-t border-slate-100 pt-4 dark:border-slate-800">
-              <button type="button" onClick={() => navigate('contacts')} className="flex items-center gap-1.5 text-xs font-semibold text-blue-700 dark:text-blue-300">Open contacts <ArrowRight className="h-3.5 w-3.5" /></button>
+            <p className="text-3xl font-bold tracking-tight text-slate-900 dark:text-[#F4F6FF] tabular-nums font-heading">{contacts.length.toLocaleString()}</p>
+            <p className="mt-1 text-sm text-slate-500 dark:text-[#A3ABC5]">contact{contacts.length === 1 ? '' : 's'} in this workspace</p>
+            <div className="mt-6 border-t border-slate-100 dark:border-[#1F253D] pt-4">
+              <button type="button" onClick={() => navigate('contacts')} className="flex items-center gap-1.5 text-xs font-semibold text-[#7568E8] dark:text-[#A499FA] hover:text-[#867AF0] cursor-pointer">Open contacts <ArrowRight className="h-3.5 w-3.5" /></button>
             </div>
           </Surface>
         </section>

@@ -36,7 +36,7 @@ export const InvoicingDashboard: React.FC = () => {
         actions={
           <button
             onClick={() => navigate('invoicing', 'new-invoice')}
-            className="px-4 py-2 rounded-xl bg-blue-700 hover:bg-blue-800 dark:bg-blue-600 dark:hover:bg-blue-500 text-white font-medium text-xs shadow-xs flex items-center gap-1.5 transition-colors"
+            className="px-4 py-2 rounded-xl bg-[#7568E8] hover:bg-[#867AF0] active:bg-[#6056C9] text-white font-medium text-xs shadow-[0_0_12px_rgba(117,104,232,0.35)] flex items-center gap-1.5 transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Create Invoice</span>
@@ -44,36 +44,36 @@ export const InvoicingDashboard: React.FC = () => {
         }
       />
 
-      <div className="flex flex-wrap items-center gap-x-7 gap-y-3 rounded-2xl border border-slate-200/80 bg-white px-5 py-4 text-xs dark:border-slate-800 dark:bg-slate-900 sm:px-6">
-        <span className="font-medium text-slate-500">Portfolio</span>
-        <span><span className="text-slate-500">Invoiced</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-white">{formatCurrency(totalInvoiced, 'USD')}</strong></span>
-        <span><span className="text-slate-500">Collected</span> <strong className="ms-1 font-semibold text-emerald-700 dark:text-emerald-300">{formatCurrency(paidTotal, 'USD')}</strong></span>
-        <span><span className="text-slate-500">Outstanding</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-white">{formatCurrency(outstandingTotal, 'USD')}</strong></span>
-        {overdueTotal > 0 && <span><span className="text-slate-500">Overdue</span> <strong className="ms-1 font-semibold text-rose-700 dark:text-rose-300">{formatCurrency(overdueTotal, 'USD')}</strong></span>}
+      <div className="flex flex-wrap items-center gap-x-7 gap-y-3 rounded-2xl border border-slate-200/80 bg-white px-5 py-4 text-xs dark:border-[#1F253D] dark:bg-[#161B30] sm:px-6">
+        <span className="font-semibold text-slate-500 dark:text-[#747E9B] uppercase tracking-wider text-[11px]">Portfolio</span>
+        <span><span className="text-slate-500 dark:text-[#A3ABC5]">Invoiced</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-[#F4F6FF] tabular-nums">{formatCurrency(totalInvoiced, 'USD')}</strong></span>
+        <span><span className="text-slate-500 dark:text-[#A3ABC5]">Collected</span> <strong className="ms-1 font-semibold text-emerald-700 dark:text-[#23C99C] tabular-nums">{formatCurrency(paidTotal, 'USD')}</strong></span>
+        <span><span className="text-slate-500 dark:text-[#A3ABC5]">Outstanding</span> <strong className="ms-1 font-semibold text-slate-900 dark:text-[#F4F6FF] tabular-nums">{formatCurrency(outstandingTotal, 'USD')}</strong></span>
+        {overdueTotal > 0 && <span><span className="text-slate-500 dark:text-[#A3ABC5]">Overdue</span> <strong className="ms-1 font-semibold text-rose-700 dark:text-[#F43F5E] tabular-nums">{formatCurrency(overdueTotal, 'USD')}</strong></span>}
       </div>
 
       {/* Filter & Search Toolbar */}
-      <div className="p-4 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="p-4 rounded-2xl bg-white dark:bg-[#161B30] border border-slate-200/80 dark:border-[#1F253D] shadow-xs flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+          <Search className="w-4 h-4 text-slate-400 dark:text-[#747E9B] absolute left-3.5 top-1/2 -translate-y-1/2" />
           <input
             type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search invoice number, customer..."
-            className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-xs text-slate-900 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-600/20 focus:border-blue-600"
+            className="w-full pl-9 pr-4 py-2 rounded-xl bg-slate-50 dark:bg-[#101426] border border-slate-200 dark:border-[#2A3048] text-xs text-slate-900 dark:text-[#F4F6FF] placeholder-slate-400 dark:placeholder-[#6B7694] focus:outline-none focus:ring-2 focus:ring-[#7568E8]/20 focus:border-[#7568E8]"
           />
         </div>
 
-        <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-slate-800 rounded-xl overflow-x-auto w-full sm:w-auto">
+        <div className="flex items-center gap-1 p-1 bg-slate-100 dark:bg-[#101426] border border-transparent dark:border-[#1F253D] rounded-xl overflow-x-auto w-full sm:w-auto">
           {['all', 'draft', 'sent', 'overdue', 'paid'].map((st) => (
             <button
               key={st}
               onClick={() => setSelectedStatus(st)}
-              className={`px-3 py-1 rounded-lg text-xs font-medium capitalize transition-colors ${
+              className={`px-3 py-1 rounded-lg text-xs font-medium capitalize transition-all cursor-pointer ${
                 selectedStatus === st
-                  ? 'bg-white dark:bg-slate-700 text-slate-900 dark:text-slate-100 shadow-xs font-semibold'
-                  : 'text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                  ? 'bg-white dark:bg-[#7568E8] text-slate-900 dark:text-white shadow-xs font-semibold'
+                  : 'text-slate-500 dark:text-[#A3ABC5] hover:text-slate-900 dark:hover:text-[#F4F6FF]'
               }`}
             >
               {st}
@@ -98,10 +98,10 @@ export const InvoicingDashboard: React.FC = () => {
           onSecondaryAction={() => { setSearch(''); setSelectedStatus('all'); }}
         />
       ) : (
-        <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200/80 dark:border-slate-800 shadow-xs overflow-hidden">
+        <div className="rounded-2xl bg-white dark:bg-[#161B30] border border-slate-200/80 dark:border-[#1F253D] shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-start text-xs">
-              <thead className="bg-slate-50 dark:bg-slate-800/80 text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200/80 dark:border-slate-800">
+              <thead className="bg-slate-50 dark:bg-[#101426] text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-[#747E9B] border-b border-slate-200/80 dark:border-[#1F253D]">
                 <tr>
                   <th className="p-3.5 text-start">Invoice</th>
                   <th className="p-3.5 text-start">Customer</th>
@@ -113,15 +113,15 @@ export const InvoicingDashboard: React.FC = () => {
                   <th className="p-3.5 text-center">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60 font-medium">
+              <tbody className="divide-y divide-slate-100 dark:divide-[#1F253D]/70 font-medium">
                 {filteredInvoices.map((inv) => (
-                  <tr key={inv.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors">
-                    <td className="p-3.5 font-mono font-semibold text-blue-700 dark:text-blue-400">{inv.number}</td>
-                    <td className="p-3.5 font-semibold text-slate-900 dark:text-slate-100">{inv.customerName}</td>
-                    <td className="p-3.5 text-slate-500 dark:text-slate-400">{formatDate(inv.issueDate)}</td>
-                    <td className="p-3.5 text-slate-500 dark:text-slate-400">{formatDate(inv.dueDate)}</td>
-                    <td className="p-3.5 text-end font-semibold text-slate-900 dark:text-slate-100 tabular-nums">{formatCurrency(inv.total, inv.currency)}</td>
-                    <td className="p-3.5 text-end font-semibold text-blue-700 dark:text-blue-400 tabular-nums">{formatCurrency(inv.amountDue, inv.currency)}</td>
+                  <tr key={inv.id} className="hover:bg-slate-50/80 dark:hover:bg-[#1A2035] transition-colors">
+                    <td className="p-3.5 font-mono font-semibold text-[#7568E8] dark:text-[#A499FA]">{inv.number}</td>
+                    <td className="p-3.5 font-semibold text-slate-900 dark:text-[#F4F6FF]">{inv.customerName}</td>
+                    <td className="p-3.5 text-slate-500 dark:text-[#A3ABC5]">{formatDate(inv.issueDate)}</td>
+                    <td className="p-3.5 text-slate-500 dark:text-[#A3ABC5]">{formatDate(inv.dueDate)}</td>
+                    <td className="p-3.5 text-end font-semibold text-slate-900 dark:text-[#F4F6FF] tabular-nums">{formatCurrency(inv.total, inv.currency)}</td>
+                    <td className="p-3.5 text-end font-semibold text-[#7568E8] dark:text-[#A499FA] tabular-nums">{formatCurrency(inv.amountDue, inv.currency)}</td>
                     <td className="p-3.5 text-center">
                       <StatusBadge status={inv.status} />
                     </td>
@@ -129,7 +129,7 @@ export const InvoicingDashboard: React.FC = () => {
                       <div className="flex items-center justify-center gap-1.5">
                         <button
                           onClick={() => setDetailModalInvoice(inv)}
-                          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                          className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 dark:text-[#747E9B] dark:hover:text-[#F4F6FF] hover:bg-slate-100 dark:hover:bg-[#1E243E] transition-colors cursor-pointer"
                           title="View Detail"
                         >
                           <Eye className="w-4 h-4" />
@@ -137,7 +137,7 @@ export const InvoicingDashboard: React.FC = () => {
                         {inv.status !== 'Paid' && (
                           <button
                             onClick={() => updateInvoiceStatus(inv.id, 'Paid')}
-                            className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:border-emerald-800 text-[11px] font-medium transition-colors"
+                            className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 dark:bg-[#08B894]/15 dark:text-[#23C99C] dark:border-[#08B894]/30 hover:dark:bg-[#08B894]/25 text-[11px] font-medium transition-colors cursor-pointer"
                           >
                             Mark Paid
                           </button>

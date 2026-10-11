@@ -135,6 +135,7 @@ export type AppView =
   | 'calendar'
   | 'approvals'
   | 'contacts'
+  | 'crm'
   | 'documents'
   | 'analytics'
   | 'automations'
@@ -327,7 +328,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       const saved = localStorage.getItem('nextaura_theme');
       if (saved === 'light' || saved === 'dark') return saved;
     } catch (_) {}
-    return 'light';
+    return 'dark';
   });
   const [language, setLanguage] = useState<'en' | 'ar'>('en');
 

@@ -5,28 +5,20 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --color-blue-50: #f1f6f3;
-  --color-blue-100: #e1ece6;
-  --color-blue-200: #c5d9ce;
-  --color-blue-300: #9dbdad;
-  --color-blue-400: #6f9a86;
-  --color-blue-500: #4b7c68;
-  --color-blue-600: #356553;
-  --color-blue-700: #285143;
-  --color-blue-800: #203f35;
-  --color-blue-900: #19342b;
-  --color-blue-950: #0f1d19;
-  --color-indigo-50: #f2f5f3;
-  --color-indigo-100: #e4ebe7;
-  --color-indigo-200: #cbd8d1;
-  --color-indigo-300: #a8bdb2;
-  --color-indigo-400: #819e90;
-  --color-indigo-500: #627f70;
-  --color-indigo-600: #4b6759;
-  --color-indigo-700: #3d5349;
-  --color-indigo-800: #33443c;
-  --color-indigo-900: #2b3933;
-  --color-indigo-950: #17201c;
+  --color-navy-950: #060814;
+  --color-navy-900: #090B1A;
+  --color-navy-800: #101426;
+  --color-navy-700: #161B30;
+  --color-navy-600: #1E243E;
+  --color-navy-500: #262E4E;
+  --color-navy-border: #1F253D;
+  --color-navy-border-subtle: #181D33;
+  --color-violet-primary: #7568E8;
+  --color-violet-accent: #6056C9;
+  --color-violet-active: #262356;
+  --color-chart-blue: #178CFF;
+  --color-teal-accent: #08B894;
+  --color-teal-text: #23C99C;
 }
 
 @layer base {
@@ -34,23 +26,48 @@
     --font-heading: "Plus Jakarta Sans", "Inter", system-ui, sans-serif;
     --font-sans: "Inter", "IBM Plex Sans Arabic", system-ui, sans-serif;
     --font-arabic: "IBM Plex Sans Arabic", "Inter", sans-serif;
-    --canvas: #f7f7f4;
-    --canvas-deep: #f1f2ed;
-    --surface: #ffffff;
-    --surface-soft: #fafaf8;
-    --surface-hover: #f5f7f3;
-    --ink: #202522;
-    --ink-secondary: #59625d;
-    --ink-muted: #78817c;
-    --line: #e3e6e1;
-    --line-strong: #d5dad4;
-    --brand: #285143;
-    --brand-hover: #203f35;
-    --brand-soft: #edf4f0;
-    --brand-line: #c9dacf;
-    --danger: #b84b4b;
-    color-scheme: light;
+    --canvas: #090B1A;
+    --canvas-deep: #060814;
+    --surface: #161B30;
+    --surface-soft: #101426;
+    --surface-hover: #1E243E;
+    --surface-elevated: #1F253F;
+    --ink: #F4F6FF;
+    --ink-secondary: #A3ABC5;
+    --ink-muted: #6B7694;
+    --line: #1F253D;
+    --line-strong: #2D3555;
+    --brand: #7568E8;
+    --brand-hover: #867AF0;
+    --brand-soft: #262356;
+    --brand-line: #584BE2;
+    --brand-glow: rgba(117, 104, 232, 0.25);
+    --chart-blue: #178CFF;
+    --teal-accent: #08B894;
+    --teal-text: #23C99C;
+    --danger: #F43F5E;
+    color-scheme: dark;
     font-synthesis: none;
+  }
+
+  html.light {
+    --canvas: #F8FAFC;
+    --canvas-deep: #F1F5F9;
+    --surface: #FFFFFF;
+    --surface-soft: #F8FAFC;
+    --surface-hover: #F1F5F9;
+    --surface-elevated: #FFFFFF;
+    --ink: #0F172A;
+    --ink-secondary: #475569;
+    --ink-muted: #64748B;
+    --line: #E2E8F0;
+    --line-strong: #CBD5E1;
+    --brand: #6366F1;
+    --brand-hover: #4F46E5;
+    --brand-soft: #EEF2FF;
+    --brand-line: #C7D2FE;
+    --danger: #E11D48;
+    color-scheme: light;
   }
 
   * {
@@ -70,9 +87,14 @@
     font-family: var(--font-sans);
     background:
       radial-gradient(
-        circle at 82% -8%,
-        rgba(201, 218, 207, 0.28),
-        transparent 28rem
+        circle at 10% 0%,
+        rgba(117, 104, 232, 0.08),
+        transparent 32rem
+      ),
+      radial-gradient(
+        circle at 90% 85%,
+        rgba(23, 140, 255, 0.06),
+        transparent 32rem
       ),
       var(--canvas);
     color: var(--ink);
@@ -105,32 +127,28 @@
 
   ::selection {
     background: var(--brand-line);
-    color: var(--ink);
+    color: #FFFFFF;
   }
 }
 
 ::-webkit-scrollbar {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: #cbd1cc;
-  border: 2px solid transparent;
+  background: #232A45;
   border-radius: 999px;
-  background-clip: padding-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: #aeb7b1;
-  border: 2px solid transparent;
-  background-clip: padding-box;
+  background: #313A5C;
 }
 
 :focus-visible {
   outline: 2px solid var(--brand);
-  outline-offset: 3px;
+  outline-offset: 2px;
 }
 .tabular-nums,
 .num-font {
@@ -147,9 +165,7 @@
 .surface-card {
   background: var(--surface);
   border: 1px solid var(--line);
-  box-shadow:
-    0 1px 2px rgba(26, 35, 30, 0.025),
-    0 8px 24px rgba(26, 35, 30, 0.025);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
 }
 .surface-card-hover {
   transition:
@@ -160,7 +176,7 @@
 }
 .surface-card-hover:hover {
   border-color: var(--line-strong);
-  box-shadow: 0 12px 30px rgba(26, 35, 30, 0.055);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
   transform: translateY(-1px);
 }
 
@@ -219,8 +235,8 @@
   color: #33443c;
 }
 .glass-panel {
-  background: rgba(255, 255, 255, 0.9);
-  border: 1px solid rgba(227, 230, 225, 0.9);
+  background: rgba(22, 27, 48, 0.85);
+  border: 1px solid var(--line);
   backdrop-filter: blur(14px);
   -webkit-backdrop-filter: blur(14px);
 }
@@ -230,9 +246,9 @@
 }
 .workspace-main
   :where(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
-  min-height: 42px;
-  border-color: var(--line) !important;
-  border-radius: 11px !important;
+  min-height: 40px;
+  border: 1px solid var(--line) !important;
+  border-radius: 10px !important;
   background: var(--surface-soft) !important;
   color: var(--ink) !important;
   transition:
@@ -256,54 +272,48 @@
   ):focus {
   border-color: var(--brand) !important;
   background: var(--surface) !important;
-  box-shadow: 0 0 0 3px rgba(40, 81, 67, 0.11) !important;
+  box-shadow: 0 0 0 3px rgba(117, 104, 232, 0.2) !important;
   outline: none !important;
 }
 .workspace-main :where(input, textarea)::placeholder {
-  color: #98a09b;
+  color: var(--ink-muted);
 }
 .workspace-main table {
   border-collapse: separate;
   border-spacing: 0;
+  width: 100%;
 }
 .workspace-main thead {
   background: var(--surface-soft) !important;
   color: var(--ink-secondary) !important;
 }
 .workspace-main thead th {
-  height: 44px;
-  padding-top: 0.75rem !important;
-  padding-bottom: 0.75rem !important;
-  font-size: 0.7rem !important;
-  font-weight: 650 !important;
-  letter-spacing: 0.015em !important;
-  text-transform: none !important;
+  height: 42px;
+  padding: 0.65rem 1rem !important;
+  font-size: 0.72rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.05em !important;
+  text-transform: uppercase !important;
+  border-bottom: 1px solid var(--line) !important;
 }
 .workspace-main tbody td {
-  min-height: 54px;
-  padding-top: 0.9rem !important;
-  padding-bottom: 0.9rem !important;
-  border-color: #edf0ec !important;
+  min-height: 52px;
+  padding: 0.75rem 1rem !important;
+  border-color: var(--line) !important;
+  color: var(--ink) !important;
 }
 .workspace-main tbody tr {
   transition: background-color 150ms ease;
 }
 .workspace-main tbody tr:hover {
-  background: #fafbf9;
+  background: var(--surface-hover);
 }
 .workspace-main :where([class*="rounded-2xl"][class*="bg-white"]) {
   border-color: var(--line);
-  box-shadow:
-    0 1px 2px rgba(26, 35, 30, 0.02),
-    0 8px 22px rgba(26, 35, 30, 0.02);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
 }
 .workspace-main :where([class*="uppercase"][class*="tracking"]) {
   letter-spacing: 0.035em;
-}
-html:not(.dark) .workspace-main .bg-slate-900.text-white {
-  background: var(--brand-soft) !important;
-  color: var(--brand) !important;
-  box-shadow: inset 0 0 0 1px var(--brand-line) !important;
 }
 
 .rtl {
@@ -389,20 +399,26 @@ html:not(.dark) .workspace-main .bg-slate-900.text-white {
 }
 
 html.dark {
-  --canvas: #171b19;
-  --canvas-deep: #1d221f;
-  --surface: #222825;
-  --surface-soft: #1c211e;
-  --surface-hover: #29302c;
-  --ink: #f0f3f1;
-  --ink-secondary: #b4bdb8;
-  --ink-muted: #929c96;
-  --line: #333b37;
-  --line-strong: #46504a;
-  --brand: #8fb9a5;
-  --brand-hover: #a8c9b8;
-  --brand-soft: #24352d;
-  --brand-line: #3d5a4c;
+  --canvas: #090B1A;
+  --canvas-deep: #060814;
+  --surface: #161B30;
+  --surface-soft: #101426;
+  --surface-hover: #1E243E;
+  --surface-elevated: #1F253F;
+  --ink: #F4F6FF;
+  --ink-secondary: #A3ABC5;
+  --ink-muted: #6B7694;
+  --line: #1F253D;
+  --line-strong: #2D3555;
+  --brand: #7568E8;
+  --brand-hover: #867AF0;
+  --brand-soft: #262356;
+  --brand-line: #584BE2;
+  --brand-glow: rgba(117, 104, 232, 0.25);
+  --chart-blue: #178CFF;
+  --teal-accent: #08B894;
+  --teal-text: #23C99C;
+  --danger: #F43F5E;
   color-scheme: dark;
   background: var(--canvas) !important;
   color: var(--ink) !important;
@@ -414,13 +430,41 @@ html.dark body {
 html.dark .surface-card {
   background: var(--surface) !important;
   border-color: var(--line) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25) !important;
 }
 html.dark .glass-panel {
-  background: rgba(34, 40, 37, 0.9) !important;
+  background: rgba(22, 27, 48, 0.85) !important;
   border-color: var(--line) !important;
 }
-html.dark .workspace-main :where([class*="rounded-2xl"][class*="bg-white"]) {
-  border-color: var(--line);
+html.dark .workspace-main :where([class*="rounded-2xl"][class*="bg-white"], [class*="rounded-xl"][class*="bg-white"]) {
+  background-color: var(--surface) !important;
+  border-color: var(--line) !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25) !important;
+}
+html.dark .workspace-main :where([class*="bg-slate-50"], [class*="bg-[#FAFAF8]"], [class*="bg-[#F5F7F3]"]) {
+  background-color: var(--surface-soft) !important;
+  border-color: var(--line) !important;
+}
+html.dark .workspace-main :where([class*="text-slate-900"]) {
+  color: var(--ink) !important;
+}
+html.dark .workspace-main :where([class*="text-slate-800"], [class*="text-slate-700"]) {
+  color: #E2E8F0 !important;
+}
+html.dark .workspace-main :where([class*="text-slate-600"]) {
+  color: var(--ink-secondary) !important;
+}
+html.dark .workspace-main :where([class*="text-slate-500"]) {
+  color: var(--ink-muted) !important;
+}
+html.dark .workspace-main :where([class*="border-slate-200"], [class*="border-slate-100"], [class*="border-slate-200/80"], [class*="border-slate-200/70"]) {
+  border-color: var(--line) !important;
+}
+html.dark .workspace-main :where([class*="bg-slate-100"]) {
+  background-color: var(--surface-soft) !important;
+}
+html.dark .workspace-main :where([class*="hover:bg-slate-50"]:hover, [class*="hover:bg-slate-100"]:hover) {
+  background-color: var(--surface-hover) !important;
 }
 
 @media (prefers-reduced-motion: reduce) {
